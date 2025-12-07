@@ -97,7 +97,7 @@ def check_key_status(user_key):
         
     return "INVALID"
 
-# --- 7. SIDEBAR (LOGIN & TOOLS) ---
+# --- 7. SIDEBAR (LOGIN & PAYMENT) ---
 with st.sidebar:
     st.markdown("## 🔐 Premium Access")
     
@@ -109,33 +109,8 @@ with st.sidebar:
     # Check Status
     status = check_key_status(user_key)
     
-    # --- IF LOCKED: SHOW LANDING PAGE & STOP ---
+    # IF KEY IS INVALID/EXPIRED, SHOW PAYMENT OPTIONS IN SIDEBAR
     if status != "VALID":
-        
-        # 1. RENDER LANDING PAGE FEATURES (In Main Area)
-        st.markdown("---")
-        st.markdown("""
-        <div style="background-color: #161B26; padding: 20px; border-radius: 10px; border: 1px solid #2B313E;">
-            <p style="color: #4A90E2; font-weight: bold; font-size: 18px; margin-bottom: 10px;">
-                🔑 Access Required
-            </p>
-            <p style="font-size: 16px;">
-                To unlock the full potential of JEEx Pro, please enter your 
-                <strong>Access Key</strong> in the sidebar (↖️ Top Left).
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown("### 🚀 Why JEEx Pro is Unbeatable:")
-        st.markdown("""
-        * **👁️ Vision Intelligence:** Upload images of complex handwritten numericals and get instant step-by-step solutions.
-        * **📄 Full PDF Analysis:** Attach entire question papers or assignments; our Code Interpreter reads and solves them.
-        * **➗ LaTeX Precision:** Experience textbook-quality math formatting (Integrals, Vectors, Matrices) with zero formatting errors.
-        * **🧠 JEE Optimized:** Specifically fine-tuned for Physics, Chemistry, and Maths concepts at Mains & Advanced levels.
-        * **⚡ 24/7 Mentorship:** No waiting for teachers. Your personal AI mentor is awake whenever you are.
-        """)
-
-        # 2. SHOW SIDEBAR ERROR / BUTTON
         if status == "EXPIRED":
             st.error("⚠️ Plan Expired")
             btn_text = "👉 Renew Now (₹99)"
@@ -164,17 +139,53 @@ with st.sidebar:
         
         st.markdown("---")
         with st.expander("📄 Terms & Conditions"):
-            st.markdown("""
+             st.markdown("""
             **JEEx Usage Policy:**
-            1. **Accuracy:** AI may make errors. Use as a study companion.
-            2. **Personal Use:** Keys are for single users only. Sharing leads to a ban.
+            1. **Accuracy:** AI may make errors. Verify data.
+            2. **Personal Use:** Keys are for single users only.
             3. **No Refunds:** All sales are final.
             """)
-        st.stop() # ⛔ STOPS APP HERE IF NOT LOGGED IN
 
-    # --- IF VALID: SHOW SUCCESS & TOOLS ---
-    st.success(f"✅ Active: {user_key}")
+# --- 8. MAIN AREA LOGIC ---
+
+# SCENARIO A: USER IS LOCKED (Show Landing Page in Center)
+if status != "VALID":
+    st.markdown("---")
     
+    # 1. INSTRUCTION BOX
+    st.info("👋 **Welcome Student!** Please enter your **Access Key** in the Sidebar (↖️ Top Left) to unlock the AI.")
+
+    # 2. PROFESSIONAL FEATURE LIST (The "Epic" Part)
+    st.markdown("### 🏆 Why Top Rankers Use JEEx Pro:")
+    
+    st.markdown("""
+    <div style="background-color: #161B26; padding: 25px; border-radius: 10px; border: 1px solid #2B313E; font-size: 16px; line-height: 1.8;">
+        
+        <p><strong>🧠 Advanced Problem Solving</strong><br>
+        Instantly solves Irodov, Cengage, and PYQ level problems with step-by-step logic, not just answers.</p>
+        
+        <p><strong>👁️ Vision Intelligence (OCR)</strong><br>
+        Stuck on a handwritten question? Just upload a photo. JEEx reads, understands, and solves it in seconds.</p>
+        
+        <p><strong>📄 Document Analysis</strong><br>
+        Upload entire PDF assignments or test papers. Our embedded Code Interpreter analyzes the full document context.</p>
+        
+        <p><strong>➗ Perfect Math Formatting</strong><br>
+        Powered by LaTeX to render complex integrals, matrices, and chemical equations with textbook precision.</p>
+        
+        <p><strong>⚡ 24/7 Personal Mentorship</strong><br>
+        Your AI Tutor never sleeps. Clear backlogs and doubts at 3 AM without waiting for a teacher.</p>
+
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.stop() # ⛔ THIS STOPS THE APP HERE SO THEY CAN'T SEE CHAT
+
+# SCENARIO B: USER IS UNLOCKED (Show Chat Interface)
+
+# Sidebar Tools (Only visible when unlocked)
+with st.sidebar:
+    st.success(f"✅ Active: {user_key}")
     st.markdown("---")
     st.markdown("### 📎 Attach Question")
     uploaded_file = st.file_uploader(
@@ -190,16 +201,8 @@ with st.sidebar:
     if st.button("End Session"):
         st.session_state['logout'] = True
         st.rerun()
-        
-    with st.expander("📄 Terms & Conditions"):
-         st.markdown("""
-            **JEEx Usage Policy:**
-            1. **Accuracy:** AI may make errors. Verify data.
-            2. **Personal Use:** Keys are for single users only.
-            3. **No Refunds:** All sales are final.
-            """)
 
-# --- 8. MAIN APP LOGIC (Only runs when unlocked) ---
+# Main Chat Logic
 try:
     api_key = st.secrets["OPENAI_API_KEY"]
     assistant_id = st.secrets["ASSISTANT_ID"]
@@ -220,10 +223,10 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(clean_latex(msg["content"]))
 
-# --- 9. INPUT AREA ---
+# Input Area
 prompt = st.chat_input("Ask a doubt...")
 
-# --- 10. HANDLING SEND ---
+# Handling Send
 if prompt:
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
