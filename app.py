@@ -2,8 +2,13 @@ import streamlit as st
 import time
 from openai import OpenAI
 
-# --- 1. CONFIGURATION (Must be the first Streamlit command) ---
-st.set_page_config(page_title="JEEx", page_icon="⚛️", layout="centered")
+# --- 1. CONFIGURATION (FIX: Force Sidebar to Open) ---
+st.set_page_config(
+    page_title="JEEx", 
+    page_icon="⚛️", 
+    layout="centered", 
+    initial_sidebar_state="expanded" # <--- THIS FORCES THE SIDEBAR OPEN
+)
 
 # --- 2. PROFESSIONAL DARK THEME CSS ---
 st.markdown("""
@@ -72,20 +77,20 @@ st.markdown("""
         border: 1px solid #3E4654 !important;
     }
     
-    /* Hide Default Streamlit Elements */
+    /* FIX: DO NOT HIDE HEADER (So you can see the menu button) */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    header {visibility: hidden;}
+    /* header {visibility: hidden;}  <-- DELETED THIS LINE SO YOU CAN SEE THE MENU */
     .stDeployButton {display:none;}
     
-    /* Success Message Style (Dark Mode Friendly) */
+    /* Success Message Style */
     .stSuccess {
         background-color: #1E4620 !important;
         color: #D4EDDA !important;
         border: 1px solid #2B6E32 !important;
     }
     
-    /* Expander/Accordion Styling */
+    /* Expander Styling */
     .streamlit-expanderHeader {
         background-color: #161B26 !important;
         color: #FAFAFA !important;
@@ -93,31 +98,30 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. SHOW TITLE IMMEDIATELY (Before Login) ---
-# This ensures "JEEx PRO" is always visible
+# --- 3. SHOW TITLE IMMEDIATELY ---
 st.markdown("# ⚛️ **JEEx** <span style='color:#4A90E2; font-size:0.6em'>PRO</span>", unsafe_allow_html=True)
 st.caption("Your Personal AI Tutor for JEE Mains & Advanced | Powered by OpenAI")
 
 # --- 4. SMART KEY LOGIC ---
 def check_smart_key(user_key):
-    # 1. Check Master Key (For you)
+    # 1. Check Master Key
     if user_key == st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS"):
         return True
     
-    # 2. Check "White List" from Secrets
+    # 2. Check Valid Keys List
     valid_list = st.secrets.get("VALID_KEYS", [])
     if user_key in valid_list:
         return True
 
-    # 3. Check Pattern "JEExa0001" to "JEExa1000"
+    # 3. Check Pattern "JEExa0001"
     if len(user_key) != 9:
         return False
     
-    prefix = user_key[:5] # "JEExa"
+    prefix = user_key[:5] 
     if prefix != "JEExa":
         return False
         
-    number_part = user_key[5:] # "0001"
+    number_part = user_key[5:] 
     if not number_part.isdigit():
         return False
         
@@ -140,7 +144,7 @@ with st.sidebar:
         st.warning("🔒 Chat Locked")
         st.info("Please enter a valid key to start.")
         
-        # --- PAYMENT LINK ---
+        # PAYMENT LINK
         payment_link = "https://rzp.io/rzp/wXI8i7t"
         
         st.markdown(f"""
@@ -160,37 +164,32 @@ with st.sidebar:
             </a>
             """, unsafe_allow_html=True)
         
-        # --- TERMS AND CONDITIONS (Visible for non-users) ---
         st.markdown("---")
         with st.expander("📄 Terms & Conditions"):
             st.markdown("""
             **JEEx Usage Policy:**
-            1. **Accuracy:** AI may occasionally make errors. Use as a study companion, not the sole source of truth.
-            2. **Personal Use:** Keys are for single users only. Sharing keys will result in a permanent ban.
-            3. **No Refunds:** As this is a digital product, all sales are final once the key is delivered.
-            4. **Liability:** We are not responsible for exam results or service interruptions.
+            1. **Accuracy:** AI may make errors. Verify with textbooks.
+            2. **Personal Use:** Single user only. No sharing.
+            3. **No Refunds:** All sales final.
             """)
             
-        st.stop() # STOP EVERYTHING HERE if key is invalid
+        st.stop() # STOP HERE if not logged in
 
-    # If code reaches here, the Key is Valid
+    # If Valid
     st.success(f"✅ Active: {user_key}")
-    
-    # Reset Button (Dark Grey)
     if st.button("End Session"):
         st.rerun()
-        
-    # --- TERMS AND CONDITIONS (Visible for logged-in users) ---
+    
     st.markdown("---")
     with st.expander("📄 Terms & Conditions"):
         st.markdown("""
         **JEEx Usage Policy:**
-        1. **Accuracy:** AI may occasionally make errors. Use as a study companion.
-        2. **Personal Use:** Keys are for single users only. Sharing keys leads to a ban.
-        3. **No Refunds:** All sales are final.
+        1. **Accuracy:** AI may make errors. Verify with textbooks.
+        2. **Personal Use:** Single user only. No sharing.
+        3. **No Refunds:** All sales final.
         """)
 
-# --- 6. MAIN CHAT APP (Only runs if unlocked) ---
+# --- 6. MAIN CHAT APP ---
 
 # Load Secrets
 try:
@@ -203,38 +202,32 @@ except:
 # Initialize Client
 client = OpenAI(api_key=api_key)
 
-# Initialize Session State
+# Initialize Session
 if "thread_id" not in st.session_state:
     thread = client.beta.threads.create()
     st.session_state.thread_id = thread.id
     st.session_state.messages = []
-    # Initial Greeting
     st.session_state.messages.append({"role": "assistant", "content": "Welcome back. I am ready to solve complex problems. What is your doubt today?"})
 
-# Display Chat History
+# Display Chat
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# Chat Input & Response Logic
-if prompt := st.chat_input("Ask a doubt (e.g., Rotational Motion, Organic Chemistry)..."):
-    
-    # 1. Show User Message
+# Chat Input
+if prompt := st.chat_input("Ask a doubt (e.g., Rotational Motion)..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # 2. Send to OpenAI
     client.beta.threads.messages.create(
         thread_id=st.session_state.thread_id, role="user", content=prompt
     )
 
-    # 3. Trigger Assistant
     run = client.beta.threads.runs.create(
         thread_id=st.session_state.thread_id, assistant_id=assistant_id
     )
 
-    # 4. Wait for Answer
     with st.chat_message("assistant"):
         status_box = st.empty()
         status_box.markdown("**Thinking...** ⏳")
@@ -248,8 +241,6 @@ if prompt := st.chat_input("Ask a doubt (e.g., Rotational Motion, Organic Chemis
         if run.status == 'completed':
             status_box.empty()
             messages = client.beta.threads.messages.list(thread_id=st.session_state.thread_id)
-            # Get latest text
             full_response = messages.data[0].content[0].text.value
             st.markdown(full_response)
-            # Save to history
             st.session_state.messages.append({"role": "assistant", "content": full_response})
