@@ -45,7 +45,7 @@ def is_valid_key(user_key):
 with st.sidebar:
     st.title("🔒 JEEx Login")
     
-    user_key = st.text_input("Enter Access Key:", type="password", placeholder="Ex: JEExa0050")
+    user_key = st.text_input("Enter Access Key:", type="password")
     
     # YOUR PAYMENT LINK
     payment_link = "https://razorpay.me/YOUR_LINK" 
@@ -115,4 +115,5 @@ if prompt := st.chat_input("Ask a doubt..."):
             messages = client.beta.threads.messages.list(thread_id=st.session_state.thread_id)
             full_response = messages.data[0].content[0].text.value
             st.markdown(full_response)
+
             st.session_state.messages.append({"role": "assistant", "content": full_response})
