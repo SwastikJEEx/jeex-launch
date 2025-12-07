@@ -1,246 +1,170 @@
 import streamlit as st
 import time
 from openai import OpenAI
+import os
 
-# --- 1. CONFIGURATION (FIX: Force Sidebar to Open) ---
-st.set_page_config(
-    page_title="JEEx", 
-    page_icon="⚛️", 
-    layout="centered", 
-    initial_sidebar_state="expanded" # <--- THIS FORCES THE SIDEBAR OPEN
-)
+# --- 1. CONFIGURATION ---
+st.set_page_config(page_title="JEEx", page_icon="⚛️", layout="centered", initial_sidebar_state="expanded")
 
 # --- 2. PROFESSIONAL DARK THEME CSS ---
 st.markdown("""
 <style>
-    /* 1. Main Background (Dark) */
-    .stApp {
-        background-color: #0E1117;
-        color: #FAFAFA;
-    }
+    /* Dark Theme Base */
+    .stApp { background-color: #0E1117; color: #FAFAFA; }
+    [data-testid="stSidebar"] { background-color: #161B26; border-right: 1px solid #2B313E; }
     
-    /* 2. Sidebar Styling */
-    [data-testid="stSidebar"] {
-        background-color: #161B26;
-        border-right: 1px solid #2B313E;
-    }
+    /* Text & Inputs */
+    h1, h2, h3, p, div, label, span, li { color: #E6E6E6 !important; }
+    .stTextInput input { background-color: #1E2330 !important; color: white !important; border: 1px solid #3E4654 !important; }
+    .stTextArea textarea { background-color: #1E2330 !important; color: white !important; border: 1px solid #3E4654 !important; }
     
-    /* 3. Text Visibility Fixes (White Text) */
-    h1, h2, h3, p, div, label, span, li {
-        color: #E6E6E6 !important;
-    }
+    /* Buttons */
+    div.stButton > button { background-color: #2B313E !important; color: white !important; border: 1px solid #3E4654 !important; width: 100%; }
+    div.stButton > button:hover { border-color: #4A90E2 !important; }
     
-    /* 4. GREY INPUT BOX (Password) - Dark Mode Version */
-    [data-testid="stSidebar"] [data-testid="stTextInput"] input {
-        background-color: #1E2330 !important;
-        color: #FFFFFF !important;
-        border: 1px solid #3E4654 !important;
-    }
+    /* Chat Bubbles */
+    [data-testid="stChatMessage"]:nth-child(odd) { background-color: #1E2330; border: 1px solid #2B313E; border-radius: 12px; }
+    [data-testid="stChatMessage"]:nth-child(even) { background-color: #131720; border: 1px solid #2B313E; border-radius: 12px; }
     
-    /* 5. GREY RESPONSIVE BUTTON (End Session) */
-    div.stButton > button {
-        background-color: #2B313E !important;
-        color: #E6E6E6 !important;
-        border: 1px solid #3E4654 !important;
-        border-radius: 8px !important;
-        width: 100%;
-        transition: all 0.3s ease;
-    }
-    
-    div.stButton > button:hover {
-        background-color: #3E4654 !important;
-        border-color: #4A90E2 !important;
-        transform: scale(1.02);
-    }
-    
-    /* 6. Chat Message Bubbles */
-    /* USER (Dark Blue Tint) */
-    [data-testid="stChatMessage"]:nth-child(odd) {
-        background-color: #1E2330;
-        border: 1px solid #2B313E;
-        border-radius: 12px;
-        padding: 15px;
-    }
-    
-    /* BOT (Darker Grey) */
-    [data-testid="stChatMessage"]:nth-child(even) {
-        background-color: #131720;
-        border: 1px solid #2B313E;
-        border-radius: 12px;
-        padding: 15px;
-    }
-    
-    /* 7. Main Chat Input Box Styling */
-    .stChatInputContainer textarea {
-        background-color: #1E2330 !important;
-        color: #FFFFFF !important;
-        border: 1px solid #3E4654 !important;
-    }
-    
-    /* FIX: DO NOT HIDE HEADER (So you can see the menu button) */
+    /* Hide Menu */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    /* header {visibility: hidden;}  <-- DELETED THIS LINE SO YOU CAN SEE THE MENU */
     .stDeployButton {display:none;}
     
-    /* Success Message Style */
-    .stSuccess {
-        background-color: #1E4620 !important;
-        color: #D4EDDA !important;
-        border: 1px solid #2B6E32 !important;
-    }
-    
-    /* Expander Styling */
-    .streamlit-expanderHeader {
-        background-color: #161B26 !important;
-        color: #FAFAFA !important;
+    /* Image Uploader Style */
+    [data-testid="stFileUploader"] {
+        padding: 10px;
+        border: 1px dashed #4A90E2;
+        border-radius: 10px;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. SHOW TITLE IMMEDIATELY ---
+# --- 3. TITLE & LOGIC ---
 st.markdown("# ⚛️ **JEEx** <span style='color:#4A90E2; font-size:0.6em'>PRO</span>", unsafe_allow_html=True)
-st.caption("Your Personal AI Tutor for JEE Mains & Advanced | Powered by OpenAI")
+st.caption("Upload a question or type your doubt | Powered by OpenAI Vision")
 
-# --- 4. SMART KEY LOGIC ---
 def check_smart_key(user_key):
-    # 1. Check Master Key
-    if user_key == st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS"):
-        return True
-    
-    # 2. Check Valid Keys List
-    valid_list = st.secrets.get("VALID_KEYS", [])
-    if user_key in valid_list:
-        return True
+    if user_key == st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS"): return True
+    if user_key in st.secrets.get("VALID_KEYS", []): return True
+    if len(user_key) != 9 or user_key[:5] != "JEExa" or not user_key[5:].isdigit(): return False
+    return 1 <= int(user_key[5:]) <= 1000
 
-    # 3. Check Pattern "JEExa0001"
-    if len(user_key) != 9:
-        return False
-    
-    prefix = user_key[:5] 
-    if prefix != "JEExa":
-        return False
-        
-    number_part = user_key[5:] 
-    if not number_part.isdigit():
-        return False
-        
-    number = int(number_part)
-    if 1 <= number <= 1000:
-        return True
-        
-    return False
-
-# --- 5. SIDEBAR (LOGIN SYSTEM) ---
+# --- 4. SIDEBAR ---
 with st.sidebar:
     st.markdown("## 🔐 Premium Access")
     st.markdown("---")
+    user_key = st.text_input("Enter Access Key:", type="password")
     
-    # Input Box
-    user_key = st.text_input("Enter Access Key:", type="password", help="Check your email for the key.")
-    
-    # Validation
     if not check_smart_key(user_key):
         st.warning("🔒 Chat Locked")
-        st.info("Please enter a valid key to start.")
-        
-        # PAYMENT LINK
-        payment_link = "https://rzp.io/rzp/wXI8i7t"
-        
-        st.markdown(f"""
-            <a href="{payment_link}" target="_blank">
-                <button style="
-                    width:100%; 
-                    background-color:#4A90E2; 
-                    color:white; 
-                    border:none; 
-                    padding:10px; 
-                    border-radius:5px; 
-                    cursor:pointer;
-                    font-weight: bold;
-                    margin-bottom: 10px;">
-                    👉 Subscribe Now (₹99)
-                </button>
-            </a>
-            """, unsafe_allow_html=True)
-        
-        st.markdown("---")
-        with st.expander("📄 Terms & Conditions"):
-            st.markdown("""
-            **JEEx Usage Policy:**
-            1. **Accuracy:** AI may make errors. Verify with textbooks.
-            2. **Personal Use:** Single user only. No sharing.
-            3. **No Refunds:** All sales final.
-            """)
-            
-        st.stop() # STOP HERE if not logged in
+        st.info("Enter valid key to unlock.")
+        # REPLACE THIS WITH YOUR NEW SUBSCRIPTION LINK
+        payment_link = "https://rzp.io/your-new-subscription-link" 
+        st.markdown(f'<a href="{payment_link}" target="_blank"><button style="background-color:#4A90E2; color:white; border:none; padding:10px; border-radius:5px; width:100%; font-weight:bold;">👉 Subscribe Monthly (₹99)</button></a>', unsafe_allow_html=True)
+        st.stop()
 
-    # If Valid
     st.success(f"✅ Active: {user_key}")
-    if st.button("End Session"):
-        st.rerun()
-    
-    st.markdown("---")
-    with st.expander("📄 Terms & Conditions"):
-        st.markdown("""
-        **JEEx Usage Policy:**
-        1. **Accuracy:** AI may make errors. Verify with textbooks.
-        2. **Personal Use:** Single user only. No sharing.
-        3. **No Refunds:** All sales final.
-        """)
+    if st.button("End Session"): st.rerun()
 
-# --- 6. MAIN CHAT APP ---
-
-# Load Secrets
+# --- 5. MAIN APP ---
 try:
     api_key = st.secrets["OPENAI_API_KEY"]
     assistant_id = st.secrets["ASSISTANT_ID"]
 except:
-    st.error("🚨 Configuration Error: API Keys are missing in Streamlit Secrets.")
+    st.error("🚨 Keys missing in Secrets.")
     st.stop()
 
-# Initialize Client
 client = OpenAI(api_key=api_key)
 
-# Initialize Session
 if "thread_id" not in st.session_state:
     thread = client.beta.threads.create()
     st.session_state.thread_id = thread.id
-    st.session_state.messages = []
-    st.session_state.messages.append({"role": "assistant", "content": "Welcome back. I am ready to solve complex problems. What is your doubt today?"})
+    st.session_state.messages = [{"role": "assistant", "content": "I can see! Upload an image of a question or just ask me anything."}]
 
-# Display Chat
+# Display History
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# Chat Input
-if prompt := st.chat_input("Ask a doubt (e.g., Rotational Motion)..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
+# --- 6. INPUT AREA (TEXT + IMAGE) ---
+# Create two columns: one for text input, one for image upload
+col1, col2 = st.columns([0.85, 0.15])
 
-    client.beta.threads.messages.create(
-        thread_id=st.session_state.thread_id, role="user", content=prompt
-    )
+with col1:
+    prompt = st.chat_input("Ask a doubt...")
 
-    run = client.beta.threads.runs.create(
-        thread_id=st.session_state.thread_id, assistant_id=assistant_id
-    )
+with col2:
+    # Small file uploader
+    uploaded_file = st.file_uploader("📷", type=["jpg", "png", "jpeg"], label_visibility="collapsed")
 
-    with st.chat_message("assistant"):
-        status_box = st.empty()
-        status_box.markdown("**Thinking...** ⏳")
+# LOGIC: Handle Input
+if prompt or uploaded_file:
+    # If user uploaded a file but didn't type text, provide default text
+    if uploaded_file and not prompt:
+        prompt = "Please solve the question in this image."
+    
+    if prompt:
+        # 1. Show User Message
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+            if uploaded_file:
+                st.image(uploaded_file, caption="Uploaded Question", width=200)
+
+        # 2. Prepare Message Content
+        message_content = [{"type": "text", "text": prompt}]
         
-        while run.status in ['queued', 'in_progress', 'cancelling']:
-            time.sleep(1)
-            run = client.beta.threads.runs.retrieve(
-                thread_id=st.session_state.thread_id, run_id=run.id
-            )
-        
-        if run.status == 'completed':
-            status_box.empty()
-            messages = client.beta.threads.messages.list(thread_id=st.session_state.thread_id)
-            full_response = messages.data[0].content[0].text.value
-            st.markdown(full_response)
-            st.session_state.messages.append({"role": "assistant", "content": full_response})
+        # 3. Handle Image Upload to OpenAI
+        if uploaded_file:
+            with st.spinner("Uploading image to Brain..."):
+                # Save temp file to upload
+                temp_filename = f"temp_{uploaded_file.name}"
+                with open(temp_filename, "wb") as f:
+                    f.write(uploaded_file.getbuffer())
+                
+                # Upload to OpenAI
+                file_response = client.files.create(
+                    file=open(temp_filename, "rb"),
+                    purpose="vision"
+                )
+                
+                # Attach to message
+                message_content.append({
+                    "type": "image_file",
+                    "image_file": {"file_id": file_response.id}
+                })
+                
+                # Cleanup temp file
+                os.remove(temp_filename)
+
+        # 4. Send to Thread
+        client.beta.threads.messages.create(
+            thread_id=st.session_state.thread_id,
+            role="user",
+            content=message_content
+        )
+
+        # 5. Run Assistant
+        run = client.beta.threads.runs.create(
+            thread_id=st.session_state.thread_id,
+            assistant_id=assistant_id
+        )
+
+        # 6. Wait for Answer
+        with st.chat_message("assistant"):
+            status_box = st.empty()
+            status_box.markdown("**Analyzing...** ⏳")
+            
+            while run.status in ['queued', 'in_progress', 'cancelling']:
+                time.sleep(1)
+                run = client.beta.threads.runs.retrieve(
+                    thread_id=st.session_state.thread_id, run_id=run.id
+                )
+            
+            if run.status == 'completed':
+                status_box.empty()
+                messages = client.beta.threads.messages.list(thread_id=st.session_state.thread_id)
+                full_response = messages.data[0].content[0].text.value
+                st.markdown(full_response)
+                st.session_state.messages.append({"role": "assistant", "content": full_response})
