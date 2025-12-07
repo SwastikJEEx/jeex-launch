@@ -3,7 +3,7 @@ import time
 from openai import OpenAI
 import os
 import re
-from datetime import datetime # NEW: Required for checking dates
+from datetime import datetime
 
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="JEEx", page_icon="⚛️", layout="centered", initial_sidebar_state="expanded")
@@ -69,30 +69,21 @@ if st.session_state.get('logout', False):
         del st.session_state[key]
     st.rerun()
 
-# --- 6. SMART KEY LOGIC (WITH EXPIRY DATE CHECK) ---
+# --- 6. SMART KEY LOGIC (WITH EXPIRY) ---
 def check_key_status(user_key):
-    """
-    Returns: "VALID", "INVALID", or "EXPIRED"
-    """
     # 1. Check Master Key
     if user_key == st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS"): 
         return "VALID"
 
-    # 2. CHECK EXPIRY DATE (The New Feature)
-    # We look for a section [KEY_EXPIRY] in secrets.toml
+    # 2. Check Expiry Date
     expiry_db = st.secrets.get("KEY_EXPIRY", {})
-    
     if user_key in expiry_db:
         try:
-            # Parse the date string "YYYY-MM-DD"
-            expiry_date_str = expiry_db[user_key]
-            expiry_date = datetime.strptime(expiry_date_str, "%Y-%m-%d").date()
-            
-            # Check if today is AFTER the expiry date
+            expiry_date = datetime.strptime(expiry_db[user_key], "%Y-%m-%d").date()
             if datetime.now().date() > expiry_date:
-                return "EXPIRED" # Key exists but time is up
+                return "EXPIRED"
         except:
-            pass # If date is written wrong in secrets, ignore expiry check (safety)
+            pass 
 
     # 3. Check Whitelist
     if user_key in st.secrets.get("VALID_KEYS", []): 
@@ -101,7 +92,6 @@ def check_key_status(user_key):
     # 4. Check Pattern "JEExa0001"
     if len(user_key) != 9 or user_key[:5] != "JEExa" or not user_key[5:].isdigit(): 
         return "INVALID"
-    
     if 1 <= int(user_key[5:]) <= 1000: 
         return "VALID"
         
@@ -119,20 +109,41 @@ with st.sidebar:
     # Check Status
     status = check_key_status(user_key)
     
-    # Logic for Locked / Expired / Valid
+    # --- IF LOCKED: SHOW LANDING PAGE & STOP ---
     if status != "VALID":
-        # Determine Error Message
+        
+        # 1. RENDER LANDING PAGE FEATURES (In Main Area)
+        st.markdown("---")
+        st.markdown("""
+        <div style="background-color: #161B26; padding: 20px; border-radius: 10px; border: 1px solid #2B313E;">
+            <p style="color: #4A90E2; font-weight: bold; font-size: 18px; margin-bottom: 10px;">
+                🔑 Access Required
+            </p>
+            <p style="font-size: 16px;">
+                To unlock the full potential of JEEx Pro, please enter your 
+                <strong>Access Key</strong> in the sidebar (↖️ Top Left).
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 🚀 Why JEEx Pro is Unbeatable:")
+        st.markdown("""
+        * **👁️ Vision Intelligence:** Upload images of complex handwritten numericals and get instant step-by-step solutions.
+        * **📄 Full PDF Analysis:** Attach entire question papers or assignments; our Code Interpreter reads and solves them.
+        * **➗ LaTeX Precision:** Experience textbook-quality math formatting (Integrals, Vectors, Matrices) with zero formatting errors.
+        * **🧠 JEE Optimized:** Specifically fine-tuned for Physics, Chemistry, and Maths concepts at Mains & Advanced levels.
+        * **⚡ 24/7 Mentorship:** No waiting for teachers. Your personal AI mentor is awake whenever you are.
+        """)
+
+        # 2. SHOW SIDEBAR ERROR / BUTTON
         if status == "EXPIRED":
             st.error("⚠️ Plan Expired")
-            st.info("Your monthly subscription has ended.")
             btn_text = "👉 Renew Now (₹99)"
         else:
-            if user_key: # Only show error if they typed something
-                st.warning("🔒 Chat Locked")
+            if user_key: st.warning("🔒 Chat Locked")
             btn_text = "👉 Subscribe for ₹99 / Month"
             
-        # Payment Button
-        payment_link = "https://pages.razorpay.com/pl_Hk7823hsk" # Use your Page Link here
+        payment_link = "https://pages.razorpay.com/pl_Hk7823hsk" # Your Page Link
         
         st.markdown(f"""
             <a href="{payment_link}" target="_blank">
@@ -151,21 +162,19 @@ with st.sidebar:
             </a>
             """, unsafe_allow_html=True)
         
-        # T&C Section
         st.markdown("---")
-        with st.expander("📄 Terms & Conditions (Read Carefully)"):
+        with st.expander("📄 Terms & Conditions"):
             st.markdown("""
-            **JEEx Terms of Service**
-            **1. Usage Policy:** AI tools can make errors. Verify data. Personal Use Only.
-            **2. Security:** No Sharing keys. Simultaneous logins = Ban.
-            **3. Payments:** No Refunds. Subscription valid for 30 days.
+            **JEEx Usage Policy:**
+            1. **Accuracy:** AI may make errors. Use as a study companion.
+            2. **Personal Use:** Keys are for single users only. Sharing leads to a ban.
+            3. **No Refunds:** All sales are final.
             """)
-        st.stop() # STOP HERE
+        st.stop() # ⛔ STOPS APP HERE IF NOT LOGGED IN
 
-    # If Valid
+    # --- IF VALID: SHOW SUCCESS & TOOLS ---
     st.success(f"✅ Active: {user_key}")
     
-    # --- ATTACHMENT SECTION ---
     st.markdown("---")
     st.markdown("### 📎 Attach Question")
     uploaded_file = st.file_uploader(
@@ -184,13 +193,13 @@ with st.sidebar:
         
     with st.expander("📄 Terms & Conditions"):
          st.markdown("""
-            **JEEx Terms of Service**
-            **1. Usage Policy:** AI tools can make errors. Verify data. Personal Use Only.
-            **2. Security:** No Sharing keys. Simultaneous logins = Ban.
-            **3. Payments:** No Refunds. Subscription valid for 30 days.
+            **JEEx Usage Policy:**
+            1. **Accuracy:** AI may make errors. Verify data.
+            2. **Personal Use:** Keys are for single users only.
+            3. **No Refunds:** All sales are final.
             """)
 
-# --- 8. MAIN APP LOGIC ---
+# --- 8. MAIN APP LOGIC (Only runs when unlocked) ---
 try:
     api_key = st.secrets["OPENAI_API_KEY"]
     assistant_id = st.secrets["ASSISTANT_ID"]
