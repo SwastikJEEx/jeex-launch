@@ -2,7 +2,7 @@ import streamlit as st
 import time
 from openai import OpenAI
 import os
-import re # Added for Regex (Math Fixing)
+import re
 
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="JEEx", page_icon="⚛️", layout="centered", initial_sidebar_state="expanded")
@@ -54,33 +54,33 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. MATH CLEANING FUNCTION (The "Silver Bullet") ---
+# --- 3. MATH CLEANING FUNCTION ---
 def clean_latex(text):
-    """
-    Forces the AI's bracket notation \[...\] into Streamlit's $$...$$
-    """
     if not text: return ""
-    
-    # 1. Replace block math \[ ... \] with $$ ... $$
     text = re.sub(r'\\\[(.*?)\\\]', r'$$\1$$', text, flags=re.DOTALL)
-    
-    # 2. Replace inline math \( ... \) with $ ... $
     text = re.sub(r'\\\((.*?)\\\)', r'$\1$', text, flags=re.DOTALL)
-    
-    # 3. Fix simple bracket errors like [ x^2 ] if they appear strictly as math
-    # (Be careful not to break normal text brackets)
     text = re.sub(r'(?<!\\)\[\s*(.*?=.*?)\s*\]', r'$$\1$$', text)
-    
     return text
 
-# --- 4. SMART KEY LOGIC ---
+# --- 4. SHOW TITLE IMMEDIATELY (Before Login) ---
+st.markdown("# ⚛️ **JEEx** <span style='color:#4A90E2; font-size:0.6em'>PRO</span>", unsafe_allow_html=True)
+st.caption("Upload Questions (Image/PDF) | Powered by OpenAI Vision")
+
+# --- 5. LOGOUT LOGIC ---
+if st.session_state.get('logout', False):
+    # If logout flag is set, clear session and rerun to reset
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    st.rerun()
+
+# --- 6. SMART KEY LOGIC ---
 def check_smart_key(user_key):
     if user_key == st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS"): return True
     if user_key in st.secrets.get("VALID_KEYS", []): return True
     if len(user_key) != 9 or user_key[:5] != "JEExa" or not user_key[5:].isdigit(): return False
     return 1 <= int(user_key[5:]) <= 1000
 
-# --- 5. SIDEBAR ---
+# --- 7. SIDEBAR (LOGIN) ---
 with st.sidebar:
     st.markdown("## 🔐 Premium Access")
     user_key = st.text_input("Enter Access Key:", type="password")
@@ -89,15 +89,36 @@ with st.sidebar:
         st.warning("🔒 Chat Locked")
         payment_link = "https://rzp.io/rzp/wXI8i7t" 
         st.markdown(f'<a href="{payment_link}" target="_blank"><button style="background-color:#4A90E2; color:white; border:none; padding:10px; border-radius:5px; width:100%; font-weight:bold;">👉 Subscribe (₹99)</button></a>', unsafe_allow_html=True)
+        
+        # T&C for non-logged in users
+        st.markdown("---")
+        with st.expander("📄 Terms & Conditions"):
+            st.markdown("""
+            **JEEx Usage Policy:**
+            1. **Accuracy:** AI may make errors. Use as a study companion.
+            2. **Personal Use:** Keys are for single users only. Sharing leads to a ban.
+            3. **No Refunds:** All sales are final.
+            """)
         st.stop()
 
     st.success(f"✅ Active: {user_key}")
-    if st.button("End Session"): st.rerun()
+    
+    # LOGOUT BUTTON (Functional)
+    if st.button("End Session"):
+        st.session_state['logout'] = True
+        st.rerun()
+        
+    # T&C for logged in users
+    st.markdown("---")
+    with st.expander("📄 Terms & Conditions"):
+        st.markdown("""
+        **JEEx Usage Policy:**
+        1. **Accuracy:** AI may make errors. Use as a study companion.
+        2. **Personal Use:** Keys are for single users only. Sharing leads to a ban.
+        3. **No Refunds:** All sales are final.
+        """)
 
-# --- 6. MAIN APP ---
-st.markdown("# ⚛️ **JEEx** <span style='color:#4A90E2; font-size:0.6em'>PRO</span>", unsafe_allow_html=True)
-st.caption("Upload Questions (Image/PDF) | Powered by OpenAI Vision")
-
+# --- 8. MAIN APP LOGIC ---
 try:
     api_key = st.secrets["OPENAI_API_KEY"]
     assistant_id = st.secrets["ASSISTANT_ID"]
@@ -113,14 +134,12 @@ if "thread_id" not in st.session_state:
     st.session_state.messages = [{"role": "assistant", "content": "I am ready. Upload a PDF or Image, or just ask a doubt."}]
     st.session_state.uploader_key = 0
 
-# Display History (With Math Cleaning Applied)
+# Display History (Cleaned)
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
-        # Apply the cleaner function to history too
-        cleaned_content = clean_latex(msg["content"])
-        st.markdown(cleaned_content)
+        st.markdown(clean_latex(msg["content"]))
 
-# --- 7. INPUT AREA ---
+# --- 9. INPUT AREA ---
 col1, col2 = st.columns([0.1, 0.9])
 
 with col1:
@@ -134,9 +153,8 @@ with col1:
 with col2:
     prompt = st.chat_input("Ask a doubt...")
 
-# --- 8. HANDLING SEND ---
+# --- 10. HANDLING SEND ---
 if prompt:
-    # 1. Show User Message
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
@@ -146,11 +164,9 @@ if prompt:
             else:
                 st.image(uploaded_file, caption="Attached Image", width=200)
 
-    # 2. Prepare Message Content
     message_content = [{"type": "text", "text": prompt}]
     attachments = [] 
 
-    # 3. Handle File Upload
     if uploaded_file:
         with st.spinner("Processing file..."):
             try:
@@ -158,32 +174,25 @@ if prompt:
                 with open(temp_filename, "wb") as f:
                     f.write(uploaded_file.getbuffer())
                 
-                # Upload to OpenAI
                 file_response = client.files.create(
                     file=open(temp_filename, "rb"),
                     purpose="assistants"
                 )
                 
-                # LOGIC: Check if PDF or Image
                 if uploaded_file.type == "application/pdf":
-                    # PDF -> Use Code Interpreter
                     attachments.append({
                         "file_id": file_response.id,
                         "tools": [{"type": "code_interpreter"}]
                     })
                 else:
-                    # Image -> Use Vision
                     message_content.append({
                         "type": "image_file",
                         "image_file": {"file_id": file_response.id}
                     })
-                
                 os.remove(temp_filename)
-                
             except Exception as e:
                 st.error(f"Upload failed: {e}")
 
-    # 4. Send to Thread
     client.beta.threads.messages.create(
         thread_id=st.session_state.thread_id,
         role="user",
@@ -191,21 +200,16 @@ if prompt:
         attachments=attachments if attachments else None
     )
 
-    # 5. Run Assistant (WITH STRICT MATH & PDF INSTRUCTIONS)
     run = client.beta.threads.runs.create(
         thread_id=st.session_state.thread_id,
         assistant_id=assistant_id,
         additional_instructions="""
-        IMPORTANT INSTRUCTIONS:
-        1. MATH FORMATTING: You MUST use LaTeX for all math. 
-           - Use $$x^2$$ for block equations. 
-           - Use $x^2$ for inline equations. 
-           - DO NOT use \[ \] or \( \).
-        2. PDF READING: If a file is attached, use the 'code_interpreter' tool to read it immediately. Do not say you cannot read it.
+        IMPORTANT:
+        1. MATH: Use LaTeX ($x^2$ or $$x^2$$). DO NOT use \[ or \(.
+        2. PDF: Use 'code_interpreter' to read PDFs immediately.
         """
     )
 
-    # 6. Wait for Answer
     with st.chat_message("assistant"):
         status_box = st.empty()
         status_box.markdown("**Solving...** ⏳")
@@ -219,17 +223,9 @@ if prompt:
         if run.status == 'completed':
             status_box.empty()
             messages = client.beta.threads.messages.list(thread_id=st.session_state.thread_id)
+            final_response = clean_latex(messages.data[0].content[0].text.value)
             
-            # Get raw text
-            raw_response = messages.data[0].content[0].text.value
-            
-            # --- APPLY THE MATH CLEANER ---
-            final_response = clean_latex(raw_response)
-            
-            # Show cleaned response
             st.markdown(final_response)
             st.session_state.messages.append({"role": "assistant", "content": final_response})
-            
-            # Reset Uploader
             st.session_state.uploader_key += 1
             st.rerun()
