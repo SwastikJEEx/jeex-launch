@@ -6,87 +6,7 @@ from openai import OpenAI
 st.set_page_config(page_title="JEEx", page_icon="⚛️", layout="centered")
 
 # --- 2. PROFESSIONAL LIGHT THEME CSS ---
-st.markdown("""
-<style>
-    /* Force Light Theme Colors */
-    .stApp {
-        background-color: #FFFFFF;
-        color: #000000 !important;
-    }
-    
-    /* Sidebar Styling */
-    [data-testid="stSidebar"] {
-        background-color: #F8F9FA;
-        border-right: 1px solid #E0E0E0;
-    }
-    
-    /* Text Visibility Fixes */
-    h1, h2, h3, p, div, label, span {
-        color: #0E1117 !important;
-    }
-    
-    /* --- NEW: GREY INPUT BOX (Password) --- */
-    /* Targets the input box specifically in the sidebar */
-    [data-testid="stSidebar"] [data-testid="stTextInput"] input {
-        background-color: #E9ECEF !important; /* Light Grey Background */
-        color: #000000 !important;
-        border: 1px solid #CED4DA !important;
-    }
-    
-    /* --- NEW: GREY RESPONSIVE BUTTON (End Session) --- */
-    div.stButton > button {
-        background-color: #6C757D !important; /* Professional Grey */
-        color: white !important;
-        border: none !important;
-        border-radius: 8px !important;
-        width: 100%;
-        transition: all 0.3s ease; /* Smooth animation */
-    }
-    
-    /* Button Hover Effect (Responsive) */
-    div.stButton > button:hover {
-        background-color: #5A6268 !important; /* Darker Grey on Hover */
-        transform: scale(1.02); /* Slight 'Pop' effect */
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-    
-    /* Chat Message Bubbles */
-    /* USER (Blue-ish tint) */
-    [data-testid="stChatMessage"]:nth-child(odd) {
-        background-color: #E8F0FE;
-        border: 1px solid #D0E0FD;
-        border-radius: 12px;
-        padding: 15px;
-    }
-    
-    /* BOT (Gray tint) */
-    [data-testid="stChatMessage"]:nth-child(even) {
-        background-color: #F8F9FA;
-        border: 1px solid #E9ECEF;
-        border-radius: 12px;
-        padding: 15px;
-    }
-    
-    /* Main Chat Input Box Styling (Keep White) */
-    .stChatInputContainer textarea {
-        background-color: #FFFFFF !important;
-        color: #000000 !important;
-        border: 1px solid #CCCCCC !important;
-    }
-    
-    /* Hide Default Streamlit Elements */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    .stDeployButton {display:none;}
-    
-    /* Success Message Style */
-    .stSuccess {
-        background-color: #D4EDDA !important;
-        color: #155724 !important;
-    }
-</style>
-""", unsafe_allow_html=True)
+
 
 # --- 3. SMART KEY LOGIC ---
 def check_smart_key(user_key):
@@ -221,3 +141,4 @@ if prompt := st.chat_input("Ask a doubt (e.g., Rotational Motion, Organic Chemis
             st.markdown(full_response)
             # Save to history
             st.session_state.messages.append({"role": "assistant", "content": full_response})
+
