@@ -13,8 +13,9 @@ st.markdown("""
     .stApp { background-color: #0E1117; color: #FAFAFA; }
     [data-testid="stSidebar"] { background-color: #161B26; border-right: 1px solid #2B313E; }
     
-    /* Text Visibility */
+    /* Text & Math Visibility */
     h1, h2, h3, p, div, label, span, li { color: #E6E6E6 !important; }
+    .katex { font-size: 1.1em; color: #FFD700 !important; } /* Gold color for Math formulas */
     
     /* Inputs */
     .stTextInput input, .stTextArea textarea { 
@@ -41,7 +42,7 @@ st.markdown("""
     footer {visibility: hidden;}
     .stDeployButton {display:none;}
     
-    /* --- NEW: COMPACT ATTACHMENT BUTTON STYLE --- */
+    /* Attachment Button Style */
     [data-testid="stPopover"] > div > button {
         border: none !important;
         background: transparent !important;
@@ -75,7 +76,7 @@ with st.sidebar:
 
 # --- 5. MAIN APP ---
 st.markdown("# ⚛️ **JEEx** <span style='color:#4A90E2; font-size:0.6em'>PRO</span>", unsafe_allow_html=True)
-st.caption("Upload a question or type your doubt | Powered by OpenAI Vision")
+st.caption("Upload Questions (Image/PDF) | Powered by OpenAI Vision")
 
 try:
     api_key = st.secrets["OPENAI_API_KEY"]
@@ -89,8 +90,7 @@ client = OpenAI(api_key=api_key)
 if "thread_id" not in st.session_state:
     thread = client.beta.threads.create()
     st.session_state.thread_id = thread.id
-    st.session_state.messages = [{"role": "assistant", "content": "I can see! Click the 📎 icon to attach an image."}]
-    # Initialize uploader key to reset it later
+    st.session_state.messages = [{"role": "assistant", "content": "I am ready. Upload a PDF or Image, or just ask a doubt."}]
     st.session_state.uploader_key = 0
 
 # Display History
@@ -98,38 +98,41 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# --- 6. PROFESSIONAL INPUT AREA ---
-# Create a layout with a small column for the paperclip and a big one for text
+# --- 6. INPUT AREA ---
 col1, col2 = st.columns([0.1, 0.9])
 
 with col1:
-    # 📎 POPOVER (The "Attachment Logo Button")
-    # This hides the big ugly uploader inside a small clickable menu
-    with st.popover("📎", help="Attach Image"):
+    with st.popover("📎", help="Attach File"):
+        # UPDATED: Allows PDF now
         uploaded_file = st.file_uploader(
-            "Upload Image", 
-            type=["jpg", "png", "jpeg"], 
-            key=f"uploader_{st.session_state.uploader_key}" # Dynamic key to reset later
+            "Upload File", 
+            type=["jpg", "png", "jpeg", "pdf"], 
+            key=f"uploader_{st.session_state.uploader_key}"
         )
 
 with col2:
     prompt = st.chat_input("Ask a doubt...")
 
-# --- 7. HANDLING THE SEND ACTION ---
+# --- 7. HANDLING SEND ---
 if prompt:
-    # 1. Show User Message Immediately
+    # 1. Show User Message
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
         if uploaded_file:
-            st.image(uploaded_file, caption="Attached Image", width=200)
+            # Show small preview if it's an image, or just filename if PDF
+            if uploaded_file.type == "application/pdf":
+                st.markdown(f"📄 *Attached PDF: {uploaded_file.name}*")
+            else:
+                st.image(uploaded_file, caption="Attached Image", width=200)
 
-    # 2. Prepare OpenAI Message Content
+    # 2. Prepare Message Content
     message_content = [{"type": "text", "text": prompt}]
-    
-    # 3. Handle File Upload (If exists)
+    attachments = [] # List to hold file IDs for tools
+
+    # 3. Handle File Upload
     if uploaded_file:
-        with st.spinner("Uploading image..."):
+        with st.spinner("Processing file..."):
             try:
                 # Save temp file
                 temp_filename = f"temp_{uploaded_file.name}"
@@ -139,38 +142,56 @@ if prompt:
                 # Upload to OpenAI
                 file_response = client.files.create(
                     file=open(temp_filename, "rb"),
-                    purpose="vision"
+                    purpose="assistants" # Important for PDFs
                 )
                 
-                # Attach to message payload
-                message_content.append({
-                    "type": "image_file",
-                    "image_file": {"file_id": file_response.id}
-                })
+                # LOGIC: Check if PDF or Image
+                if uploaded_file.type == "application/pdf":
+                    # For PDF -> Attach for Code Interpreter to read
+                    attachments.append({
+                        "file_id": file_response.id,
+                        "tools": [{"type": "code_interpreter"}]
+                    })
+                else:
+                    # For Image -> Use Vision
+                    message_content.append({
+                        "type": "image_file",
+                        "image_file": {"file_id": file_response.id}
+                    })
                 
                 # Cleanup
                 os.remove(temp_filename)
                 
             except Exception as e:
-                st.error(f"Image upload failed: {e}")
+                st.error(f"Upload failed: {e}")
 
     # 4. Send to Thread
     client.beta.threads.messages.create(
         thread_id=st.session_state.thread_id,
         role="user",
-        content=message_content
+        content=message_content,
+        attachments=attachments if attachments else None
     )
 
-    # 5. Run Assistant
+    # 5. Run Assistant (WITH MATH FIX INSTRUCTIONS)
     run = client.beta.threads.runs.create(
         thread_id=st.session_state.thread_id,
-        assistant_id=assistant_id
+        assistant_id=assistant_id,
+        # THIS LINE FIXES THE MATH FORMATTING AND DOTS ISSUE
+        additional_instructions="""
+        IMPORTANT: You are a JEE Tutor. 
+        1. Format ALL mathematical equations using LaTeX. 
+        2. Use SINGLE dollar signs for inline math: $x^2$. 
+        3. Use DOUBLE dollar signs for block math: $$x^2$$. 
+        4. Do NOT use brackets \( \) or \[ \] for math. 
+        5. Do not use bold/italics for variables, strictly use LaTeX.
+        """
     )
 
     # 6. Wait for Answer
     with st.chat_message("assistant"):
         status_box = st.empty()
-        status_box.markdown("**Analyzing...** ⏳")
+        status_box.markdown("**Solving...** ⏳")
         
         while run.status in ['queued', 'in_progress', 'cancelling']:
             time.sleep(1)
@@ -182,9 +203,11 @@ if prompt:
             status_box.empty()
             messages = client.beta.threads.messages.list(thread_id=st.session_state.thread_id)
             full_response = messages.data[0].content[0].text.value
+            
+            # Show cleaned response
             st.markdown(full_response)
             st.session_state.messages.append({"role": "assistant", "content": full_response})
             
-            # CRITICAL: Reset the uploader for the next question
+            # Reset Uploader
             st.session_state.uploader_key += 1
             st.rerun()
