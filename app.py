@@ -118,7 +118,7 @@ with st.sidebar:
             if user_key: st.warning("🔒 Chat Locked")
             btn_text = "👉 Subscribe for ₹99 / Month"
             
-        payment_link = "https://pages.razorpay.com/pl_Hk7823hsk" # Your Page Link
+        payment_link = "https://rzp.io/rzp/wXI8i7t" # Your Page Link
         
         st.markdown(f"""
             <a href="{payment_link}" target="_blank">
@@ -243,3 +243,4 @@ if "thread_id" not in st.session_state:
     st.session_state.messages = [{"role": "assistant", "content": welcome_msg}]
 
 # Display History
+
