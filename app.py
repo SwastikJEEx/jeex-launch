@@ -4,40 +4,42 @@ from openai import OpenAI
 
 # --- 1. CONFIG & SECURITY ---
 st.set_page_config(page_title="JEEx", page_icon="⚛️", layout="centered")
-# --- CUSTOM THEME (Dark & Professional) ---
+# --- CUSTOM LIGHT THEME & LOGO ---
 st.markdown("""
 <style>
-    /* 1. Main Background */
+    /* 1. Main Background (White) */
     .stApp {
-        background-color: #0E1117;
-        color: #FAFAFA;
+        background-color: #FFFFFF;
+        color: #0E1117; /* Dark text for contrast */
     }
     
     /* 2. Chat Bubbles */
-    /* User Message (Blue) */
+    /* User Message (Light Blue) */
     [data-testid="stChatMessage"]:nth-child(odd) {
-        background-color: #1E2330;
-        border: 1px solid #2B313E;
+        background-color: #E8F0FE;
+        border: 1px solid #D0E0FD;
+        color: #0E1117;
         border-radius: 12px;
     }
-    /* Bot Message (Darker Grey) */
+    /* Bot Message (Off-White/Gray) */
     [data-testid="stChatMessage"]:nth-child(even) {
-        background-color: #131720;
-        border: 1px solid #2B313E;
+        background-color: #F8F9FA;
+        border: 1px solid #E9ECEF;
+        color: #0E1117;
         border-radius: 12px;
     }
     
-    /* 3. Sidebar Design */
+    /* 3. Sidebar Design (Light Gray) */
     [data-testid="stSidebar"] {
-        background-color: #161B26;
-        border-right: 1px solid #2B313E;
+        background-color: #F8F9FA;
+        border-right: 1px solid #E9ECEF;
     }
     
     /* 4. Input Box */
     .stChatInputContainer textarea {
-        background-color: #1E2330;
-        color: white;
-        border: 1px solid #3E4654;
+        background-color: #FFFFFF;
+        color: #0E1117;
+        border: 1px solid #CED4DA;
     }
     
     /* 5. Hide Streamlit Branding */
@@ -84,7 +86,15 @@ def is_valid_key(user_key):
 
 # --- 2. SIDEBAR (LOGIN) ---
 with st.sidebar:
-    st.title("🔒 JEEx Login")
+    # --- 2. SIDEBAR (LOGIN) ---
+with st.sidebar:
+    # Add the logo at the top of the sidebar
+    st.image("logo.png", use_column_width=True)
+    
+    # The title goes below the logo now
+    st.markdown("<h2 style='text-align: center;'>Premium Access</h2>", unsafe_allow_html=True)
+    
+    # ... rest of your sidebar code (user_key, etc.) follows here ...
     
     user_key = st.text_input("Enter Access Key:", type="password")
     
@@ -158,4 +168,5 @@ if prompt := st.chat_input("Ask a doubt..."):
             st.markdown(full_response)
 
             st.session_state.messages.append({"role": "assistant", "content": full_response})
+
 
