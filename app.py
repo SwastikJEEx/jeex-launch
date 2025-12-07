@@ -3,6 +3,7 @@ import time
 from openai import OpenAI
 import os
 import re
+from datetime import datetime # NEW: Required for checking dates
 
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="JEEx", page_icon="⚛️", layout="centered", initial_sidebar_state="expanded")
@@ -68,48 +69,71 @@ if st.session_state.get('logout', False):
         del st.session_state[key]
     st.rerun()
 
-# --- 6. SMART KEY LOGIC ---
-def check_smart_key(user_key):
-    if user_key == st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS"): return True
-    if user_key in st.secrets.get("VALID_KEYS", []): return True
-    if len(user_key) != 9 or user_key[:5] != "JEExa" or not user_key[5:].isdigit(): return False
-    return 1 <= int(user_key[5:]) <= 1000
+# --- 6. SMART KEY LOGIC (WITH EXPIRY DATE CHECK) ---
+def check_key_status(user_key):
+    """
+    Returns: "VALID", "INVALID", or "EXPIRED"
+    """
+    # 1. Check Master Key
+    if user_key == st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS"): 
+        return "VALID"
+
+    # 2. CHECK EXPIRY DATE (The New Feature)
+    # We look for a section [KEY_EXPIRY] in secrets.toml
+    expiry_db = st.secrets.get("KEY_EXPIRY", {})
+    
+    if user_key in expiry_db:
+        try:
+            # Parse the date string "YYYY-MM-DD"
+            expiry_date_str = expiry_db[user_key]
+            expiry_date = datetime.strptime(expiry_date_str, "%Y-%m-%d").date()
+            
+            # Check if today is AFTER the expiry date
+            if datetime.now().date() > expiry_date:
+                return "EXPIRED" # Key exists but time is up
+        except:
+            pass # If date is written wrong in secrets, ignore expiry check (safety)
+
+    # 3. Check Whitelist
+    if user_key in st.secrets.get("VALID_KEYS", []): 
+        return "VALID"
+
+    # 4. Check Pattern "JEExa0001"
+    if len(user_key) != 9 or user_key[:5] != "JEExa" or not user_key[5:].isdigit(): 
+        return "INVALID"
+    
+    if 1 <= int(user_key[5:]) <= 1000: 
+        return "VALID"
+        
+    return "INVALID"
 
 # --- 7. SIDEBAR (LOGIN & TOOLS) ---
 with st.sidebar:
     st.markdown("## 🔐 Premium Access")
     
-    # Check if we need to initialize uploader key
     if "uploader_key" not in st.session_state:
         st.session_state.uploader_key = 0
         
     user_key = st.text_input("Enter Access Key:", type="password")
     
-    # DETAILED TERMS & CONDITIONS TEXT
-    terms_text = """
-    **JEEx Terms of Service**
+    # Check Status
+    status = check_key_status(user_key)
     
-    **1. Usage Policy**
-    * **AI Limitations:** JEEx is an AI-powered tool. While highly accurate, it can occasionally make errors ("hallucinations"). Always verify critical data with NCERT/Standard Textbooks.
-    * **Fair Use:** This key is for **Personal Use Only**.
-    
-    **2. Security & Bans**
-    * **Zero Sharing Policy:** Sharing your Access Key with friends, Telegram groups, or public forums is strictly prohibited.
-    * **Automatic Ban:** Our system detects simultaneous logins. If multiple IPs use the same key, it will be **permanently banned** without warning.
-    
-    **3. Payments & Refunds**
-    * **Final Sale:** As this is a digital access product, all sales are final. **No refunds** will be issued once the key is delivered.
-    * **Validity:** Subscription is valid for 30 days from the date of purchase.
-    
-    **4. Liability**
-    * JEEx is not responsible for exam results, rank outcomes, or service interruptions caused by third-party API outages.
-    """
-
-    if not check_smart_key(user_key):
-        st.warning("🔒 Chat Locked")
-        payment_link = "https://rzp.io/rzp/wXI8i7t" 
+    # Logic for Locked / Expired / Valid
+    if status != "VALID":
+        # Determine Error Message
+        if status == "EXPIRED":
+            st.error("⚠️ Plan Expired")
+            st.info("Your monthly subscription has ended.")
+            btn_text = "👉 Renew Now (₹99)"
+        else:
+            if user_key: # Only show error if they typed something
+                st.warning("🔒 Chat Locked")
+            btn_text = "👉 Subscribe for ₹99 / Month"
+            
+        # Payment Button
+        payment_link = "https://pages.razorpay.com/pl_Hk7823hsk" # Use your Page Link here
         
-        # SUBCRIPTION BUTTON WITH FIXED TEXT
         st.markdown(f"""
             <a href="{payment_link}" target="_blank">
                 <button style="
@@ -122,19 +146,26 @@ with st.sidebar:
                     cursor:pointer;
                     font-weight: bold;
                     font-size: 15px;">
-                    👉 Subscribe for ₹99 / Month
+                    {btn_text}
                 </button>
             </a>
             """, unsafe_allow_html=True)
         
+        # T&C Section
         st.markdown("---")
         with st.expander("📄 Terms & Conditions (Read Carefully)"):
-            st.markdown(terms_text)
-        st.stop()
+            st.markdown("""
+            **JEEx Terms of Service**
+            **1. Usage Policy:** AI tools can make errors. Verify data. Personal Use Only.
+            **2. Security:** No Sharing keys. Simultaneous logins = Ban.
+            **3. Payments:** No Refunds. Subscription valid for 30 days.
+            """)
+        st.stop() # STOP HERE
 
+    # If Valid
     st.success(f"✅ Active: {user_key}")
     
-    # --- ATTACHMENT SECTION (Moved to Sidebar to fix bugs) ---
+    # --- ATTACHMENT SECTION ---
     st.markdown("---")
     st.markdown("### 📎 Attach Question")
     uploaded_file = st.file_uploader(
@@ -152,7 +183,12 @@ with st.sidebar:
         st.rerun()
         
     with st.expander("📄 Terms & Conditions"):
-        st.markdown(terms_text)
+         st.markdown("""
+            **JEEx Terms of Service**
+            **1. Usage Policy:** AI tools can make errors. Verify data. Personal Use Only.
+            **2. Security:** No Sharing keys. Simultaneous logins = Ban.
+            **3. Payments:** No Refunds. Subscription valid for 30 days.
+            """)
 
 # --- 8. MAIN APP LOGIC ---
 try:
@@ -167,17 +203,15 @@ client = OpenAI(api_key=api_key)
 if "thread_id" not in st.session_state:
     thread = client.beta.threads.create()
     st.session_state.thread_id = thread.id
-    # Friendly Hinglish Starting Message
     welcome_msg = "Welcome Champ! 🎓 Main hoon JEEx. JEE ki journey mushkil hai par main tumhare saath hoon. \n\nKoi bhi doubt ho—Physics ka numerical, Chemistry ka reaction, ya Maths ka integral—bas photo bhejo ya type karo. Chalo phodte hain! 🚀"
     st.session_state.messages = [{"role": "assistant", "content": welcome_msg}]
 
-# Display History (Cleaned)
+# Display History
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(clean_latex(msg["content"]))
 
-# --- 9. INPUT AREA (Fixed Crash) ---
-# Note: chat_input must be at the root level, not inside columns
+# --- 9. INPUT AREA ---
 prompt = st.chat_input("Ask a doubt...")
 
 # --- 10. HANDLING SEND ---
