@@ -2,7 +2,7 @@ import streamlit as st
 import time
 from openai import OpenAI
 
-# --- 1. CONFIGURATION ---
+# --- 1. CONFIGURATION (Must be the first Streamlit command) ---
 st.set_page_config(page_title="JEEx", page_icon="⚛️", layout="centered")
 
 # --- 2. PROFESSIONAL DARK THEME CSS ---
@@ -93,7 +93,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. SMART KEY LOGIC ---
+# --- 3. SHOW TITLE IMMEDIATELY (Before Login) ---
+# This ensures "JEEx PRO" is always visible
+st.markdown("# ⚛️ **JEEx** <span style='color:#4A90E2; font-size:0.6em'>PRO</span>", unsafe_allow_html=True)
+st.caption("Your Personal AI Tutor for JEE Mains & Advanced | Powered by OpenAI")
+
+# --- 4. SMART KEY LOGIC ---
 def check_smart_key(user_key):
     # 1. Check Master Key (For you)
     if user_key == st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS"):
@@ -122,12 +127,12 @@ def check_smart_key(user_key):
         
     return False
 
-# --- 4. SIDEBAR (LOGIN SYSTEM) ---
+# --- 5. SIDEBAR (LOGIN SYSTEM) ---
 with st.sidebar:
     st.markdown("## 🔐 Premium Access")
     st.markdown("---")
     
-    # Input Box (Dark Grey)
+    # Input Box
     user_key = st.text_input("Enter Access Key:", type="password", help="Check your email for the key.")
     
     # Validation
@@ -135,14 +140,14 @@ with st.sidebar:
         st.warning("🔒 Chat Locked")
         st.info("Please enter a valid key to start.")
         
-        # --- PAYMENT LINK (Correct Link) ---
+        # --- PAYMENT LINK ---
         payment_link = "https://rzp.io/rzp/wXI8i7t"
         
         st.markdown(f"""
             <a href="{payment_link}" target="_blank">
                 <button style="
                     width:100%; 
-                    background-color:#007BFF; 
+                    background-color:#4A90E2; 
                     color:white; 
                     border:none; 
                     padding:10px; 
@@ -155,7 +160,7 @@ with st.sidebar:
             </a>
             """, unsafe_allow_html=True)
         
-        # --- TERMS AND CONDITIONS (Visible for non-users too) ---
+        # --- TERMS AND CONDITIONS (Visible for non-users) ---
         st.markdown("---")
         with st.expander("📄 Terms & Conditions"):
             st.markdown("""
@@ -185,9 +190,7 @@ with st.sidebar:
         3. **No Refunds:** All sales are final.
         """)
 
-# --- 5. MAIN CHAT APP ---
-st.markdown("# ⚛️ **JEEx** <span style='color:#4A90E2; font-size:0.6em'>PRO</span>", unsafe_allow_html=True)
-st.caption("Your Personal AI Tutor for JEE Mains & Advanced | Powered by OpenAI")
+# --- 6. MAIN CHAT APP (Only runs if unlocked) ---
 
 # Load Secrets
 try:
