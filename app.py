@@ -4,42 +4,40 @@ from openai import OpenAI
 
 # --- 1. CONFIG & SECURITY ---
 st.set_page_config(page_title="JEEx", page_icon="⚛️", layout="centered")
-# --- CUSTOM LIGHT THEME & LOGO ---
+# --- CUSTOM THEME (Dark & Professional) ---
 st.markdown("""
 <style>
-    /* 1. Main Background (White) */
+    /* 1. Main Background */
     .stApp {
-        background-color: #FFFFFF;
-        color: #0E1117; /* Dark text for contrast */
+        background-color: #0E1117;
+        color: #FAFAFA;
     }
     
     /* 2. Chat Bubbles */
-    /* User Message (Light Blue) */
+    /* User Message (Blue) */
     [data-testid="stChatMessage"]:nth-child(odd) {
-        background-color: #E8F0FE;
-        border: 1px solid #D0E0FD;
-        color: #0E1117;
+        background-color: #1E2330;
+        border: 1px solid #2B313E;
         border-radius: 12px;
     }
-    /* Bot Message (Off-White/Gray) */
+    /* Bot Message (Darker Grey) */
     [data-testid="stChatMessage"]:nth-child(even) {
-        background-color: #F8F9FA;
-        border: 1px solid #E9ECEF;
-        color: #0E1117;
+        background-color: #131720;
+        border: 1px solid #2B313E;
         border-radius: 12px;
     }
     
-    /* 3. Sidebar Design (Light Gray) */
+    /* 3. Sidebar Design */
     [data-testid="stSidebar"] {
-        background-color: #F8F9FA;
-        border-right: 1px solid #E9ECEF;
+        background-color: #161B26;
+        border-right: 1px solid #2B313E;
     }
     
     /* 4. Input Box */
     .stChatInputContainer textarea {
-        background-color: #FFFFFF;
-        color: #0E1117;
-        border: 1px solid #CED4DA;
+        background-color: #1E2330;
+        color: white;
+        border: 1px solid #3E4654;
     }
     
     /* 5. Hide Streamlit Branding */
@@ -177,6 +175,7 @@ if prompt := st.chat_input("Ask a doubt..."):
             st.markdown(full_response)
 
             st.session_state.messages.append({"role": "assistant", "content": full_response})
+
 
 
 
