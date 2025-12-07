@@ -6,7 +6,83 @@ from openai import OpenAI
 st.set_page_config(page_title="JEEx", page_icon="⚛️", layout="centered")
 
 # --- 2. PROFESSIONAL LIGHT THEME CSS ---
-
+st.markdown("""
+<style>
+    /* Force Light Theme Colors */
+    .stApp {
+        background-color: #FFFFFF;
+        color: #000000 !important;
+    }
+    
+    /* Sidebar Styling */
+    [data-testid="stSidebar"] {
+        background-color: #F8F9FA;
+        border-right: 1px solid #E0E0E0;
+    }
+    
+    /* Text Visibility Fixes */
+    h1, h2, h3, p, div, label, span {
+        color: #0E1117 !important;
+    }
+    
+    /* --- GREY INPUT BOX (Password) --- */
+    [data-testid="stSidebar"] [data-testid="stTextInput"] input {
+        background-color: #E9ECEF !important;
+        color: #000000 !important;
+        border: 1px solid #CED4DA !important;
+    }
+    
+    /* --- GREY RESPONSIVE BUTTON (End Session) --- */
+    div.stButton > button {
+        background-color: #6C757D !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 8px !important;
+        width: 100%;
+        transition: all 0.3s ease;
+    }
+    
+    div.stButton > button:hover {
+        background-color: #5A6268 !important;
+        transform: scale(1.02);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    /* Chat Message Bubbles */
+    [data-testid="stChatMessage"]:nth-child(odd) {
+        background-color: #E8F0FE;
+        border: 1px solid #D0E0FD;
+        border-radius: 12px;
+        padding: 15px;
+    }
+    
+    [data-testid="stChatMessage"]:nth-child(even) {
+        background-color: #F8F9FA;
+        border: 1px solid #E9ECEF;
+        border-radius: 12px;
+        padding: 15px;
+    }
+    
+    /* Input Box Styling */
+    .stChatInputContainer textarea {
+        background-color: #FFFFFF !important;
+        color: #000000 !important;
+        border: 1px solid #CCCCCC !important;
+    }
+    
+    /* Hide Default Streamlit Elements */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    .stDeployButton {display:none;}
+    
+    /* Success Message Style */
+    .stSuccess {
+        background-color: #D4EDDA !important;
+        color: #155724 !important;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # --- 3. SMART KEY LOGIC ---
 def check_smart_key(user_key):
@@ -42,7 +118,7 @@ with st.sidebar:
     st.markdown("## 🔐 Premium Access")
     st.markdown("---")
     
-    # Input Box (Now Grey due to CSS above)
+    # Input Box
     user_key = st.text_input("Enter Access Key:", type="password", help="Check your email for the key.")
     
     # Validation
@@ -50,8 +126,9 @@ with st.sidebar:
         st.warning("🔒 Chat Locked")
         st.info("Please enter a valid key to start.")
         
-        # Payment Link Button
-        payment_link = "https://razorpay.me/YOUR_LINK"
+        # --- NEW PAYMENT LINK HERE ---
+        payment_link = "https://rzp.io/rzp/wXI8i7t"
+        
         st.markdown(f"""
             <a href="{payment_link}" target="_blank">
                 <button style="
@@ -67,14 +144,36 @@ with st.sidebar:
                 </button>
             </a>
             """, unsafe_allow_html=True)
+        
+        # --- TERMS AND CONDITIONS (Visible for non-users too) ---
+        st.markdown("---")
+        with st.expander("📄 Terms & Conditions"):
+            st.markdown("""
+            **JEEx Usage Policy:**
+            1. **Accuracy:** AI may occasionally make errors. Use as a study companion, not the sole source of truth.
+            2. **Personal Use:** Keys are for single users only. Sharing keys will result in a permanent ban.
+            3. **No Refunds:** As this is a digital product, all sales are final once the key is delivered.
+            4. **Liability:** We are not responsible for exam results or service interruptions.
+            """)
+            
         st.stop() # STOP EVERYTHING HERE if key is invalid
 
     # If code reaches here, the Key is Valid
     st.success(f"✅ Active: {user_key}")
     
-    # Reset Button (Now Grey & Responsive)
+    # Reset Button
     if st.button("End Session"):
         st.rerun()
+        
+    # --- TERMS AND CONDITIONS (Visible for logged-in users) ---
+    st.markdown("---")
+    with st.expander("📄 Terms & Conditions"):
+        st.markdown("""
+        **JEEx Usage Policy:**
+        1. **Accuracy:** AI may occasionally make errors. Use as a study companion.
+        2. **Personal Use:** Keys are for single users only. Sharing keys leads to a ban.
+        3. **No Refunds:** All sales are final.
+        """)
 
 # --- 5. MAIN CHAT APP ---
 st.markdown("# ⚛️ **JEEx** <span style='color:#007BFF; font-size:0.6em'>PRO</span>", unsafe_allow_html=True)
@@ -141,4 +240,3 @@ if prompt := st.chat_input("Ask a doubt (e.g., Rotational Motion, Organic Chemis
             st.markdown(full_response)
             # Save to history
             st.session_state.messages.append({"role": "assistant", "content": full_response})
-
