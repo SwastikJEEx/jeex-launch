@@ -152,30 +152,61 @@ with st.sidebar:
 if status != "VALID":
     st.markdown("---")
     
-    # 1. INSTRUCTION BOX
-    st.info("👋 **Welcome Student!** Please enter your **Access Key** in the Sidebar (↖️ Top Left) to unlock the AI.")
-
-    # 2. PROFESSIONAL FEATURE LIST (The "Epic" Part)
-    st.markdown("### 🏆 Why Top Rankers Use JEEx Pro:")
-    
+    # 1. INSTRUCTION BOX (Bigger Font)
     st.markdown("""
-    <div style="background-color: #161B26; padding: 25px; border-radius: 10px; border: 1px solid #2B313E; font-size: 16px; line-height: 1.8;">
-        
-        <p><strong>🧠 Advanced Problem Solving</strong><br>
-        Instantly solves Irodov, Cengage, and PYQ level problems with step-by-step logic, not just answers.</p>
-        
-        <p><strong>👁️ Vision Intelligence (OCR)</strong><br>
-        Stuck on a handwritten question? Just upload a photo. JEEx reads, understands, and solves it in seconds.</p>
-        
-        <p><strong>📄 Document Analysis</strong><br>
-        Upload entire PDF assignments or test papers. Our embedded Code Interpreter analyzes the full document context.</p>
-        
-        <p><strong>➗ Perfect Math Formatting</strong><br>
-        Powered by LaTeX to render complex integrals, matrices, and chemical equations with textbook precision.</p>
-        
-        <p><strong>⚡ 24/7 Personal Mentorship</strong><br>
-        Your AI Tutor never sleeps. Clear backlogs and doubts at 3 AM without waiting for a teacher.</p>
+    <div style="background-color: #1E2330; padding: 20px; border-radius: 10px; border-left: 5px solid #4A90E2; margin-bottom: 30px;">
+        <p style="font-size: 18px; margin: 0; color: #E6E6E6;">
+            👋 <strong>Welcome Student!</strong><br>
+            Please enter your <strong>Access Key</strong> in the Sidebar (↖️ Top Left) to unlock the AI.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 
+    # 2. PROFESSIONAL FEATURE LIST (Bigger & Better Formatting)
+    st.markdown("""
+    <div style="background-color: #161B26; padding: 30px; border-radius: 15px; border: 1px solid #2B313E; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+        <h2 style="color: #4A90E2; margin-top: 0; font-size: 26px; border-bottom: 1px solid #3E4654; padding-bottom: 15px; margin-bottom: 20px;">
+            🏆 Why Top Rankers Choose JEEx Pro
+        </h2>
+        
+        <ul style="list-style-type: none; padding-left: 0; margin: 0;">
+            
+            <li style="margin-bottom: 20px;">
+                <strong style="color: #FFD700; font-size: 20px;">🧠 Advanced Problem Solving</strong><br>
+                <span style="font-size: 17px; color: #CCCCCC; line-height: 1.6;">
+                    Instantly solves Irodov, Cengage, and PYQ level problems with step-by-step logic, not just answers.
+                </span>
+            </li>
+            
+            <li style="margin-bottom: 20px;">
+                <strong style="color: #FFD700; font-size: 20px;">👁️ Vision Intelligence (OCR)</strong><br>
+                <span style="font-size: 17px; color: #CCCCCC; line-height: 1.6;">
+                    Stuck on a handwritten question? Just upload a photo. JEEx reads, understands, and solves it in seconds.
+                </span>
+            </li>
+            
+            <li style="margin-bottom: 20px;">
+                <strong style="color: #FFD700; font-size: 20px;">📄 Full Document Analysis</strong><br>
+                <span style="font-size: 17px; color: #CCCCCC; line-height: 1.6;">
+                    Upload entire PDF assignments or test papers. Our embedded Code Interpreter analyzes the full document context.
+                </span>
+            </li>
+            
+            <li style="margin-bottom: 20px;">
+                <strong style="color: #FFD700; font-size: 20px;">➗ Perfect Math Formatting</strong><br>
+                <span style="font-size: 17px; color: #CCCCCC; line-height: 1.6;">
+                    Powered by LaTeX to render complex integrals, matrices, and chemical equations with textbook precision.
+                </span>
+            </li>
+            
+            <li style="margin-bottom: 10px;">
+                <strong style="color: #FFD700; font-size: 20px;">⚡ 24/7 Personal Mentorship</strong><br>
+                <span style="font-size: 17px; color: #CCCCCC; line-height: 1.6;">
+                    Your AI Tutor never sleeps. Clear backlogs and doubts at 3 AM without waiting for a teacher.
+                </span>
+            </li>
+            
+        </ul>
     </div>
     """, unsafe_allow_html=True)
     
