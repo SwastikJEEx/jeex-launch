@@ -5,69 +5,71 @@ from openai import OpenAI
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="JEEx", page_icon="⚛️", layout="centered")
 
-# --- 2. PROFESSIONAL LIGHT THEME CSS ---
+# --- 2. PROFESSIONAL DARK THEME CSS ---
 st.markdown("""
 <style>
-    /* Force Light Theme Colors */
+    /* 1. Main Background (Dark) */
     .stApp {
-        background-color: #FFFFFF;
-        color: #000000 !important;
+        background-color: #0E1117;
+        color: #FAFAFA;
     }
     
-    /* Sidebar Styling */
+    /* 2. Sidebar Styling */
     [data-testid="stSidebar"] {
-        background-color: #F8F9FA;
-        border-right: 1px solid #E0E0E0;
+        background-color: #161B26;
+        border-right: 1px solid #2B313E;
     }
     
-    /* Text Visibility Fixes */
-    h1, h2, h3, p, div, label, span {
-        color: #0E1117 !important;
+    /* 3. Text Visibility Fixes (White Text) */
+    h1, h2, h3, p, div, label, span, li {
+        color: #E6E6E6 !important;
     }
     
-    /* --- GREY INPUT BOX (Password) --- */
+    /* 4. GREY INPUT BOX (Password) - Dark Mode Version */
     [data-testid="stSidebar"] [data-testid="stTextInput"] input {
-        background-color: #E9ECEF !important;
-        color: #000000 !important;
-        border: 1px solid #CED4DA !important;
+        background-color: #1E2330 !important;
+        color: #FFFFFF !important;
+        border: 1px solid #3E4654 !important;
     }
     
-    /* --- GREY RESPONSIVE BUTTON (End Session) --- */
+    /* 5. GREY RESPONSIVE BUTTON (End Session) */
     div.stButton > button {
-        background-color: #6C757D !important;
-        color: white !important;
-        border: none !important;
+        background-color: #2B313E !important;
+        color: #E6E6E6 !important;
+        border: 1px solid #3E4654 !important;
         border-radius: 8px !important;
         width: 100%;
         transition: all 0.3s ease;
     }
     
     div.stButton > button:hover {
-        background-color: #5A6268 !important;
+        background-color: #3E4654 !important;
+        border-color: #4A90E2 !important;
         transform: scale(1.02);
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
     
-    /* Chat Message Bubbles */
+    /* 6. Chat Message Bubbles */
+    /* USER (Dark Blue Tint) */
     [data-testid="stChatMessage"]:nth-child(odd) {
-        background-color: #E8F0FE;
-        border: 1px solid #D0E0FD;
+        background-color: #1E2330;
+        border: 1px solid #2B313E;
         border-radius: 12px;
         padding: 15px;
     }
     
+    /* BOT (Darker Grey) */
     [data-testid="stChatMessage"]:nth-child(even) {
-        background-color: #F8F9FA;
-        border: 1px solid #E9ECEF;
+        background-color: #131720;
+        border: 1px solid #2B313E;
         border-radius: 12px;
         padding: 15px;
     }
     
-    /* Input Box Styling */
+    /* 7. Main Chat Input Box Styling */
     .stChatInputContainer textarea {
-        background-color: #FFFFFF !important;
-        color: #000000 !important;
-        border: 1px solid #CCCCCC !important;
+        background-color: #1E2330 !important;
+        color: #FFFFFF !important;
+        border: 1px solid #3E4654 !important;
     }
     
     /* Hide Default Streamlit Elements */
@@ -76,10 +78,17 @@ st.markdown("""
     header {visibility: hidden;}
     .stDeployButton {display:none;}
     
-    /* Success Message Style */
+    /* Success Message Style (Dark Mode Friendly) */
     .stSuccess {
-        background-color: #D4EDDA !important;
-        color: #155724 !important;
+        background-color: #1E4620 !important;
+        color: #D4EDDA !important;
+        border: 1px solid #2B6E32 !important;
+    }
+    
+    /* Expander/Accordion Styling */
+    .streamlit-expanderHeader {
+        background-color: #161B26 !important;
+        color: #FAFAFA !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -118,7 +127,7 @@ with st.sidebar:
     st.markdown("## 🔐 Premium Access")
     st.markdown("---")
     
-    # Input Box
+    # Input Box (Dark Grey)
     user_key = st.text_input("Enter Access Key:", type="password", help="Check your email for the key.")
     
     # Validation
@@ -126,7 +135,7 @@ with st.sidebar:
         st.warning("🔒 Chat Locked")
         st.info("Please enter a valid key to start.")
         
-        # --- NEW PAYMENT LINK HERE ---
+        # --- PAYMENT LINK (Correct Link) ---
         payment_link = "https://rzp.io/rzp/wXI8i7t"
         
         st.markdown(f"""
@@ -139,7 +148,8 @@ with st.sidebar:
                     padding:10px; 
                     border-radius:5px; 
                     cursor:pointer;
-                    font-weight: bold;">
+                    font-weight: bold;
+                    margin-bottom: 10px;">
                     👉 Subscribe Now (₹99)
                 </button>
             </a>
@@ -161,7 +171,7 @@ with st.sidebar:
     # If code reaches here, the Key is Valid
     st.success(f"✅ Active: {user_key}")
     
-    # Reset Button
+    # Reset Button (Dark Grey)
     if st.button("End Session"):
         st.rerun()
         
@@ -176,7 +186,7 @@ with st.sidebar:
         """)
 
 # --- 5. MAIN CHAT APP ---
-st.markdown("# ⚛️ **JEEx** <span style='color:#007BFF; font-size:0.6em'>PRO</span>", unsafe_allow_html=True)
+st.markdown("# ⚛️ **JEEx** <span style='color:#4A90E2; font-size:0.6em'>PRO</span>", unsafe_allow_html=True)
 st.caption("Your Personal AI Tutor for JEE Mains & Advanced | Powered by OpenAI")
 
 # Load Secrets
