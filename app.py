@@ -59,16 +59,16 @@ def clean_latex(text):
     if not text: return ""
     text = re.sub(r'\\\[(.*?)\\\]', r'$$\1$$', text, flags=re.DOTALL)
     text = re.sub(r'\\\((.*?)\\\)', r'$\1$', text, flags=re.DOTALL)
-    text = re.sub(r'(?<!\\)\[\s*(.*?=.*?)\s*\]', r'$$\1$$', text)
+    text = re.sub(r'(?<!\\)\[\s*(.*?=.*?)\s*\]', r'$$\1$$', text, flags=re.DOTALL)
     return text
 
-# --- 4. SHOW TITLE IMMEDIATELY (Before Login) ---
+# --- 4. SHOW TITLE & EPIC TAGLINE ---
 st.markdown("# ⚛️ **JEEx** <span style='color:#4A90E2; font-size:0.6em'>PRO</span>", unsafe_allow_html=True)
-st.caption("Upload Questions (Image/PDF) | Powered by OpenAI Vision")
+# NEW: Professional & Epic Tagline
+st.caption("Your 24/7 AI Rank Booster | Master JEE Mains & Advanced with Precision 🚀")
 
 # --- 5. LOGOUT LOGIC ---
 if st.session_state.get('logout', False):
-    # If logout flag is set, clear session and rerun to reset
     for key in list(st.session_state.keys()):
         del st.session_state[key]
     st.rerun()
@@ -85,6 +85,26 @@ with st.sidebar:
     st.markdown("## 🔐 Premium Access")
     user_key = st.text_input("Enter Access Key:", type="password")
     
+    # DETAILED TERMS & CONDITIONS TEXT
+    terms_text = """
+    **JEEx Terms of Service**
+    
+    **1. Usage Policy**
+    * **AI Limitations:** JEEx is an AI-powered tool. While highly accurate, it can occasionally make errors ("hallucinations"). Always verify critical data with NCERT/Standard Textbooks.
+    * **Fair Use:** This key is for **Personal Use Only**.
+    
+    **2. Security & Bans**
+    * **Zero Sharing Policy:** Sharing your Access Key with friends, Telegram groups, or public forums is strictly prohibited.
+    * **Automatic Ban:** Our system detects simultaneous logins. If multiple IPs use the same key, it will be **permanently banned** without warning.
+    
+    **3. Payments & Refunds**
+    * **Final Sale:** As this is a digital access product, all sales are final. **No refunds** will be issued once the key is delivered.
+    * **Validity:** Subscription is valid for 30 days from the date of purchase.
+    
+    **4. Liability**
+    * JEEx is not responsible for exam results, rank outcomes, or service interruptions caused by third-party API outages.
+    """
+
     if not check_smart_key(user_key):
         st.warning("🔒 Chat Locked")
         payment_link = "https://rzp.io/rzp/wXI8i7t" 
@@ -92,18 +112,12 @@ with st.sidebar:
         
         # T&C for non-logged in users
         st.markdown("---")
-        with st.expander("📄 Terms & Conditions"):
-            st.markdown("""
-            **JEEx Usage Policy:**
-            1. **Accuracy:** AI may make errors. Use as a study companion.
-            2. **Personal Use:** Keys are for single users only. Sharing leads to a ban.
-            3. **No Refunds:** All sales are final.
-            """)
+        with st.expander("📄 Terms & Conditions (Read Carefully)"):
+            st.markdown(terms_text)
         st.stop()
 
     st.success(f"✅ Active: {user_key}")
     
-    # LOGOUT BUTTON (Functional)
     if st.button("End Session"):
         st.session_state['logout'] = True
         st.rerun()
@@ -111,12 +125,7 @@ with st.sidebar:
     # T&C for logged in users
     st.markdown("---")
     with st.expander("📄 Terms & Conditions"):
-        st.markdown("""
-        **JEEx Usage Policy:**
-        1. **Accuracy:** AI may make errors. Use as a study companion.
-        2. **Personal Use:** Keys are for single users only. Sharing leads to a ban.
-        3. **No Refunds:** All sales are final.
-        """)
+        st.markdown(terms_text)
 
 # --- 8. MAIN APP LOGIC ---
 try:
@@ -131,7 +140,9 @@ client = OpenAI(api_key=api_key)
 if "thread_id" not in st.session_state:
     thread = client.beta.threads.create()
     st.session_state.thread_id = thread.id
-    st.session_state.messages = [{"role": "assistant", "content": "I am ready. Upload a PDF or Image, or just ask a doubt."}]
+    # NEW: Friendly Hinglish Starting Message
+    welcome_msg = "Welcome Champ! 🎓 Main hoon JEEx. JEE ki journey mushkil hai par main tumhare saath hoon. \n\nKoi bhi doubt ho—Physics ka numerical, Chemistry ka reaction, ya Maths ka integral—bas photo bhejo ya type karo. Chalo phodte hain! 🚀"
+    st.session_state.messages = [{"role": "assistant", "content": welcome_msg}]
     st.session_state.uploader_key = 0
 
 # Display History (Cleaned)
