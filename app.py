@@ -2,67 +2,79 @@ import streamlit as st
 import time
 from openai import OpenAI
 
-# --- 1. CONFIG & SECURITY ---
+# --- 1. CONFIGURATION ---
 st.set_page_config(page_title="JEEx", page_icon="⚛️", layout="centered")
 
-# --- CUSTOM LIGHT THEME (White & Professional) ---
+# --- 2. PROFESSIONAL LIGHT THEME CSS ---
 st.markdown("""
 <style>
-    /* 1. Main Background (White) */
+    /* Force Light Theme Colors */
     .stApp {
         background-color: #FFFFFF;
-        color: #0E1117;
+        color: #000000 !important;
     }
     
-    /* 2. Chat Bubbles */
-    /* User Message (Light Blue) */
+    /* Sidebar Styling */
+    [data-testid="stSidebar"] {
+        background-color: #F8F9FA;
+        border-right: 1px solid #E0E0E0;
+    }
+    
+    /* Text Visibility Fixes */
+    h1, h2, h3, p, div, label, span {
+        color: #0E1117 !important;
+    }
+    
+    /* Chat Message Bubbles */
+    /* USER (Blue-ish tint) */
     [data-testid="stChatMessage"]:nth-child(odd) {
         background-color: #E8F0FE;
         border: 1px solid #D0E0FD;
-        color: #0E1117;
         border-radius: 12px;
+        padding: 15px;
     }
-    /* Bot Message (Off-White/Gray) */
+    
+    /* BOT (Gray tint) */
     [data-testid="stChatMessage"]:nth-child(even) {
         background-color: #F8F9FA;
         border: 1px solid #E9ECEF;
-        color: #0E1117;
         border-radius: 12px;
+        padding: 15px;
     }
     
-    /* 3. Sidebar Design (Light Gray) */
-    [data-testid="stSidebar"] {
-        background-color: #F8F9FA;
-        border-right: 1px solid #E9ECEF;
-    }
-    
-    /* 4. Input Box */
+    /* Input Box Styling */
     .stChatInputContainer textarea {
-        background-color: #FFFFFF;
-        color: #0E1117;
-        border: 1px solid #CED4DA;
+        background-color: #FFFFFF !important;
+        color: #000000 !important;
+        border: 1px solid #CCCCCC !important;
     }
     
-    /* 5. Hide Streamlit Branding */
+    /* Hide Default Streamlit Elements */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     .stDeployButton {display:none;}
+    
+    /* Success Message Style */
+    .stSuccess {
+        background-color: #D4EDDA !important;
+        color: #155724 !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# --- SMART KEY CHECKER FUNCTION ---
+# --- 3. SMART KEY LOGIC ---
 def check_smart_key(user_key):
     # 1. Check Master Key (For you)
     if user_key == st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS"):
         return True
     
-    # 2. Check "White List" from Secrets (Optional specific keys)
+    # 2. Check "White List" from Secrets
     valid_list = st.secrets.get("VALID_KEYS", [])
     if user_key in valid_list:
         return True
 
-    # 3. Check the pattern "JEExa0001" to "JEExa1000"
+    # 3. Check Pattern "JEExa0001" to "JEExa1000"
     if len(user_key) != 9:
         return False
     
@@ -80,81 +92,95 @@ def check_smart_key(user_key):
         
     return False
 
-# --- 2. SIDEBAR (LOGIN) ---
+# --- 4. SIDEBAR (LOGIN SYSTEM) ---
 with st.sidebar:
-    # 1. LOGO & TITLE
-    try:
-        st.image("logo.png", use_column_width=True)
-    except:
-        st.warning("Logo not found. Upload logo.png to GitHub.")
-        
-    st.markdown("<h2 style='text-align: center;'>Premium Access</h2>", unsafe_allow_html=True)
+    st.markdown("## 🔐 Premium Access")
+    st.markdown("---")
     
-    # 2. INPUT BOX
-    user_key = st.text_input("Enter Access Key:", type="password")
-    payment_link = "https://razorpay.me/YOUR_LINK" 
+    # Input Box
+    user_key = st.text_input("Enter Access Key:", type="password", help="Check your email for the key.")
     
-    # 3. VALIDATION LOGIC
-    # We now call the function we wrote above!
-    is_valid = check_smart_key(user_key)
-    
-    if not is_valid:
-        if user_key: # Only show error if they typed something
-            st.error("⛔ Invalid Key")
-        
+    # Validation
+    if not check_smart_key(user_key):
         st.warning("🔒 Chat Locked")
-        st.markdown(f"**Need a key?** [**Subscribe Here**]({payment_link})")
-        st.stop() # Stops app here
+        st.info("Please enter a valid key to start.")
+        
+        # Payment Link Button
+        payment_link = "https://razorpay.me/YOUR_LINK"
+        st.markdown(f"""
+            <a href="{payment_link}" target="_blank">
+                <button style="
+                    width:100%; 
+                    background-color:#007BFF; 
+                    color:white; 
+                    border:none; 
+                    padding:10px; 
+                    border-radius:5px; 
+                    cursor:pointer;">
+                    👉 Subscribe Now (₹99)
+                </button>
+            </a>
+            """, unsafe_allow_html=True)
+        st.stop() # STOP EVERYTHING HERE if key is invalid
 
-    # 4. SUCCESS
-    st.success(f"✅ Welcome, Student!")
-    if st.button("Logout"):
+    # If code reaches here, the Key is Valid
+    st.success(f"✅ Active: {user_key}")
+    
+    # Reset Button
+    if st.button("End Session"):
         st.rerun()
 
-# --- 3. MAIN APP ---
-# Modern Title with Badge
-st.markdown("# ⚛️ **JEEx** <span style='color:#4A90E2; font-size:0.6em'>PRO</span>", unsafe_allow_html=True)
-st.caption("Your Personal AI Tutor for JEE Mains & Advanced")
+# --- 5. MAIN CHAT APP ---
+st.markdown("# ⚛️ **JEEx** <span style='color:#007BFF; font-size:0.6em'>PRO</span>", unsafe_allow_html=True)
+st.caption("Your Personal AI Tutor for JEE Mains & Advanced | Powered by OpenAI")
 
-# Load Credentials
+# Load Secrets
 try:
     api_key = st.secrets["OPENAI_API_KEY"]
     assistant_id = st.secrets["ASSISTANT_ID"]
 except:
-    st.error("🚨 Keys missing in secrets.toml")
+    st.error("🚨 Configuration Error: API Keys are missing in Streamlit Secrets.")
     st.stop()
 
+# Initialize Client
 client = OpenAI(api_key=api_key)
 
-# Initialize Chat
+# Initialize Session State
 if "thread_id" not in st.session_state:
     thread = client.beta.threads.create()
     st.session_state.thread_id = thread.id
     st.session_state.messages = []
-    st.session_state.messages.append({"role": "assistant", "content": "I am JEEx. Ready to solve."})
+    # Initial Greeting
+    st.session_state.messages.append({"role": "assistant", "content": "Welcome back. I am ready to solve complex problems. What is your doubt today?"})
 
-# Display Chat
+# Display Chat History
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# Chat Input
-if prompt := st.chat_input("Ask a doubt..."):
+# Chat Input & Response Logic
+if prompt := st.chat_input("Ask a doubt (e.g., Rotational Motion, Organic Chemistry)..."):
+    
+    # 1. Show User Message
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
+    # 2. Send to OpenAI
     client.beta.threads.messages.create(
         thread_id=st.session_state.thread_id, role="user", content=prompt
     )
 
+    # 3. Trigger Assistant
     run = client.beta.threads.runs.create(
         thread_id=st.session_state.thread_id, assistant_id=assistant_id
     )
 
+    # 4. Wait for Answer
     with st.chat_message("assistant"):
         status_box = st.empty()
-        status_box.markdown("Thinking... ⏳")
+        status_box.markdown("**Thinking...** ⏳")
+        
         while run.status in ['queued', 'in_progress', 'cancelling']:
             time.sleep(1)
             run = client.beta.threads.runs.retrieve(
@@ -164,9 +190,8 @@ if prompt := st.chat_input("Ask a doubt..."):
         if run.status == 'completed':
             status_box.empty()
             messages = client.beta.threads.messages.list(thread_id=st.session_state.thread_id)
+            # Get latest text
             full_response = messages.data[0].content[0].text.value
             st.markdown(full_response)
+            # Save to history
             st.session_state.messages.append({"role": "assistant", "content": full_response})
-
-
-
