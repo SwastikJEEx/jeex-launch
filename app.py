@@ -85,31 +85,40 @@ def is_valid_key(user_key):
     return False
 
 # --- 2. SIDEBAR (LOGIN) ---
+# --- 2. SIDEBAR (LOGIN) ---
 with st.sidebar:
-    # --- 2. SIDEBAR (LOGIN) ---
-with st.sidebar:
-    # Add the logo at the top of the sidebar
-    st.image("logo.png", use_column_width=True)
-    
-    # The title goes below the logo now
+    # 1. LOGO & TITLE (Indented 4 spaces)
+    try:
+        st.image("logo.png", use_column_width=True)
+    except:
+        st.warning("Logo not found. Upload logo.png to GitHub.")
+        
     st.markdown("<h2 style='text-align: center;'>Premium Access</h2>", unsafe_allow_html=True)
     
-    # ... rest of your sidebar code (user_key, etc.) follows here ...
-    
+    # 2. INPUT BOX (Indented 4 spaces)
     user_key = st.text_input("Enter Access Key:", type="password")
     
-    # YOUR PAYMENT LINK
     payment_link = "https://razorpay.me/YOUR_LINK" 
     
-    # Validate the key using our smart function
-    if not is_valid_key(user_key):
-        if user_key: # Only show warning if they actually typed something
+    # 3. CHECK KEYS (Indented 4 spaces)
+    # Get the valid keys list (Default to empty if missing)
+    valid_keys = st.secrets.get("VALID_KEYS", [])
+    master_key = st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS")
+    
+    # Check if key is valid (Master Key OR Student Key)
+    is_valid = (user_key == master_key) or (user_key in valid_keys)
+    
+    if not is_valid:
+        if user_key: # Only show error if they typed something
             st.error("⛔ Invalid Key")
+        
         st.warning("🔒 Chat Locked")
-        st.markdown(f"**Get a Key:** [**Subscribe (₹99)**]({payment_link})")
-        st.stop() # Stops app here
+        st.markdown(f"**Need a key?** [**Subscribe Here**]({payment_link})")
+        st.stop() # This STOPS the app here if key is wrong.
 
-    st.success(f"✅ Access Granted")
+    # 4. SUCCESS MESSAGE (Indented 4 spaces)
+    st.success(f"✅ Welcome, Student!")
+    
     if st.button("Logout"):
         st.rerun()
 
@@ -168,5 +177,6 @@ if prompt := st.chat_input("Ask a doubt..."):
             st.markdown(full_response)
 
             st.session_state.messages.append({"role": "assistant", "content": full_response})
+
 
 
