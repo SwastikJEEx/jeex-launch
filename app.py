@@ -152,7 +152,7 @@ with st.sidebar:
 if status != "VALID":
     st.markdown("---")
     
-    # 1. INSTRUCTION BOX (Cleaned Up)
+    # 1. INSTRUCTION BOX
     st.markdown("""
     <div style="background-color: #1E2330; padding: 20px; border-radius: 10px; border-left: 5px solid #4A90E2; margin-bottom: 30px;">
         <p style="font-size: 18px; margin: 0; color: #E6E6E6;">
@@ -162,51 +162,44 @@ if status != "VALID":
     </div>
     """, unsafe_allow_html=True)
 
-    # 2. PROFESSIONAL FEATURE LIST (Fixed Formatting)
+    # 2. PROFESSIONAL FEATURE LIST (Cleaned & Fixed)
     st.markdown("""
     <div style="background-color: #161B26; padding: 30px; border-radius: 15px; border: 1px solid #2B313E; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
         <h2 style="color: #4A90E2; margin-top: 0; font-size: 26px; border-bottom: 1px solid #3E4654; padding-bottom: 15px; margin-bottom: 20px;">
             🏆 Why Top Rankers Choose JEEx Pro
         </h2>
-        
-        <ul style="list-style-type: none; padding-left: 0; margin: 0;">
-            
-            <li style="margin-bottom: 20px;">
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+            <div>
                 <strong style="color: #FFD700; font-size: 20px;">🧠 Advanced Problem Solving</strong><br>
                 <span style="font-size: 17px; color: #CCCCCC; line-height: 1.6;">
                     Instantly solves Irodov, Cengage, and PYQ level problems with step-by-step logic.
                 </span>
-            </li>
-            
-            <li style="margin-bottom: 20px;">
+            </div>
+            <div>
                 <strong style="color: #FFD700; font-size: 20px;">👁️ Vision Intelligence (OCR)</strong><br>
                 <span style="font-size: 17px; color: #CCCCCC; line-height: 1.6;">
                     Stuck on a handwritten question? Just upload a photo. JEEx reads and solves it.
                 </span>
-            </li>
-            
-            <li style="margin-bottom: 20px;">
+            </div>
+            <div>
                 <strong style="color: #FFD700; font-size: 20px;">📄 Full Document Analysis</strong><br>
                 <span style="font-size: 17px; color: #CCCCCC; line-height: 1.6;">
                     Upload entire PDF assignments or test papers. Analyzes full document context.
                 </span>
-            </li>
-            
-            <li style="margin-bottom: 20px;">
+            </div>
+            <div>
                 <strong style="color: #FFD700; font-size: 20px;">➗ Perfect Math Formatting</strong><br>
                 <span style="font-size: 17px; color: #CCCCCC; line-height: 1.6;">
                     Powered by LaTeX to render complex integrals, matrices, and equations with precision.
                 </span>
-            </li>
-            
-            <li style="margin-bottom: 10px;">
+            </div>
+            <div>
                 <strong style="color: #FFD700; font-size: 20px;">⚡ 24/7 Personal Mentorship</strong><br>
                 <span style="font-size: 17px; color: #CCCCCC; line-height: 1.6;">
                     Your AI Tutor never sleeps. Clear backlogs and doubts at 3 AM.
                 </span>
-            </li>
-            
-        </ul>
+            </div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
     
@@ -250,86 +243,3 @@ if "thread_id" not in st.session_state:
     st.session_state.messages = [{"role": "assistant", "content": welcome_msg}]
 
 # Display History
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        st.markdown(clean_latex(msg["content"]))
-
-# Input Area
-prompt = st.chat_input("Ask a doubt...")
-
-# Handling Send
-if prompt:
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
-        if uploaded_file:
-            if uploaded_file.type == "application/pdf":
-                st.markdown(f"📄 *Attached PDF: {uploaded_file.name}*")
-            else:
-                st.image(uploaded_file, caption="Attached Image", width=200)
-
-    message_content = [{"type": "text", "text": prompt}]
-    attachments = [] 
-
-    if uploaded_file:
-        with st.spinner("Processing file..."):
-            try:
-                temp_filename = f"temp_{uploaded_file.name}"
-                with open(temp_filename, "wb") as f:
-                    f.write(uploaded_file.getbuffer())
-                
-                file_response = client.files.create(
-                    file=open(temp_filename, "rb"),
-                    purpose="assistants"
-                )
-                
-                if uploaded_file.type == "application/pdf":
-                    attachments.append({
-                        "file_id": file_response.id,
-                        "tools": [{"type": "code_interpreter"}]
-                    })
-                else:
-                    message_content.append({
-                        "type": "image_file",
-                        "image_file": {"file_id": file_response.id}
-                    })
-                os.remove(temp_filename)
-            except Exception as e:
-                st.error(f"Upload failed: {e}")
-
-    client.beta.threads.messages.create(
-        thread_id=st.session_state.thread_id,
-        role="user",
-        content=message_content,
-        attachments=attachments if attachments else None
-    )
-
-    run = client.beta.threads.runs.create(
-        thread_id=st.session_state.thread_id,
-        assistant_id=assistant_id,
-        additional_instructions="""
-        IMPORTANT:
-        1. MATH: Use LaTeX ($x^2$ or $$x^2$$). DO NOT use \[ or \(.
-        2. PDF: Use 'code_interpreter' to read PDFs immediately.
-        """
-    )
-
-    with st.chat_message("assistant"):
-        status_box = st.empty()
-        status_box.markdown("**Solving...** ⏳")
-        
-        while run.status in ['queued', 'in_progress', 'cancelling']:
-            time.sleep(1)
-            run = client.beta.threads.runs.retrieve(
-                thread_id=st.session_state.thread_id, run_id=run.id
-            )
-        
-        if run.status == 'completed':
-            status_box.empty()
-            messages = client.beta.threads.messages.list(thread_id=st.session_state.thread_id)
-            final_response = clean_latex(messages.data[0].content[0].text.value)
-            
-            st.markdown(final_response)
-            st.session_state.messages.append({"role": "assistant", "content": final_response})
-            st.session_state.uploader_key += 1
-            st.rerun()
