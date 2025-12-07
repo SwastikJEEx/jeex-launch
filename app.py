@@ -4,78 +4,76 @@ from openai import OpenAI
 
 # --- 1. CONFIG & SECURITY ---
 st.set_page_config(page_title="JEEx", page_icon="⚛️", layout="centered")
-# --- CUSTOM THEME (Dark & Professional) ---
+
+# --- CUSTOM LIGHT THEME (White & Professional) ---
 st.markdown("""
 <style>
-    /* 1. Main Background */
+    /* 1. Main Background (White) */
     .stApp {
-        background-color: #0E1117;
-        color: #FAFAFA;
+        background-color: #FFFFFF;
+        color: #0E1117;
     }
     
     /* 2. Chat Bubbles */
-    /* User Message (Blue) */
+    /* User Message (Light Blue) */
     [data-testid="stChatMessage"]:nth-child(odd) {
-        background-color: #1E2330;
-        border: 1px solid #2B313E;
+        background-color: #E8F0FE;
+        border: 1px solid #D0E0FD;
+        color: #0E1117;
         border-radius: 12px;
     }
-    /* Bot Message (Darker Grey) */
+    /* Bot Message (Off-White/Gray) */
     [data-testid="stChatMessage"]:nth-child(even) {
-        background-color: #131720;
-        border: 1px solid #2B313E;
+        background-color: #F8F9FA;
+        border: 1px solid #E9ECEF;
+        color: #0E1117;
         border-radius: 12px;
     }
     
-    /* 3. Sidebar Design */
+    /* 3. Sidebar Design (Light Gray) */
     [data-testid="stSidebar"] {
-        background-color: #161B26;
-        border-right: 1px solid #2B313E;
+        background-color: #F8F9FA;
+        border-right: 1px solid #E9ECEF;
     }
     
     /* 4. Input Box */
     .stChatInputContainer textarea {
-        background-color: #1E2330;
-        color: white;
-        border: 1px solid #3E4654;
+        background-color: #FFFFFF;
+        color: #0E1117;
+        border: 1px solid #CED4DA;
     }
     
     /* 5. Hide Streamlit Branding */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
-</style>
-""", unsafe_allow_html=True)
-# Hide source code menu
-st.markdown("""
-<style>
     .stDeployButton {display:none;}
-    #MainMenu {display: none;}
 </style>
 """, unsafe_allow_html=True)
 
-# --- FUNCTION TO CHECK KEYS ---
-def is_valid_key(user_key):
+# --- SMART KEY CHECKER FUNCTION ---
+def check_smart_key(user_key):
     # 1. Check Master Key (For you)
-    if user_key == st.secrets.get("MASTER_KEY"):
+    if user_key == st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS"):
         return True
     
-    # 2. Check the pattern "JEExa0001" to "JEExa1000"
-    # Format must be exactly 9 characters long
+    # 2. Check "White List" from Secrets (Optional specific keys)
+    valid_list = st.secrets.get("VALID_KEYS", [])
+    if user_key in valid_list:
+        return True
+
+    # 3. Check the pattern "JEExa0001" to "JEExa1000"
     if len(user_key) != 9:
         return False
     
-    # Must start with "JEExa"
-    prefix = user_key[:5] # First 5 letters
+    prefix = user_key[:5] # "JEExa"
     if prefix != "JEExa":
         return False
         
-    # Last 4 characters must be numbers
-    number_part = user_key[5:] # The "0001" part
+    number_part = user_key[5:] # "0001"
     if not number_part.isdigit():
         return False
         
-    # Check if number is between 1 and 1000
     number = int(number_part)
     if 1 <= number <= 1000:
         return True
@@ -83,9 +81,8 @@ def is_valid_key(user_key):
     return False
 
 # --- 2. SIDEBAR (LOGIN) ---
-# --- 2. SIDEBAR (LOGIN) ---
 with st.sidebar:
-    # 1. LOGO & TITLE (Indented 4 spaces)
+    # 1. LOGO & TITLE
     try:
         st.image("logo.png", use_column_width=True)
     except:
@@ -93,18 +90,13 @@ with st.sidebar:
         
     st.markdown("<h2 style='text-align: center;'>Premium Access</h2>", unsafe_allow_html=True)
     
-    # 2. INPUT BOX (Indented 4 spaces)
+    # 2. INPUT BOX
     user_key = st.text_input("Enter Access Key:", type="password")
-    
     payment_link = "https://razorpay.me/YOUR_LINK" 
     
-    # 3. CHECK KEYS (Indented 4 spaces)
-    # Get the valid keys list (Default to empty if missing)
-    valid_keys = st.secrets.get("VALID_KEYS", [])
-    master_key = st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS")
-    
-    # Check if key is valid (Master Key OR Student Key)
-    is_valid = (user_key == master_key) or (user_key in valid_keys)
+    # 3. VALIDATION LOGIC
+    # We now call the function we wrote above!
+    is_valid = check_smart_key(user_key)
     
     if not is_valid:
         if user_key: # Only show error if they typed something
@@ -112,16 +104,17 @@ with st.sidebar:
         
         st.warning("🔒 Chat Locked")
         st.markdown(f"**Need a key?** [**Subscribe Here**]({payment_link})")
-        st.stop() # This STOPS the app here if key is wrong.
+        st.stop() # Stops app here
 
-    # 4. SUCCESS MESSAGE (Indented 4 spaces)
+    # 4. SUCCESS
     st.success(f"✅ Welcome, Student!")
-    
     if st.button("Logout"):
         st.rerun()
 
 # --- 3. MAIN APP ---
-st.title("JEEx ⚛️")
+# Modern Title with Badge
+st.markdown("# ⚛️ **JEEx** <span style='color:#4A90E2; font-size:0.6em'>PRO</span>", unsafe_allow_html=True)
+st.caption("Your Personal AI Tutor for JEE Mains & Advanced")
 
 # Load Credentials
 try:
@@ -173,9 +166,7 @@ if prompt := st.chat_input("Ask a doubt..."):
             messages = client.beta.threads.messages.list(thread_id=st.session_state.thread_id)
             full_response = messages.data[0].content[0].text.value
             st.markdown(full_response)
-
             st.session_state.messages.append({"role": "assistant", "content": full_response})
-
 
 
 
