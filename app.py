@@ -123,7 +123,7 @@ with st.sidebar:
             if user_key: st.warning("🔒 Chat Locked")
             btn_text = "👉 Subscribe for ₹99 / Month"
             
-        payment_link = "https://pages.razorpay.com/pl_Hk7823hsk" # Your Page Link
+        payment_link = "https://rzp.io/rzp/wXI8i7t" # Your Page Link
         
         st.markdown(f"""
             <a href="{payment_link}" target="_blank">
@@ -331,3 +331,4 @@ if prompt:
             st.session_state.messages.append({"role": "assistant", "content": final_response})
             st.session_state.uploader_key += 1
             st.rerun()
+
