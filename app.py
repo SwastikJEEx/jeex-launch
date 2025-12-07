@@ -59,8 +59,13 @@ def clean_latex(text):
     text = re.sub(r'(?<!\\)\[\s*(.*?=.*?)\s*\]', r'$$\1$$', text, flags=re.DOTALL)
     return text
 
-# --- 4. SHOW TITLE & EPIC TAGLINE ---
-st.markdown("# ⚛️ **JEEx** <span style='color:#4A90E2; font-size:0.6em'>PRO</span>", unsafe_allow_html=True)
+# --- 4. SHOW LOGO & BRANDING ---
+# Logic: Try to show the logo image. If file missing, fall back to text title.
+try:
+    st.image("logo.png", width=350) # Ensure 'logo.png' is in your folder
+except:
+    st.markdown("# ⚛️ **JEEx** <span style='color:#4A90E2; font-size:0.6em'>PRO</span>", unsafe_allow_html=True)
+
 st.caption("Your 24/7 AI Rank Booster | Master JEE Mains & Advanced with Precision 🚀")
 
 # --- 5. LOGOUT LOGIC ---
@@ -118,7 +123,7 @@ with st.sidebar:
             if user_key: st.warning("🔒 Chat Locked")
             btn_text = "👉 Subscribe for ₹99 / Month"
             
-        payment_link = "https://rzp.io/rzp/wXI8i7t" # Your Page Link
+        payment_link = "https://pages.razorpay.com/pl_Hk7823hsk" # Your Page Link
         
         st.markdown(f"""
             <a href="{payment_link}" target="_blank">
@@ -162,7 +167,7 @@ if status != "VALID":
     </div>
     """, unsafe_allow_html=True)
 
-    # 2. PROFESSIONAL FEATURE LIST (Cleaned & Fixed)
+    # 2. PROFESSIONAL FEATURE LIST
     st.markdown("""
     <div style="background-color: #161B26; padding: 30px; border-radius: 15px; border: 1px solid #2B313E; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
         <h2 style="color: #4A90E2; margin-top: 0; font-size: 26px; border-bottom: 1px solid #3E4654; padding-bottom: 15px; margin-bottom: 20px;">
@@ -243,4 +248,86 @@ if "thread_id" not in st.session_state:
     st.session_state.messages = [{"role": "assistant", "content": welcome_msg}]
 
 # Display History
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(clean_latex(msg["content"]))
 
+# Input Area
+prompt = st.chat_input("Ask a doubt...")
+
+# Handling Send
+if prompt:
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+        if uploaded_file:
+            if uploaded_file.type == "application/pdf":
+                st.markdown(f"📄 *Attached PDF: {uploaded_file.name}*")
+            else:
+                st.image(uploaded_file, caption="Attached Image", width=200)
+
+    message_content = [{"type": "text", "text": prompt}]
+    attachments = [] 
+
+    if uploaded_file:
+        with st.spinner("Processing file..."):
+            try:
+                temp_filename = f"temp_{uploaded_file.name}"
+                with open(temp_filename, "wb") as f:
+                    f.write(uploaded_file.getbuffer())
+                
+                file_response = client.files.create(
+                    file=open(temp_filename, "rb"),
+                    purpose="assistants"
+                )
+                
+                if uploaded_file.type == "application/pdf":
+                    attachments.append({
+                        "file_id": file_response.id,
+                        "tools": [{"type": "code_interpreter"}]
+                    })
+                else:
+                    message_content.append({
+                        "type": "image_file",
+                        "image_file": {"file_id": file_response.id}
+                    })
+                os.remove(temp_filename)
+            except Exception as e:
+                st.error(f"Upload failed: {e}")
+
+    client.beta.threads.messages.create(
+        thread_id=st.session_state.thread_id,
+        role="user",
+        content=message_content,
+        attachments=attachments if attachments else None
+    )
+
+    run = client.beta.threads.runs.create(
+        thread_id=st.session_state.thread_id,
+        assistant_id=assistant_id,
+        additional_instructions="""
+        IMPORTANT:
+        1. MATH: Use LaTeX ($x^2$ or $$x^2$$). DO NOT use \[ or \(.
+        2. PDF: Use 'code_interpreter' to read PDFs immediately.
+        """
+    )
+
+    with st.chat_message("assistant"):
+        status_box = st.empty()
+        status_box.markdown("**Solving...** ⏳")
+        
+        while run.status in ['queued', 'in_progress', 'cancelling']:
+            time.sleep(1)
+            run = client.beta.threads.runs.retrieve(
+                thread_id=st.session_state.thread_id, run_id=run.id
+            )
+        
+        if run.status == 'completed':
+            status_box.empty()
+            messages = client.beta.threads.messages.list(thread_id=st.session_state.thread_id)
+            final_response = clean_latex(messages.data[0].content[0].text.value)
+            
+            st.markdown(final_response)
+            st.session_state.messages.append({"role": "assistant", "content": final_response})
+            st.session_state.uploader_key += 1
+            st.rerun()
