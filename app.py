@@ -25,6 +25,31 @@ st.markdown("""
         color: #0E1117 !important;
     }
     
+    /* --- NEW: GREY INPUT BOX (Password) --- */
+    /* Targets the input box specifically in the sidebar */
+    [data-testid="stSidebar"] [data-testid="stTextInput"] input {
+        background-color: #E9ECEF !important; /* Light Grey Background */
+        color: #000000 !important;
+        border: 1px solid #CED4DA !important;
+    }
+    
+    /* --- NEW: GREY RESPONSIVE BUTTON (End Session) --- */
+    div.stButton > button {
+        background-color: #6C757D !important; /* Professional Grey */
+        color: white !important;
+        border: none !important;
+        border-radius: 8px !important;
+        width: 100%;
+        transition: all 0.3s ease; /* Smooth animation */
+    }
+    
+    /* Button Hover Effect (Responsive) */
+    div.stButton > button:hover {
+        background-color: #5A6268 !important; /* Darker Grey on Hover */
+        transform: scale(1.02); /* Slight 'Pop' effect */
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
     /* Chat Message Bubbles */
     /* USER (Blue-ish tint) */
     [data-testid="stChatMessage"]:nth-child(odd) {
@@ -42,7 +67,7 @@ st.markdown("""
         padding: 15px;
     }
     
-    /* Input Box Styling */
+    /* Main Chat Input Box Styling (Keep White) */
     .stChatInputContainer textarea {
         background-color: #FFFFFF !important;
         color: #000000 !important;
@@ -97,7 +122,7 @@ with st.sidebar:
     st.markdown("## 🔐 Premium Access")
     st.markdown("---")
     
-    # Input Box
+    # Input Box (Now Grey due to CSS above)
     user_key = st.text_input("Enter Access Key:", type="password", help="Check your email for the key.")
     
     # Validation
@@ -116,7 +141,8 @@ with st.sidebar:
                     border:none; 
                     padding:10px; 
                     border-radius:5px; 
-                    cursor:pointer;">
+                    cursor:pointer;
+                    font-weight: bold;">
                     👉 Subscribe Now (₹99)
                 </button>
             </a>
@@ -126,7 +152,7 @@ with st.sidebar:
     # If code reaches here, the Key is Valid
     st.success(f"✅ Active: {user_key}")
     
-    # Reset Button
+    # Reset Button (Now Grey & Responsive)
     if st.button("End Session"):
         st.rerun()
 
