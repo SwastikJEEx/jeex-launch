@@ -26,24 +26,22 @@ if "audio_key" not in st.session_state: st.session_state.audio_key = 0
 if "payment_step" not in st.session_state: st.session_state.payment_step = 1
 if "user_details" not in st.session_state: st.session_state.user_details = {}
 
-# --- 4. PROFESSIONAL CSS (UNIVERSAL THEME FORCE) ---
+# --- 4. PROFESSIONAL CSS (UNIVERSAL UI FIX) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     
-    /* --- 1. FORCE DARK BACKGROUNDS --- */
+    /* 1. FORCE DARK BACKGROUNDS */
     .stApp { background-color: #0E1117 !important; color: #E0E0E0 !important; }
     [data-testid="stSidebar"] { background-color: #161B26 !important; border-right: 1px solid #2B313E !important; }
     
-    /* --- 2. UNIVERSAL TEXT VISIBILITY --- */
-    h1, h2, h3, h4, h5, h6, p, li, div, span, label {
-        color: #E0E0E0 !important;
-    }
+    /* 2. UNIVERSAL TEXT VISIBILITY */
+    h1, h2, h3, h4, h5, h6, p, li, div, span, label { color: #E0E0E0 !important; }
     strong { color: #FFD700 !important; font-weight: 600; }
     code { color: #FF7043 !important; }
 
-    /* --- 3. INPUT FIELDS (High Contrast) --- */
+    /* 3. INPUT FIELDS (High Contrast) */
     div[data-baseweb="input"], .stTextInput input {
         background-color: #1E2330 !important;
         border: 1px solid #4A90E2 !important; /* Blue Border */
@@ -52,8 +50,13 @@ st.markdown("""
         -webkit-text-fill-color: #FFFFFF !important;
     }
     ::placeholder { color: #AAAAAA !important; opacity: 1; }
+    
+    /* Fix "Show Password" Eye Icon Visibility */
+    button[aria-label="Show password"] {
+        color: #E0E0E0 !important;
+    }
 
-    /* --- 4. BUTTONS (Professional Blue) --- */
+    /* 4. BUTTONS (Professional Blue) */
     div.stButton > button { 
         background-color: #4A90E2 !important; /* JEEx Blue */
         color: white !important; 
@@ -68,14 +71,20 @@ st.markdown("""
         box-shadow: 0px 4px 15px rgba(74, 144, 226, 0.4);
     }
 
-    /* --- 5. EXPANDER & CONTAINERS --- */
+    /* 5. EXPANDER / DROPDOWN HEADERS (Fix White-on-White) */
     .streamlit-expanderHeader {
-        background-color: #1E2330 !important;
-        color: #E0E0E0 !important;
+        background-color: #2B313E !important; /* Dark Grey Background */
+        color: #FFFFFF !important; /* White Text */
         border-radius: 8px;
+        border: 1px solid #4A90E2 !important;
+    }
+    .streamlit-expanderHeader p {
+        color: #FFFFFF !important;
+        font-weight: 600;
+        font-size: 16px;
     }
     
-    /* --- 6. LAYOUT FIXES --- */
+    /* 6. LAYOUT FIXES */
     .block-container { padding-top: 1rem; padding-bottom: 140px; }
     [data-testid="stFileUploader"] { padding: 0px; }
     .stAudioInput { margin-top: 5px; }
@@ -199,7 +208,6 @@ with st.sidebar:
         uploaded_file = st.file_uploader("Upload", type=["jpg", "png", "pdf"], key=f"uploader_{st.session_state.uploader_key}", label_visibility="collapsed")
         
         st.markdown("**🎙️ Voice Chat**")
-        # NOTE: Key is kept dynamic to allow reset, but layout is cleaner now
         audio_value = st.audio_input("Speak", key=f"audio_{st.session_state.audio_key}", label_visibility="collapsed")
         
         st.markdown("---")
@@ -283,7 +291,28 @@ with st.sidebar:
 
         st.markdown("---")
         with st.expander("📄 Terms & Conditions"): 
-            st.markdown("Detailed terms available on main page.")
+            st.markdown("""
+            **JEEx Pro Terms of Service & EULA**
+
+            **1. Service Scope:**
+            JEEx Pro is an advanced AI-powered study companion designed for engineering entrance exam preparation. It is an educational aid and not a substitute for formal classroom coaching or official textbooks.
+
+            **2. Account Usage & Security:**
+            - **Single User License:** Each Access Key is strictly for one individual student. 
+            - **Prohibited Sharing:** Sharing your key, screenshots of premium content, or account details on public platforms (Telegram, Discord, etc.) is strictly prohibited.
+            - **Security Monitoring:** Our system logs concurrent active sessions. Detected sharing will result in an immediate, permanent ban without warning.
+
+            **3. Payment & Refund Policy:**
+            - **Digital Goods:** Access Keys are intangible digital products. Once a key is generated and delivered, the service is considered "consumed."
+            - **No Refunds:** All payments are final. We do not offer refunds, cancellations, or exchanges under any circumstances.
+
+            **4. AI Limitations & Accuracy:**
+            - While based on GPT-4o architecture, the AI may occasionally produce errors ("hallucinations"). 
+            - Students are advised to verify critical numerical values and chemical reactions with standard NCERT textbooks.
+
+            **5. Data Privacy:**
+            - We prioritize user privacy. Chat history and personal details are processed securely and are never sold to third-party advertisers or agencies.
+            """)
 
 # --- 8. ADMIN PANEL ---
 if status == "ADMIN":
@@ -307,7 +336,6 @@ if status != "VALID":
     </div>
     """, unsafe_allow_html=True)
     
-    # FIXED: Replaced HTML with Native Streamlit Columns for clean layout
     st.markdown("### 🏆 Why Top Rankers Choose JEEx **PRO**")
     
     c1, c2 = st.columns(2)
