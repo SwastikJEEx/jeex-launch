@@ -18,13 +18,10 @@ st.markdown("""
     [data-testid="stSidebar"] { background-color: #161B26; border-right: 1px solid #2B313E; }
     
     /* Center Layout alignment */
-    .block-container { padding-top: 3rem; }
+    .block-container { padding-top: 2rem; }
     
-    /* Chat Bubbles - Modern Clean Look */
-    [data-testid="stChatMessage"] {
-        background-color: transparent;
-        border: none;
-    }
+    /* Chat Bubbles */
+    [data-testid="stChatMessage"] { background-color: transparent; border: none; }
     [data-testid="stChatMessage"][data-testid="user"] {
         background-color: #1E2330;
         border-radius: 15px;
@@ -75,14 +72,15 @@ st.markdown("""
     /* Attachment Button Clean-up */
     [data-testid="stFileUploader"] { padding: 0px; }
     
-    /* Success/Error Message Styling */
-    .stSuccess, .stError, .stInfo, .stWarning {
-        border-radius: 10px;
+    /* Branding Header Centering */
+    .branding-container {
+        text-align: center;
+        margin-bottom: 20px;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. MATH CLEANING FUNCTION ---
+# --- 3. HELPER FUNCTIONS ---
 def clean_latex(text):
     if not text: return ""
     text = re.sub(r'\\\[(.*?)\\\]', r'$$\1$$', text, flags=re.DOTALL)
@@ -90,39 +88,36 @@ def clean_latex(text):
     text = re.sub(r'(?<!\\)\[\s*(.*?=.*?)\s*\]', r'$$\1$$', text, flags=re.DOTALL)
     return text
 
-# --- 4. SHOW LOGO & BRANDING (FIXED LOGO URL) ---
-col1, col2, col3 = st.columns([1, 6, 1])
+def show_branding():
+    """Displays Logo and Title Centered"""
+    col1, col2, col3 = st.columns([1, 4, 1])
+    with col2:
+        # Corrected RAW link for image
+        logo_url = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/87964f529cbef542ac7b4a40c1e3fa732c453998/logo.png.png"
+        try:
+            st.image(logo_url, use_container_width=True)
+        except:
+            pass # Fail silently if image breaks
+            
+    st.markdown("""
+        <div style="text-align: center; margin-bottom: 25px;">
+            <h1 style="margin: 0; font-size: 38px;">JEEx <span style="color:#4A90E2;">PRO</span></h1>
+            <p style="color: #AAAAAA; font-size: 14px; margin-top: 5px;">
+                Your 24/7 AI Rank Booster | Master JEE Mains & Advanced 🚀
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
 
-with col2:
-    # UPDATED: Using the 'raw' link which works for image embedding
-    logo_url = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/main/logo.png"
-    try:
-        st.image(logo_url, use_container_width=True)
-    except:
-        # Fallback if image fails to load
-        st.markdown("<h1 style='text-align: center'>⚛️ JEEx <span style='color:#4A90E2'>PRO</span></h1>", unsafe_allow_html=True)
-
-# Centered Branding Text
-st.markdown("""
-    <div style="text-align: center; margin-bottom: 30px;">
-        <p style="color: #AAAAAA; font-size: 14px; margin-top: -10px;">
-            Your 24/7 AI Rank Booster | Master JEE Mains & Advanced 🚀
-        </p>
-    </div>
-""", unsafe_allow_html=True)
-
-# --- 5. LOGOUT LOGIC ---
+# --- 4. LOGOUT LOGIC ---
 if st.session_state.get('logout', False):
     for key in list(st.session_state.keys()):
         del st.session_state[key]
     st.rerun()
 
-# --- 6. SMART KEY LOGIC ---
+# --- 5. SMART KEY LOGIC ---
 def check_key_status(user_key):
-    # Check Master Key
     if user_key == st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS"): return "VALID"
 
-    # Check Expiry
     expiry_db = st.secrets.get("KEY_EXPIRY", {})
     if user_key in expiry_db:
         try:
@@ -130,36 +125,34 @@ def check_key_status(user_key):
             if datetime.now().date() > expiry_date: return "EXPIRED"
         except: pass 
 
-    # Check Whitelist & Pattern
     if user_key in st.secrets.get("VALID_KEYS", []): return "VALID"
     if len(user_key) != 9 or user_key[:5] != "JEExa" or not user_key[5:].isdigit(): return "INVALID"
     if 1 <= int(user_key[5:]) <= 1000: return "VALID"
     return "INVALID"
 
-# --- DETAILED TERMS & CONDITIONS TEXT ---
+# --- 6. TERMS & CONDITIONS TEXT ---
 terms_text = """
 **JEEx Terms of Service & Usage Policy**
 
 **1. Service Description:**
-JEEx Pro is an AI-powered educational assistant designed to aid students in JEE preparation. While it utilizes advanced models (GPT-4o), it functions as a study companion and not a replacement for official textbooks.
+JEEx Pro is an AI-powered educational assistant designed to aid students in JEE preparation.
 
 **2. Accuracy Disclaimer:**
-Artificial Intelligence can occasionally produce "hallucinations" or incorrect calculations. Users are strictly advised to verify critical data, formulas, and constants with standard resources (NCERT, HC Verma). JEEx is not liable for marks lost in examinations.
+Artificial Intelligence can occasionally produce "hallucinations". Users are strictly advised to verify critical data with standard resources (NCERT, HC Verma).
 
 **3. Account Security:**
 * **Single User License:** This Access Key is licensed to ONE individual.
-* **Ban Policy:** Our system monitors IP addresses and simultaneous logins. Sharing your key on Telegram, WhatsApp, or with friends will result in an immediate, permanent ban without refund.
+* **Ban Policy:** Sharing your key will result in an immediate, permanent ban without refund.
 
 **4. Payments & Refunds:**
-* **No Refunds:** As this is a digital access service, all sales are final once the key is delivered.
-* **Validity:** Monthly subscriptions are valid for 30 days from the date of activation.
-* **Renewal:** Access will be automatically revoked upon expiry until renewed.
+* **No Refunds:** All sales are final once the key is delivered.
+* **Validity:** Monthly subscriptions are valid for 30 days.
 
 **5. Privacy:**
-Your chat data is processed securely via OpenAI APIs. We do not sell your personal data to third parties.
+Your chat data is processed securely via OpenAI APIs.
 """
 
-# --- 7. SIDEBAR (LOGIN & TOOLS) ---
+# --- 7. SIDEBAR LOGIC ---
 with st.sidebar:
     st.markdown("## 🔐 Premium Access")
     
@@ -172,7 +165,6 @@ with st.sidebar:
     # --- IF LOCKED ---
     if status != "VALID":
         if status == "EXPIRED":
-            # UPDATED EXPIRED MESSAGE
             st.error("⚠️ Plan Expired")
             st.warning("Your JEEx Pro monthly Plan has expired.")
             btn_text = "👉 Renew Now (₹99)"
@@ -194,13 +186,15 @@ with st.sidebar:
         with st.expander("📄 Terms & Conditions"):
              st.markdown(terms_text)
 
-# --- 8. MAIN AREA LOGIC ---
+# --- 8. MAIN APP LOGIC ---
 
-# SCENARIO A: LANDING PAGE (When Locked)
+# DISPLAY BRANDING ON EVERY PAGE
+show_branding()
+
+# SCENARIO A: LANDING PAGE (LOCKED)
 if status != "VALID":
     st.markdown("---")
     
-    # Instruction Box
     st.markdown("""
     <div style="background-color: #1E2330; padding: 20px; border-radius: 12px; border-left: 5px solid #4A90E2; margin-bottom: 30px; text-align: center;">
         <p style="font-size: 18px; margin: 0; color: #E6E6E6;">
@@ -210,7 +204,6 @@ if status != "VALID":
     </div>
     """, unsafe_allow_html=True)
 
-    # Feature List
     st.markdown("""
     <div style="background-color: #161B26; padding: 30px; border-radius: 15px; border: 1px solid #2B313E;">
         <h2 style="color: #4A90E2; margin-top: 0; font-size: 24px; border-bottom: 1px solid #3E4654; padding-bottom: 15px; margin-bottom: 20px; text-align: center;">
@@ -237,8 +230,6 @@ with st.sidebar:
     if uploaded_file: st.info(f"Attached: {uploaded_file.name}")
     st.markdown("---")
     if st.button("End Session"): st.session_state['logout'] = True; st.rerun()
-    
-    # Detailed T&C also visible when logged in
     with st.expander("📄 Terms & Conditions"):
          st.markdown(terms_text)
 
@@ -254,7 +245,6 @@ except:
 if "thread_id" not in st.session_state:
     thread = client.beta.threads.create()
     st.session_state.thread_id = thread.id
-    # Greeting
     welcome_msg = "Welcome Champ! 🎓 Main hoon JEEx. \n\nPhysics ka numerical, Chemistry ka reaction, ya Maths ka integral—bas photo bhejo ya type karo. Let's crack it! 🚀"
     st.session_state.messages = [{"role": "assistant", "content": welcome_msg}]
 
@@ -272,13 +262,12 @@ if prompt := st.chat_input("Ask a doubt (e.g. Rotational Motion)..."):
             if uploaded_file.type == "application/pdf": st.markdown(f"📄 *PDF Attached*")
             else: st.image(uploaded_file, width=200)
 
-    # Prepare Message
+    # Prepare Message Content
     message_content = [{"type": "text", "text": prompt}]
     attachments = [] 
     if uploaded_file:
         with st.spinner("Analyzing file..."):
             try:
-                # Save & Upload
                 temp_filename = f"temp_{uploaded_file.name}"
                 with open(temp_filename, "wb") as f: f.write(uploaded_file.getbuffer())
                 file_response = client.files.create(file=open(temp_filename, "rb"), purpose="assistants")
@@ -290,7 +279,7 @@ if prompt := st.chat_input("Ask a doubt (e.g. Rotational Motion)..."):
                 os.remove(temp_filename)
             except: st.error("File upload failed.")
 
-    # Send & Run with SUPER TUTOR INSTRUCTIONS
+    # Send to Thread
     client.beta.threads.messages.create(
         thread_id=st.session_state.thread_id,
         role="user",
@@ -298,35 +287,59 @@ if prompt := st.chat_input("Ask a doubt (e.g. Rotational Motion)..."):
         attachments=attachments if attachments else None
     )
 
-    # --- THE BRAIN: JEE ADVANCED KNOWLEDGE INJECTION ---
-    # This prompt makes the model strictly follow JEE standards
-    system_instruction = """
-    You are JEEx, an elite JEE Advanced Tutor.
-    1. **Strict Rigor:** When solving Physics/Maths, always assume JEE Advanced level. Use Calculus-based derivations where applicable.
-    2. **Format:** STRICTLY use LaTeX for ALL math expressions ($$x^2$$ for block, $x$ for inline). Never use standard text for variables.
-    3. **Tone:** Professional yet encouraging (Mentor vibe). Use Hinglish for motivation if the user seems stuck.
-    4. **Safety:** Verify dimensional consistency in Physics answers.
-    5. **PDFs:** Always use the Code Interpreter tool to analyze uploaded PDF papers deeply before answering.
-    """
-    
-    run = client.beta.threads.runs.create(
-        thread_id=st.session_state.thread_id,
-        assistant_id=assistant_id,
-        additional_instructions=system_instruction
-    )
-
+    # --- STREAMING RESPONSE LOGIC ---
     with st.chat_message("assistant"):
-        status_box = st.empty()
-        status_box.markdown("**Thinking...** ⏳")
-        while run.status in ['queued', 'in_progress', 'cancelling']:
-            time.sleep(1)
-            run = client.beta.threads.runs.retrieve(thread_id=st.session_state.thread_id, run_id=run.id)
+        stream = client.beta.threads.runs.create(
+            thread_id=st.session_state.thread_id,
+            assistant_id=assistant_id,
+            stream=True,
+            additional_instructions="""
+            You are JEEx, an elite JEE Advanced Tutor.
+            1. LEVEL: Solve problems using Irodov/Cengage level rigor.
+            2. FORMAT: STRICTLY use LaTeX for ALL math expressions ($$x^2$$ for block, $x$ for inline).
+            3. TONE: Professional yet encouraging (Mentor vibe). Use Hinglish for motivation.
+            4. PDFS: Use Code Interpreter to analyze uploaded PDFs.
+            """
+        )
         
-        if run.status == 'completed':
-            status_box.empty()
-            messages = client.beta.threads.messages.list(thread_id=st.session_state.thread_id)
-            final_response = clean_latex(messages.data[0].content[0].text.value)
-            st.markdown(final_response)
-            st.session_state.messages.append({"role": "assistant", "content": final_response})
-            st.session_state.uploader_key += 1
-            st.rerun()
+        # Generator for streaming
+        def stream_generator():
+            full_text = ""
+            for event in stream:
+                if event.event == 'thread.message.delta':
+                    for content in event.data.delta.content:
+                        if content.type == 'text':
+                            # Get the text chunk
+                            text_chunk = content.text.value
+                            # Clean it on the fly (basic cleaning)
+                            text_chunk = clean_latex(text_chunk) 
+                            full_text += text_chunk
+                            yield text_chunk
+            return full_text
+
+        # Use st.write_stream for the typing effect
+        # Note: 'stream' in create() returns a generator of events. We need to handle them carefully.
+        # Since 'assistants' API streaming is complex, we use a simpler 'run_and_poll' fallback if stream fails,
+        # BUT here is the robust way to stream with the Beta SDK:
+        
+        response_container = st.empty()
+        collected_message = ""
+        
+        # Iterate through the stream events
+        for event in stream:
+            if event.event == "thread.message.delta":
+                for content in event.data.delta.content:
+                    if content.type == "text":
+                        collected_message += content.text.value
+                        # Update the UI with the clean latex version so far
+                        response_container.markdown(clean_latex(collected_message) + "▌")
+            
+            elif event.event == "thread.run.completed":
+                break
+
+        # Final update without the cursor
+        response_container.markdown(clean_latex(collected_message))
+        
+        # Save to history
+        st.session_state.messages.append({"role": "assistant", "content": collected_message})
+        st.session_state.uploader_key += 1
