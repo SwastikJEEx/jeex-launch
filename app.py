@@ -63,7 +63,7 @@ def clean_latex(text):
 # Logic: Try to show the logo image. If file missing, fall back to text title.
 # --- 4. SHOW LOGO & BRANDING ---
 # Paste the HTTP link you copied from GitHub below inside the quotes
-logo_url = "https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/logo.png" 
+logo_url = "https://github.com/SwastikJEEx/jeex-launch/blob/main/logo.png.png" 
 
 try:
     st.image(logo_url, width=350)
@@ -336,5 +336,6 @@ if prompt:
             st.session_state.messages.append({"role": "assistant", "content": final_response})
             st.session_state.uploader_key += 1
             st.rerun()
+
 
 
