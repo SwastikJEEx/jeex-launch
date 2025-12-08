@@ -16,14 +16,11 @@ ADMIN_EMAIL = "jeexaipro@gmail.com"
 LOGO_URL = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/1d6ef8ca3ac05432ed370338d4c04d6a03541f23/logo.png.png"
 
 # --- 3. SESSION STATE INITIALIZATION ---
-# We initialize all variables here to prevent "KeyError" during reruns
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "assistant", "content": "Welcome Champ! 🎓 Physics, Chemistry ya Maths—bas photo bhejo ya type karo. Let's crack it! 🚀"}]
 if "processing" not in st.session_state: st.session_state.processing = False
 if "uploader_key" not in st.session_state: st.session_state.uploader_key = 0
 if "audio_key" not in st.session_state: st.session_state.audio_key = 0
-if "user_prompt" not in st.session_state: st.session_state.user_prompt = None
-if "pending_audio" not in st.session_state: st.session_state.pending_audio = None
 
 # --- 4. PROFESSIONAL CSS ---
 st.markdown("""
@@ -63,7 +60,7 @@ st.markdown("""
     .stAudioInput { margin-top: 5px; }
     .stChatMessage .st-emotion-cache-1p1m4ay { width: 45px; height: 45px; }
     
-    /* Disable interactions when processing */
+    /* Locking UI */
     .stApp[data-test-state="running"] .stChatInput { opacity: 0.5; pointer-events: none; }
 </style>
 """, unsafe_allow_html=True)
@@ -71,20 +68,24 @@ st.markdown("""
 # --- 5. HELPER FUNCTIONS ---
 
 def send_auto_notification(name, email, phone):
-    """Sends registration email via FormSubmit"""
+    """Sends registration email via FormSubmit (Improved Reliability)"""
     try:
         url = f"https://formsubmit.co/{ADMIN_EMAIL}"
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
         payload = {
-            "_subject": f"New JEEx Subscriber: {name}",
+            "_subject": f"New Subscriber: {name}",
             "_captcha": "false",
             "_template": "table",
             "name": name,
             "email": email,
             "phone": phone,
-            "status": "Pending Payment",
+            "status": "Awaiting Payment",
             "date": str(datetime.now())
         }
-        resp = requests.post(url, data=payload)
+        # Send Request
+        resp = requests.post(url, data=payload, headers=headers)
         return resp.status_code == 200
     except:
         return False
@@ -164,6 +165,7 @@ if st.session_state.get('logout', False):
 with st.sidebar:
     st.markdown("## 🔐 Premium Access")
     
+    # Hide password with dots
     user_key = st.text_input("Enter Access Key:", type="password") 
     status = check_key_status(user_key)
     
@@ -176,7 +178,7 @@ with st.sidebar:
         uploaded_file = st.file_uploader("Upload", type=["jpg", "png", "pdf"], key=f"uploader_{st.session_state.uploader_key}", label_visibility="collapsed")
         
         st.markdown("**🎙️ Voice Chat**")
-        # Voice Widget - Logic handled in main loop
+        # Audio Widget - Reset key only changes after full processing cycle
         audio_value = st.audio_input("Speak", key=f"audio_{st.session_state.audio_key}", label_visibility="collapsed")
         
         st.markdown("---")
@@ -202,10 +204,14 @@ with st.sidebar:
             
             if submitted:
                 if name and email and phone:
+                    # 1. AUTO-EMAIL NOTIFICATION
                     is_sent = send_auto_notification(name, email, phone)
-                    if is_sent: st.success("Registration Sent! Check your email for confirmation.")
-                    else: st.warning("Registration saved locally. Please proceed.")
                     
+                    if is_sent:
+                        st.success("Details Sent! Admin notified.")
+                    else:
+                        st.warning("Network busy, but registration saved locally.")
+                        
                     st.markdown("---")
                     st.markdown("**Step 1: Scan & Pay ₹99**")
                     try: st.image("upi_qr.png", caption="Scan UPI QR", use_container_width=True)
@@ -259,18 +265,14 @@ if status != "VALID":
         st.info("**⚡ 24/7 Strategic Mentorship**\n\nYour personal AI coach for study planning, backlog management, and exam strategy at 3 AM.")
     
     st.markdown("---")
-    with st.expander("📄 Detailed Terms & Conditions"):
+    with st.expander("📄 Detailed Terms of Service & Privacy"):
         st.markdown("""
         ### JEEx Pro Terms of Service
         **1. Acceptance of Terms:** By accessing JEEx Pro, you confirm that you are a student preparing for competitive exams and agree to use this tool solely for educational purposes.
-        
         **2. License Grant:** JEEx grants you a limited, non-exclusive, non-transferable license. Your Access Key is strictly personal. Sharing it will result in an immediate ban.
-        
         **3. AI Accuracy:** JEEx utilizes GPT-4o. While highly accurate, hallucinations can occur. You agree to verify all formulas with standard textbooks (NCERT).
-        
         **4. Refund Policy:** Access Keys are digital goods. **No Refunds** will be provided once a key is issued.
-        
-        **5. Privacy:** We respect your privacy. Chat logs are processed securely via OpenAI APIs.
+        **5. Privacy:** We respect your privacy. Chat logs are processed securely via OpenAI APIs and are not sold to third parties.
         """)
     st.stop()
 
@@ -288,61 +290,46 @@ if "thread_id" not in st.session_state:
     thread = client.beta.threads.create()
     st.session_state.thread_id = thread.id
 
-# --- INPUT HANDLING (LOCKING LOGIC) ---
+# --- INPUT HANDLING (FIXED VOICE & LOCKING) ---
 
-# 1. Handle Voice Input FIRST (if new audio exists)
-if 'audio_value' in locals() and audio_value and not st.session_state.processing:
-    # Set flag immediately to lock UI on next rerun
-    st.session_state.processing = True 
-    st.session_state.pending_audio = audio_value
-    st.rerun() # Force rerun to update UI state (grey out input)
+# 1. Processing Logic (Voice First)
+# Note: We do NOT use st.rerun() inside here to avoid crashing the widget
+user_input_content = None
 
-# 2. Process Pending Audio (in locked state)
-if st.session_state.processing and st.session_state.pending_audio:
-    with st.spinner("🎧 Listening..."):
-        try:
-            # Context prompt helps Whisper understand Physics terms
-            transcription = client.audio.transcriptions.create(
-                model="whisper-1", 
-                file=st.session_state.pending_audio, 
-                language="en",
-                prompt="Physics, Chemistry, Mathematics, JEE, Integration, Derivative, Velocity, Mass"
-            )
-            st.session_state.user_prompt = transcription.text
-        except Exception as e:
-            st.error(f"Voice Error: {e}")
-            st.session_state.processing = False
-    st.session_state.pending_audio = None # Clear pending
+if 'audio_value' in locals() and audio_value:
+    if not st.session_state.processing: # Only process if not already busy
+        with st.spinner("🎧 Listening..."):
+            try:
+                # Force English to fix hallucinations
+                transcription = client.audio.transcriptions.create(
+                    model="whisper-1", 
+                    file=audio_value, 
+                    language="en",
+                    prompt="Physics, Chemistry, Maths, JEE, Integration"
+                )
+                user_input_content = transcription.text
+            except Exception as e:
+                st.error(f"Voice Error: {e}")
 
-# 3. Display History
-for msg in st.session_state.messages:
-    avatar_icon = LOGO_URL if msg["role"] == "assistant" else "🧑‍🎓"
-    with st.chat_message(msg["role"], avatar=avatar_icon):
-        if "file_data" in msg:
-            if msg["file_type"].startswith("image"): st.image(msg["file_data"], width=200)
-            else: st.markdown(f"📄 *{msg['file_name']}*")
-        st.markdown(clean_latex(msg["content"]))
-
-# 4. Chat Input (Disabled if processing)
+# 2. Text Input (Disabled if processing)
 if st.session_state.processing:
-    chat_val = st.chat_input("Thinking... Please wait.", disabled=True)
+    chat_val = st.chat_input("Thinking...", disabled=True)
 else:
     chat_val = st.chat_input("Ask a doubt...")
 
-# 5. Determine Final Prompt
-final_prompt = None
-if st.session_state.user_prompt: # From Voice
-    final_prompt = st.session_state.user_prompt
-    st.session_state.user_prompt = None # Clear after use
-elif chat_val: # From Text
-    final_prompt = chat_val
-    st.session_state.processing = True # Lock for text input too
-    st.rerun() # Rerun to visualize lock
+# 3. Determine Final Prompt
+if user_input_content:
+    prompt = user_input_content
+elif chat_val:
+    prompt = chat_val
+else:
+    prompt = None
 
-# --- MAIN EXECUTION BLOCK ---
-if final_prompt and st.session_state.processing:
+# --- MAIN EXECUTION LOOP ---
+if prompt and not st.session_state.processing:
+    st.session_state.processing = True # LOCK INTERFACE
     
-    # A. Store File Data for History
+    # 1. Store File Data for History
     file_data_entry = {}
     if uploaded_file:
         file_data_entry = {
@@ -351,27 +338,43 @@ if final_prompt and st.session_state.processing:
             "file_type": uploaded_file.type
         }
 
-    # B. Append User Message
-    user_msg_dict = {"role": "user", "content": final_prompt}
-    user_msg_dict.update(file_data_entry)
-    st.session_state.messages.append(user_msg_dict)
+    # 2. Append User Message
+    st.session_state.messages.append({
+        "role": "user", 
+        "content": prompt,
+        **file_data_entry
+    })
     
-    # RENDER USER MESSAGE (So user sees it immediately)
-    with st.chat_message("user", avatar="🧑‍🎓"):
-        st.markdown(final_prompt)
-        if uploaded_file:
-            if uploaded_file.type == "application/pdf": st.markdown(f"📄 *{uploaded_file.name}*")
-            else: st.image(uploaded_file, width=200)
+    # 3. Force UI Update to show user message immediately
+    st.rerun()
 
-    # C. API Request & File Handling
-    message_content = [{"type": "text", "text": final_prompt}]
+# --- DISPLAY HISTORY ---
+for msg in st.session_state.messages:
+    avatar_icon = LOGO_URL if msg["role"] == "assistant" else "🧑‍🎓"
+    with st.chat_message(msg["role"], avatar=avatar_icon):
+        if "file_data" in msg:
+            if msg["file_type"].startswith("image"):
+                st.image(msg["file_data"], width=200)
+            else:
+                st.markdown(f"📄 *{msg['file_name']}*")
+        st.markdown(clean_latex(msg["content"]))
+
+# --- GENERATE RESPONSE (Run only if we just added a user msg and haven't answered yet) ---
+if st.session_state.processing and st.session_state.messages[-1]["role"] == "user":
+    
+    last_msg = st.session_state.messages[-1]
+    msg_text = last_msg["content"]
+    
+    # 4. API Request
+    message_content = [{"type": "text", "text": msg_text}]
     attachments = [] 
+    
+    # Handle File Upload to OpenAI (Hidden Logic)
     if uploaded_file:
         with st.spinner("Analyzing file..."):
             try:
                 temp_filename = f"temp_{uploaded_file.name}"
                 with open(temp_filename, "wb") as f: f.write(uploaded_file.getbuffer())
-                
                 file_response = client.files.create(file=open(temp_filename, "rb"), purpose="assistants")
                 
                 if uploaded_file.type == "application/pdf":
@@ -382,7 +385,7 @@ if final_prompt and st.session_state.processing:
                 os.remove(temp_filename)
             except: st.error("File upload failed.")
 
-    # D. Send & Stream
+    # 5. Send & Stream
     client.beta.threads.messages.create(
         thread_id=st.session_state.thread_id,
         role="user",
@@ -417,8 +420,11 @@ if final_prompt and st.session_state.processing:
         response_container.markdown(clean_latex(collected_message))
         st.session_state.messages.append({"role": "assistant", "content": collected_message})
         
-        # E. UNLOCK & RESET
-        st.session_state.uploader_key += 1
-        st.session_state.audio_key += 1 # Reset audio widget
-        st.session_state.processing = False # Unlock input
-        st.rerun()
+    # 6. UNLOCK AND RESET (CRITICAL FIX FOR VOICE ERROR)
+    st.session_state.uploader_key += 1
+    # Only change audio key IF audio was used, to clear the widget
+    if 'audio_value' in locals() and audio_value:
+        st.session_state.audio_key += 1
+        
+    st.session_state.processing = False # Unlock input
+    st.rerun()
