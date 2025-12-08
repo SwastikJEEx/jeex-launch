@@ -73,12 +73,9 @@ LOGO_URL = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/1d6ef8ca3a
 
 def show_branding():
     """Displays Logo and Title PERFECTLY CENTERED"""
-    # Using columns to center the image effectively
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
-        try: 
-            # Bigger Logo (Width 280)
-            st.image(LOGO_URL, width=280) 
+        try: st.image(LOGO_URL, width=280) 
         except: pass
             
     st.markdown("""
@@ -137,7 +134,36 @@ if st.session_state.get('logout', False):
     for key in list(st.session_state.keys()): del st.session_state[key]
     st.rerun()
 
-# --- 6. SIDEBAR (Tools Moved Here) ---
+# --- 6. DETAILED TERMS & CONDITIONS ---
+terms_text = """
+### JEEx Pro Terms of Service & End User License Agreement
+
+**1. Acceptance of Terms**
+By accessing JEEx Pro, you confirm that you are a student preparing for competitive exams and agree to use this tool solely for educational purposes.
+
+**2. License Grant & Restrictions**
+* **License:** JEEx grants you a limited, non-exclusive, non-transferable license to use the AI tutor.
+* **Single User Only:** Your Access Key is strictly personal. Sharing it on public forums (Telegram, WhatsApp, Reddit) or with friends is a violation of this agreement.
+* **Security Monitoring:** Our system actively logs IP addresses and device fingerprints. Simultaneous logins from multiple locations will trigger an automatic, irreversible ban.
+
+**3. AI Accuracy & Educational Disclaimer**
+* **Nature of AI:** JEEx Pro utilizes advanced LLMs (GPT-4o) to generate responses. While highly accurate, "hallucinations" (incorrect data) can occur.
+* **User Verification:** You agree to verify all formulas, constants, and solutions with standard textbooks (NCERT, H.C. Verma). JEEx is a study companion, not a replacement for official academic instruction.
+* **Liability:** JEEx is not liable for any loss of marks, exam results, or academic consequences resulting from reliance on the tool.
+
+**4. Payments & Refund Policy**
+* **Digital Goods:** Access Keys are classified as intangible digital goods. Once a key is generated and delivered to you, the service is considered "consumed."
+* **No Refunds:** We enforce a strict **No Refund Policy**. All sales are final.
+* **Validity:** Subscriptions are valid for exactly 30 days from the date of activation in our system.
+
+**5. Intellectual Property**
+The branding, code, logos, and interface of JEEx Pro are the intellectual property of the developers. Unauthorized reproduction or reverse engineering is prohibited.
+
+**6. Termination**
+We reserve the right to terminate your access immediately, without notice or refund, if you violate these terms (e.g., key sharing, abusive language, scraping data).
+"""
+
+# --- 7. SIDEBAR (Tools Moved Here) ---
 with st.sidebar:
     st.markdown("## 🔐 Premium Access")
     if "uploader_key" not in st.session_state: st.session_state.uploader_key = 0
@@ -180,9 +206,9 @@ with st.sidebar:
         st.markdown(f'<a href="{payment_link}" target="_blank"><button style="width:100%; background-color:#4A90E2; color:white; border:none; padding:12px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:15px; margin-top:10px;">{btn_text}</button></a>', unsafe_allow_html=True)
         st.markdown("---")
         with st.expander("📄 Terms & Conditions"): 
-            st.markdown("**JEEx Policy:**\n1. Personal Use Only.\n2. No Refunds.\n3. AI may make errors.")
+            st.markdown("Please read the detailed terms on the main page.")
 
-# --- 7. ADMIN PANEL ---
+# --- 8. ADMIN PANEL ---
 if status == "ADMIN":
     st.sidebar.success("🔑 Admin Mode")
     c1, c2 = st.columns(2)
@@ -193,7 +219,7 @@ if status == "ADMIN":
         st.code(f'"{new_id}" = "{exp}"', language="toml")
     st.stop()
 
-# --- 8. LANDING PAGE (LOCKED) ---
+# --- 9. LANDING PAGE (LOCKED) ---
 show_branding()
 
 if status != "VALID":
@@ -204,32 +230,36 @@ if status != "VALID":
     </div>
     """, unsafe_allow_html=True)
     
-    # CLEAN MARKDOWN DESCRIPTION (No Broken HTML)
+    # 6 STRONG POINTS DESCRIPTION
     st.markdown("### 🏆 Why Top Rankers Choose JEEx **PRO**")
     
     c1, c2 = st.columns(2)
     with c1:
         st.markdown("**🧠 Advanced Problem Solving**")
-        st.caption("Solves Irodov, Cengage, and PYQ level problems with step-by-step logic.")
-        st.markdown("**👁️ Vision Intelligence (OCR)**")
-        st.caption("Stuck on a handwritten question? Just upload a photo. JEEx reads and solves it.")
+        st.caption("Solves Irodov, Cengage, and PYQ level problems with step-by-step logic, not just answers.")
+        
+        st.markdown("**📄 Full Document Brain**")
+        st.caption("Upload entire PDF assignments. Our Code Interpreter analyzes the full document context to solve multiple questions.")
+        
+        st.markdown("**🎯 Concept-First Approach**")
+        st.caption("We don't just solve; we explain the 'Why'. Learn the derivation and underlying concept behind every solution.")
+
     with c2:
-        st.markdown("**📄 Full Document Analysis**")
-        st.caption("Upload PDF assignments. Our Code Interpreter analyzes the full context.")
+        st.markdown("**👁️ Vision Intelligence (OCR)**")
+        st.caption("Stuck on a handwritten question? Just upload a photo. JEEx reads handwriting and graphs instantly.")
+        
         st.markdown("**➗ Perfect Math Formatting**")
-        st.caption("Renders complex integrals and matrices with LaTeX precision.")
+        st.caption("Experience textbook-quality rendering for Integrals, Matrices, and Organic Mechanisms with LaTeX precision.")
+        
+        st.markdown("**⚡ 24/7 Strategic Mentorship**")
+        st.caption("Your personal AI coach for study planning, backlog management, and exam strategy at 3 AM.")
     
     st.markdown("---")
-    with st.expander("📄 Detailed Terms of Service"):
-        st.markdown("""
-        1. **Nature of Service:** Study aid for JEE preparation.
-        2. **Accuracy:** Always verify with NCERT.
-        3. **Security:** Single user license only.
-        4. **Refunds:** No refunds for digital goods.
-        """)
+    with st.expander("📄 Read Detailed Terms & Conditions"):
+        st.markdown(terms_text)
     st.stop()
 
-# --- 9. UNLOCKED CHAT ---
+# --- 10. UNLOCKED CHAT ---
 
 # Setup OpenAI
 try:
