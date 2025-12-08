@@ -26,13 +26,13 @@ if "audio_key" not in st.session_state: st.session_state.audio_key = 0
 if "payment_step" not in st.session_state: st.session_state.payment_step = 1
 if "user_details" not in st.session_state: st.session_state.user_details = {}
 
-# --- 4. PROFESSIONAL CSS (UNIVERSAL VISIBILITY FIX) ---
+# --- 4. PROFESSIONAL CSS (UNIVERSAL UI FIX) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     
-    /* 1. FORCE DARK BACKGROUNDS (Overrides Browser Theme) */
+    /* 1. FORCE DARK BACKGROUNDS */
     .stApp { background-color: #0E1117 !important; color: #E0E0E0 !important; }
     [data-testid="stSidebar"] { background-color: #161B26 !important; border-right: 1px solid #2B313E !important; }
     
@@ -41,27 +41,20 @@ st.markdown("""
     strong { color: #FFD700 !important; font-weight: 600; }
     code { color: #FF7043 !important; }
 
-    /* 3. INPUT FIELDS (Forced High Contrast) */
-    /* Target all input containers to force dark background */
-    div[data-baseweb="input"] {
+    /* 3. INPUT FIELDS (High Contrast) */
+    div[data-baseweb="input"], .stTextInput input {
         background-color: #1E2330 !important;
         border: 1px solid #4A90E2 !important; /* Blue Border */
         border-radius: 8px !important;
-    }
-    /* Target the actual text input area */
-    input[type="text"], input[type="password"], textarea {
-        background-color: transparent !important;
         color: #FFFFFF !important; /* Force White Text */
         -webkit-text-fill-color: #FFFFFF !important;
-        caret-color: #4A90E2 !important;
     }
-    /* Force Placeholder Color */
     ::placeholder { color: #AAAAAA !important; opacity: 1; }
-    /* Force Label Color */
-    label, .stTextInput > label { color: #FFFFFF !important; }
     
     /* Fix "Show Password" Eye Icon Visibility */
-    button[aria-label="Show password"] { color: #E0E0E0 !important; }
+    button[aria-label="Show password"] {
+        color: #E0E0E0 !important;
+    }
 
     /* 4. BUTTONS (Professional Blue) */
     div.stButton > button { 
@@ -90,12 +83,6 @@ st.markdown("""
         font-weight: 600;
         font-size: 16px;
     }
-    .streamlit-expanderContent {
-        background-color: #161B26 !important;
-        color: #E0E0E0 !important;
-        border: 1px solid #2B313E;
-        border-radius: 0 0 8px 8px;
-    }
     
     /* 6. LAYOUT FIXES */
     .block-container { padding-top: 1rem; padding-bottom: 140px; }
@@ -115,7 +102,8 @@ def send_final_notification(name, email, phone, trans_id):
     try:
         url = f"https://formsubmit.co/{ADMIN_EMAIL}"
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            "Referer": "https://jeex-pro.streamlit.app/"
         }
         payload = {
             "_subject": f"💰 PAYMENT VERIFICATION: {name}",
@@ -128,8 +116,8 @@ def send_final_notification(name, email, phone, trans_id):
             "Status": "Paid - Waiting for Key",
             "Timestamp": str(datetime.now())
         }
-        requests.post(url, data=payload, headers=headers)
-        return True
+        resp = requests.post(url, data=payload, headers=headers)
+        return resp.status_code == 200
     except:
         return False
 
@@ -139,7 +127,8 @@ def clean_latex(text):
     text = re.sub(r'\\\[(.*?)\\\]', r'$$\1$$', text, flags=re.DOTALL)
     text = re.sub(r'\\\((.*?)\\\)', r'$\1$', text, flags=re.DOTALL)
     text = re.sub(r'(?<!\\)\[\s*(.*?=.*?)\s*\]', r'$$\1$$', text, flags=re.DOTALL)
-    return text.replace('$$$', '$')
+    text = text.replace('$$$', '$')
+    return text
 
 def sanitize_text_for_pdf(text):
     text = text.replace('•', '-').replace('—', '-').replace('’', "'")
@@ -193,8 +182,8 @@ def check_key_status(user_key):
     expiry_db = st.secrets.get("KEY_EXPIRY", {})
     if user_key in expiry_db:
         try:
-            exp = datetime.strptime(expiry_db[user_key], "%Y-%m-%d").date()
-            if datetime.now().date() > exp: return "EXPIRED"
+            expiry_date = datetime.strptime(expiry_db[user_key], "%Y-%m-%d").date()
+            if datetime.now().date() > expiry_date: return "EXPIRED"
             else: return "VALID"
         except: return "INVALID"
     return "INVALID"
@@ -230,61 +219,71 @@ with st.sidebar:
 
     # --- LOCKED (NEW PAYMENT WORKFLOW) ---
     else:
-        if user_key and status != "VALID": st.error("❌ Invalid Key")
+        if user_key and status != "VALID": st.error("❌ Invalid or Expired Key")
         
         st.markdown("### ⚡ Subscribe Now")
         with st.expander("💎 Get Premium (₹99/mo)", expanded=True):
             
-            # STEP 1
+            # STEP 1: COLLECT USER DETAILS
             if st.session_state.payment_step == 1:
                 st.markdown("Fill details to get your key:")
                 with st.form("reg_form"):
                     name = st.text_input("Name")
                     email = st.text_input("Email")
                     phone = st.text_input("WhatsApp No.")
-                    sub = st.form_submit_button("🚀 Proceed to Pay")
+                    submitted = st.form_submit_button("🚀 Proceed to Pay")
                 
-                if sub:
+                if submitted:
                     if name and email and phone:
+                        # Save details locally (No Email Yet)
                         st.session_state.user_details = {"name": name, "email": email, "phone": phone}
-                        st.session_state.payment_step = 2
+                        st.session_state.payment_step = 2 # Move to Payment
                         st.rerun()
-                    else: st.warning("⚠️ Fill all details.")
+                    else:
+                        st.warning("⚠️ Please fill all details.")
 
-            # STEP 2
+            # STEP 2: QR + TRANSACTION ID INPUT
             elif st.session_state.payment_step == 2:
                 st.info(f"Hi {st.session_state.user_details['name']}, scan to pay:")
-                try: st.image("upi_qr.png", caption="UPI QR", use_container_width=True)
+                
+                # Show QR
+                try: st.image("upi_qr.png", caption="Scan UPI QR", use_container_width=True)
                 except: st.info(f"Pay to: **{ADMIN_WHATSAPP}@upi**")
                 
                 st.markdown("---")
-                st.markdown("**Step 2: Enter Transaction ID**")
-                trans_id = st.text_input("UPI Transaction ID:", placeholder="e.g. T230...")
-                st.caption("ℹ️ Found in GPay/PhonePe History")
                 
+                # Transaction ID Form
+                st.markdown("**Step 2: Enter Transaction ID**")
+                trans_id = st.text_input("UPI Transaction ID (or Ref No.):", placeholder="e.g. T2308191234")
+                st.caption("ℹ️ *Open GPay/PhonePe > History > Tap Transaction > Copy 'Txn ID' or 'UPI Ref No'*")
+                
+                # VERIFY BUTTON (Triggers Email)
                 if st.button("✅ Verify & Submit"):
-                    if len(trans_id) > 6:
-                        det = st.session_state.user_details
-                        send_final_notification(det['name'], det['email'], det['phone'], trans_id)
+                    if len(trans_id) > 8: # Basic validation
+                        details = st.session_state.user_details
+                        # NOW SEND EMAIL
+                        is_sent = send_final_notification(details['name'], details['email'], details['phone'], trans_id)
+                        
                         st.session_state.user_details['trans_id'] = trans_id
                         st.session_state.payment_step = 3
                         st.rerun()
-                    else: st.error("Invalid ID")
+                    else:
+                        st.error("⚠️ Please enter a valid Transaction ID.")
                 
-                if st.button("Back"):
+                if st.button("🔙 Go Back"):
                     st.session_state.payment_step = 1
                     st.rerun()
 
-            # STEP 3
+            # STEP 3: SUCCESS & WHATSAPP
             elif st.session_state.payment_step == 3:
-                st.success("🎉 Payment Submitted!")
-                st.markdown("Please allow few hours for verification. Once verified you will receive your access key.")
+                st.success("🎉 Payment Submitted! Admin notified.")
+                st.markdown("Please allow few hours for verification. Once verified you will receive your access key on the provided email and Whatsapp number.")
                 
-                det = st.session_state.user_details
-                msg = f"Hello JEEx!%0A*PAID*%0AName: {det['name']}%0AID: {det['trans_id']}"
+                details = st.session_state.user_details
+                msg = f"Hello JEEx Team!%0A%0A*PAYMENT VERIFICATION REQUEST*%0A👤 Name: {details['name']}%0A📧 Email: {details['email']}%0A📱 Phone: {details['phone']}%0A🆔 Trans ID: {details['trans_id']}%0A%0AI have paid ₹99. Please send my key."
                 wa_link = f"https://wa.me/{ADMIN_WHATSAPP}?text={msg}"
                 
-                st.markdown(f'<a href="{wa_link}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; border:none; padding:12px; border-radius:5px; font-weight:bold;">👉 Chat on WhatsApp</button></a>', unsafe_allow_html=True)
+                st.markdown(f'<a href="{wa_link}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; border:none; padding:12px; border-radius:5px; cursor:pointer; font-weight:bold;">👉 Chat on WhatsApp (Faster)</button></a>', unsafe_allow_html=True)
                 
                 if st.button("Start Over"):
                     st.session_state.payment_step = 1
@@ -293,10 +292,26 @@ with st.sidebar:
         st.markdown("---")
         with st.expander("📄 Terms & Conditions"): 
             st.markdown("""
-            **1. Service Scope:** Educational aid only.
-            **2. Account Usage:** Single user license.
-            **3. Payment:** No refunds on digital keys.
-            **4. AI Limitations:** Verify with NCERT.
+            **JEEx Pro Terms of Service & EULA**
+
+            **1. Service Scope:**
+            JEEx Pro is an advanced AI-powered study companion designed for engineering entrance exam preparation. It is an educational aid and not a substitute for formal classroom coaching or official textbooks.
+
+            **2. Account Usage & Security:**
+            - **Single User License:** Each Access Key is strictly for one individual student. 
+            - **Prohibited Sharing:** Sharing your key, screenshots of premium content, or account details on public platforms (Telegram, Discord, etc.) is strictly prohibited.
+            - **Security Monitoring:** Our system logs concurrent active sessions. Detected sharing will result in an immediate, permanent ban without warning.
+
+            **3. Payment & Refund Policy:**
+            - **Digital Goods:** Access Keys are intangible digital products. Once a key is generated and delivered, the service is considered "consumed."
+            - **No Refunds:** All payments are final. We do not offer refunds, cancellations, or exchanges under any circumstances.
+
+            **4. AI Limitations & Accuracy:**
+            - While based on GPT-4o architecture, the AI may occasionally produce errors ("hallucinations"). 
+            - Students are advised to verify critical numerical values and chemical reactions with standard NCERT textbooks.
+
+            **5. Data Privacy:**
+            - We prioritize user privacy. Chat history and personal details are processed securely and are never sold to third-party advertisers or agencies.
             """)
 
 # --- 8. ADMIN PANEL ---
@@ -322,102 +337,175 @@ if status != "VALID":
     """, unsafe_allow_html=True)
     
     st.markdown("### 🏆 Why Top Rankers Choose JEEx **PRO**")
+    
     c1, c2 = st.columns(2)
     with c1:
-        st.info("**🧠 Advanced Problem Solving**\n\nSolves Irodov, Cengage, and PYQ level problems.")
-        st.info("**📄 Full Document Brain**\n\nUpload entire PDF assignments.")
-        st.info("**🎯 Concept-First Approach**\n\nWe don't just solve; we explain the 'Why'.")
-    with c2:
-        st.info("**👁️ Vision Intelligence (OCR)**\n\nReads handwritten questions from photos.")
-        st.info("**➗ Perfect Math Formatting**\n\nTextbook-quality LaTeX rendering.")
-        st.info("**⚡ 24/7 Strategic Mentorship**\n\nYour personal AI coach.")
+        st.info("**🧠 Advanced Problem Solving**\n\nSolves Irodov, Cengage, and PYQ level problems with step-by-step logic, not just answers.")
+        st.info("**📄 Full Document Brain**\n\nUpload entire PDF assignments. Our Code Interpreter analyzes the full document context to solve multiple questions.")
+        st.info("**🎯 Concept-First Approach**\n\nWe don't just solve; we explain the 'Why'. Learn the derivation and underlying concept behind every solution.")
     
+    with c2:
+        st.info("**👁️ Vision Intelligence (OCR)**\n\nStuck on a handwritten question? Just upload a photo. JEEx reads handwriting and graphs instantly.")
+        st.info("**➗ Perfect Math Formatting**\n\nExperience textbook-quality rendering for Integrals, Matrices, and Organic Mechanisms with LaTeX precision.")
+        st.info("**⚡ 24/7 Strategic Mentorship**\n\nYour personal AI coach for study planning, backlog management, and exam strategy at 3 AM.")
+    
+    st.markdown("---")
+    with st.expander("📄 Detailed Terms of Service & Privacy"):
+        st.markdown("""
+        ### JEEx Pro Terms of Service
+        **1. Acceptance of Terms:** By accessing JEEx Pro, you confirm that you are a student preparing for competitive exams and agree to use this tool solely for educational purposes.
+        **2. License Grant:** JEEx grants you a limited, non-exclusive, non-transferable license. Your Access Key is strictly personal. Sharing it will result in an immediate ban.
+        **3. AI Accuracy:** JEEx utilizes GPT-4o. While highly accurate, hallucinations can occur. You agree to verify all formulas with standard textbooks (NCERT).
+        **4. Refund Policy:** Access Keys are digital goods. **No Refunds** will be provided once a key is issued.
+        **5. Privacy:** We respect your privacy. Chat logs are processed securely via OpenAI APIs and are not sold to third parties.
+        """)
     st.stop()
 
-# --- 10. CHAT INTERFACE ---
+# --- 10. CHAT INTERFACE & LOGIC ---
+
+# Setup OpenAI
 try:
-    client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+    api_key = st.secrets["OPENAI_API_KEY"]
     assistant_id = st.secrets["ASSISTANT_ID"]
-except: st.error("🚨 Keys missing."); st.stop()
+    client = OpenAI(api_key=api_key)
+except:
+    st.error("🚨 Keys missing in Secrets."); st.stop()
 
 if "thread_id" not in st.session_state:
     thread = client.beta.threads.create()
     st.session_state.thread_id = thread.id
 
-# INPUT LOGIC
-audio_prompt = None
+# --- INPUT HANDLING (FIXED VOICE & LOCKING) ---
+
+# 1. Processing Logic (Voice First)
+user_input_content = None
+
 if 'audio_value' in locals() and audio_value:
     if not st.session_state.processing:
         with st.spinner("🎧 Listening..."):
             try:
-                transcription = client.audio.transcriptions.create(model="whisper-1", file=audio_value, language="en")
-                audio_prompt = transcription.text
-            except: pass
+                # Force English to fix hallucinations
+                transcription = client.audio.transcriptions.create(
+                    model="whisper-1", 
+                    file=audio_value, 
+                    language="en",
+                    prompt="Physics, Chemistry, Maths, JEE, Integration"
+                )
+                user_input_content = transcription.text
+            except Exception as e:
+                st.error(f"Voice Error: {e}")
 
-text_prompt = st.chat_input("Ask a doubt...", disabled=st.session_state.processing)
-prompt = audio_prompt if audio_prompt else text_prompt
+# 2. Text Input (Disabled if processing)
+if st.session_state.processing:
+    chat_val = st.chat_input("Thinking...", disabled=True)
+else:
+    chat_val = st.chat_input("Ask a doubt...")
 
-if prompt:
-    st.session_state.processing = True
-    msg_data = {"role": "user", "content": prompt}
+# 3. Determine Final Prompt
+if user_input_content:
+    prompt = user_input_content
+elif chat_val:
+    prompt = chat_val
+else:
+    prompt = None
+
+# --- MAIN EXECUTION LOOP ---
+if prompt and not st.session_state.processing:
+    st.session_state.processing = True # LOCK INTERFACE
     
+    # 1. Store File Data for History
+    file_data_entry = {}
     if uploaded_file:
-        msg_data.update({"file_data": uploaded_file.getvalue(), "file_name": uploaded_file.name, "file_type": uploaded_file.type})
+        file_data_entry = {
+            "file_data": uploaded_file.getvalue(),
+            "file_name": uploaded_file.name,
+            "file_type": uploaded_file.type
+        }
+
+    # 2. Append User Message
+    st.session_state.messages.append({
+        "role": "user", 
+        "content": prompt,
+        **file_data_entry
+    })
     
-    st.session_state.messages.append(msg_data)
+    # 3. Force UI Update
     st.rerun()
 
-# DISPLAY
+# --- DISPLAY HISTORY ---
 for msg in st.session_state.messages:
-    with st.chat_message(msg["role"], avatar=LOGO_URL if msg["role"]=="assistant" else "🧑‍🎓"):
+    avatar_icon = LOGO_URL if msg["role"] == "assistant" else "🧑‍🎓"
+    with st.chat_message(msg["role"], avatar=avatar_icon):
         if "file_data" in msg:
-            if msg["file_type"].startswith("image"): st.image(msg["file_data"], width=200)
-            else: st.markdown(f"📄 *{msg['file_name']}*")
+            if msg["file_type"].startswith("image"):
+                st.image(msg["file_data"], width=200)
+            else:
+                st.markdown(f"📄 *{msg['file_name']}*")
         st.markdown(clean_latex(msg["content"]))
 
-# PROCESS RESPONSE
+# --- GENERATE RESPONSE ---
 if st.session_state.processing and st.session_state.messages[-1]["role"] == "user":
-    msg_text = st.session_state.messages[-1]["content"]
-    api_content = [{"type": "text", "text": msg_text}]
-    att = []
+    
+    last_msg = st.session_state.messages[-1]
+    msg_text = last_msg["content"]
+    
+    # 4. API Request
+    message_content = [{"type": "text", "text": msg_text}]
+    attachments = [] 
     
     if uploaded_file:
-        try:
-            tfile = f"temp_{uploaded_file.name}"
-            with open(tfile, "wb") as f: f.write(uploaded_file.getbuffer())
-            fres = client.files.create(file=open(tfile, "rb"), purpose="assistants")
-            
-            # CRITICAL FIX: Distinguish between Image Content and File Attachment
-            if uploaded_file.type == "application/pdf":
-                att.append({"file_id": fres.id, "tools": [{"type": "code_interpreter"}]})
-            else:
-                # Images go directly into content for Vision
-                api_content.append({"type": "image_file", "image_file": {"file_id": fres.id}})
-            
-            os.remove(tfile)
-        except: st.error("Upload failed.")
+        with st.spinner("Analyzing file..."):
+            try:
+                temp_filename = f"temp_{uploaded_file.name}"
+                with open(temp_filename, "wb") as f: f.write(uploaded_file.getbuffer())
+                file_response = client.files.create(file=open(temp_filename, "rb"), purpose="assistants")
+                
+                if uploaded_file.type == "application/pdf":
+                    attachments.append({"file_id": file_response.id, "tools": [{"type": "code_interpreter"}]})
+                else:
+                    message_content.append({"type": "image_file", "image_file": {"file_id": file_response.id}})
+                
+                os.remove(temp_filename)
+            except: st.error("File upload failed.")
 
-    client.beta.threads.messages.create(thread_id=st.session_state.thread_id, role="user", content=api_content, attachments=att if att else None)
+    client.beta.threads.messages.create(
+        thread_id=st.session_state.thread_id,
+        role="user",
+        content=message_content,
+        attachments=attachments if attachments else None
+    )
 
     with st.chat_message("assistant", avatar=LOGO_URL):
         stream = client.beta.threads.runs.create(
-            thread_id=st.session_state.thread_id, assistant_id=assistant_id, stream=True,
-            additional_instructions="You are JEEx. Use LaTeX for math."
+            thread_id=st.session_state.thread_id,
+            assistant_id=assistant_id,
+            stream=True,
+            additional_instructions="""
+            You are JEEx, an elite JEE Advanced Tutor.
+            1. LEVEL: Solve problems using Irodov/Cengage level rigor.
+            2. FORMAT: STRICTLY use LaTeX for ALL math expressions ($$x^2$$ for block, $x$ for inline).
+            3. TONE: Professional yet encouraging (Mentor vibe). Use Hinglish for motivation.
+            4. PDFS: Always use Code Interpreter to analyze uploaded PDFs.
+            """
         )
-        resp = st.empty()
-        full_text = ""
+        
+        response_container = st.empty()
+        collected_message = ""
         for event in stream:
             if event.event == "thread.message.delta":
-                for c in event.data.delta.content:
-                    if c.type == "text":
-                        full_text += c.text.value
-                        resp.markdown(clean_latex(full_text) + "▌")
+                for content in event.data.delta.content:
+                    if content.type == "text":
+                        collected_message += content.text.value
+                        response_container.markdown(clean_latex(collected_message) + "▌")
             elif event.event == "thread.run.completed": break
-        
-        resp.markdown(clean_latex(full_text))
-        st.session_state.messages.append({"role": "assistant", "content": full_text})
 
+        response_container.markdown(clean_latex(collected_message))
+        st.session_state.messages.append({"role": "assistant", "content": collected_message})
+        
+    # 6. UNLOCK AND RESET
     st.session_state.uploader_key += 1
-    if 'audio_value' in locals() and audio_value: st.session_state.audio_key += 1
+    if 'audio_value' in locals() and audio_value:
+        st.session_state.audio_key += 1
+        
     st.session_state.processing = False
     st.rerun()
