@@ -42,20 +42,15 @@ st.markdown("""
     
     /* Buttons */
     div.stButton > button { 
-        background-color: #2B313E !important; color: white !important; border-radius: 8px; font-weight: 600;
+        background-color: #2B313E !important; color: white !important; border: 1px solid #3E4654 !important; 
+        border-radius: 8px; width: 100%; transition: all 0.3s; font-weight: 600;
     }
-    div.stButton > button:hover { border-color: #4A90E2 !important; color: #4A90E2 !important; }
     
-    /* Hide Defaults */
-    #MainMenu {visibility: hidden;} footer {visibility: hidden;} .stDeployButton {display:none;}
-    .katex { font-size: 1.2em; color: #FFD700 !important; } 
-    
-    /* Attachment & Voice Styling - Make them smaller icons */
+    /* Attachment & Voice Layout Fix */
     [data-testid="stFileUploader"] { padding: 0px; }
-    .stFileUploader { width: 50px; } /* Constrain width of uploader button container */
-    
-    /* Center Branding Fix */
-    .st-emotion-cache-18ni7ap { width: 42px; height: 42px; }
+    .stFileUploader { width: 100%; }
+    div[data-testid="column"] { display: flex; align-items: flex-end; }
+    .st-emotion-cache-1p1m4ay { width: 42px; height: 42px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -74,16 +69,15 @@ def clean_latex(text):
 def sanitize_text_for_pdf(text):
     """Aggressively cleans text to prevent PDF crash"""
     text = text.replace('•', '-').replace('—', '-')
-    # Encode to latin-1 and ignore errors (strips emojis/korean/etc), then decode
     return text.encode('latin-1', 'ignore').decode('latin-1')
 
 LOGO_URL = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/1d6ef8ca3ac05432ed370338d4c04d6a03541f23/logo.png.png"
 
 def show_branding():
-    """Displays Logo and Title PERFECTLY CENTERED"""
+    """Displays Logo and Title PERFECTLY CENTERED (Logo width adjusted)"""
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        try: st.image(LOGO_URL, width=220)
+        try: st.image(LOGO_URL, width=180) # ADJUSTED WIDTH
         except: pass
             
     st.markdown("""
@@ -130,6 +124,7 @@ def generate_pdf(messages):
 # --- 5. LOGIC & AUTH ---
 def check_key_status(user_key):
     if user_key == st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS"): return "ADMIN"
+
     expiry_db = st.secrets.get("KEY_EXPIRY", {})
     if user_key in expiry_db:
         try:
@@ -143,7 +138,7 @@ if st.session_state.get('logout', False):
     for key in list(st.session_state.keys()): del st.session_state[key]
     st.rerun()
 
-# Initialize processing state (used to disable input during stream)
+# Initialize processing state (used to disable input)
 if "processing" not in st.session_state:
     st.session_state.processing = False
 
@@ -192,12 +187,12 @@ show_branding()
 if status != "VALID":
     st.markdown("---")
     st.markdown("""
-    <div style="background-color: #1E2330; padding: 20px; border-radius: 12px; border-left: 5px solid #4A90E2; text-align: center; margin-bottom: 30px;">
+    <div style="background-color: #1E2330; padding: 25px; border-radius: 12px; border-left: 5px solid #4A90E2; margin-bottom: 30px; text-align: center;">
         <p style="font-size: 18px; margin: 0; color: #E6E6E6;">👋 <strong>Welcome Student!</strong><br>Please enter your <strong>Access Key</strong> in the Sidebar to unlock.</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # FIXED: Clean Markdown Structure for description to prevent HTML errors
+    # FIXED: Replaced HTML with clean Markdown to prevent formatting errors
     st.markdown("### 🏆 Why Top Rankers Choose JEEx **PRO**")
     
     col1, col2 = st.columns(2)
@@ -205,16 +200,17 @@ if status != "VALID":
         st.markdown("**🧠 Advanced Problem Solving Engine**")
         st.caption("Tuned for Irodov, Cengage, and PathFinder level rigor. It breaks down complex mechanics and calculus problems.")
         st.markdown("**👁️ Vision Intelligence (OCR)**")
-        st.caption("Stuck on a handwritten coaching module question? Just upload a photo. JEEx reads and solves it instantly.")
+        st.caption("Stuck on a handwritten question? Just upload a photo. JEEx reads and solves it instantly.")
     with col2:
-        st.markdown("**📄 Full PDF Document Analysis**")
+        st.markdown("**📄 Full Document Analysis**")
         st.caption("Upload the PDF assignment. JEEx uses its Code Interpreter brain to analyze the entire document and solve multiple questions.")
         st.markdown("**➗ Perfect Math & Chemical Formatting**")
-        st.caption("No more broken text. JEEx renders complex Integrals and Organic Mechanisms with textbook-quality LaTeX precision.")
+        st.caption("Renders complex integrals and Organic Mechanisms with textbook-quality LaTeX precision.")
     
     st.markdown("---")
     st.markdown("### Detailed Terms & Conditions")
-    st.markdown(terms_text)
+    # T&C link fix
+    st.markdown(f'<p style="font-size: 14px;">{terms_text}</p>', unsafe_allow_html=True)
     st.stop()
 
 # UNLOCKED INTERFACE (CHAT)
@@ -244,20 +240,20 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"], avatar=avatar_icon):
         st.markdown(clean_latex(msg["content"]))
 
-# --- 9. INPUT TOOLBAR & PROCESSING ---
+# --- INPUT TOOLBAR & PROCESSING ---
 
-# 1. TOOLBAR: Placed above chat_input
-col_tools_1, col_tools_2, col_tools_gap = st.columns([1, 1, 6])
+# 1. TOOLBAR
+col_tools_1, col_tools_2, col_gap = st.columns([1, 1, 6])
 
 with col_tools_1:
-    # VOICE INPUT (Microphone)
+    # VOICE INPUT
     audio_value = st.audio_input("🎙️", key=f"audio_{st.session_state.audio_key}", label_visibility="collapsed")
     
 with col_tools_2:
     # ATTACHMENT INPUT
     uploaded_file = st.file_uploader("📎", type=["jpg", "png", "pdf"], key=f"uploader_{st.session_state.uploader_key}", label_visibility="collapsed")
 
-# 2. CHAT INPUT (Disabled during processing)
+# 2. CHAT INPUT (Disabled when processing)
 if st.session_state.processing:
     text_prompt = st.chat_input("Processing response... Please wait.", disabled=True)
 else:
@@ -265,21 +261,21 @@ else:
 
 # 3. LOGIC
 audio_prompt = None
-if audio_value:
-    st.session_state.processing = True # Start processing flag
+if audio_value and not st.session_state.processing:
+    st.session_state.processing = True # Lock input
     with st.spinner("Processing Voice..."):
         try:
-            # FIXED: Force English to stop foreign language hallucinations
             transcription = client.audio.transcriptions.create(model="whisper-1", file=audio_value, language="en")
             audio_prompt = transcription.text
         except Exception as e: 
             st.error(f"Voice Error: {e}"); 
-            st.session_state.processing = False # Reset flag on error
+            st.session_state.processing = False 
+            st.rerun() # Rerun to clear error message
 
 prompt = audio_prompt if audio_value else text_prompt
 
 if prompt and not st.session_state.processing:
-    st.session_state.processing = True # Set flag immediately before API call
+    st.session_state.processing = True # Set lock for text/voice submission
 
     # 1. Add User Message
     st.session_state.messages.append({"role": "user", "content": prompt})
