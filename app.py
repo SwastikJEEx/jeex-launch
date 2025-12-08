@@ -22,6 +22,8 @@ st.markdown("""
     
     /* Chat Bubbles */
     [data-testid="stChatMessage"] { background-color: transparent; border: none; }
+    
+    /* USER BUBBLE (Blue/Grey Professional) */
     [data-testid="stChatMessage"][data-testid="user"] {
         background-color: #1E2330;
         border-radius: 15px;
@@ -29,6 +31,8 @@ st.markdown("""
         margin-bottom: 10px;
         border: 1px solid #2B313E;
     }
+    
+    /* ASSISTANT BUBBLE (Transparent) */
     [data-testid="stChatMessage"][data-testid="assistant"] {
         background-color: transparent;
         padding: 15px;
@@ -72,11 +76,8 @@ st.markdown("""
     /* Attachment Button Clean-up */
     [data-testid="stFileUploader"] { padding: 0px; }
     
-    /* Branding Header Centering */
-    .branding-container {
-        text-align: center;
-        margin-bottom: 20px;
-    }
+    /* Avatar Styling Fixes */
+    .stChatMessage .st-emotion-cache-1p1m4ay { width: 40px; height: 40px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -88,16 +89,17 @@ def clean_latex(text):
     text = re.sub(r'(?<!\\)\[\s*(.*?=.*?)\s*\]', r'$$\1$$', text, flags=re.DOTALL)
     return text
 
+# GLOBAL LOGO URL (Used for Branding AND Chat Avatar)
+# Corrected RAW link from your new permalink
+LOGO_URL = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/1d6ef8ca3ac05432ed370338d4c04d6a03541f23/logo.png.png"
+
 def show_branding():
     """Displays Logo and Title Centered"""
-    # UPDATED: Changed column ratios for a narrower center column
+    # Using columns to center the image perfectly
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        # Corrected RAW link for image
-        logo_url = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/87964f529cbef542ac7b4a40c1e3fa732c453998/logo.png.png"
         try:
-            # UPDATED: Set fixed width for a professional, smaller look
-            st.image(logo_url, width=220)
+            st.image(LOGO_URL, width=220)
         except:
             pass # Fail silently if image breaks
             
@@ -250,15 +252,23 @@ if "thread_id" not in st.session_state:
     welcome_msg = "Welcome Champ! 🎓 Main hoon JEEx. \n\nPhysics ka numerical, Chemistry ka reaction, ya Maths ka integral—bas photo bhejo ya type karo. Let's crack it! 🚀"
     st.session_state.messages = [{"role": "assistant", "content": welcome_msg}]
 
-# Display Chat History
+# Display Chat History with CUSTOM AVATARS
 for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
+    # Logic to choose avatar
+    if msg["role"] == "assistant":
+        avatar_icon = LOGO_URL # Your Logo
+    else:
+        avatar_icon = "🧑‍🎓" # Professional Student Icon
+        
+    with st.chat_message(msg["role"], avatar=avatar_icon):
         st.markdown(clean_latex(msg["content"]))
 
 # Chat Input
 if prompt := st.chat_input("Ask a doubt (e.g. Rotational Motion)..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
+    
+    # Show User Message with Student Avatar
+    with st.chat_message("user", avatar="🧑‍🎓"):
         st.markdown(prompt)
         if uploaded_file:
             if uploaded_file.type == "application/pdf": st.markdown(f"📄 *PDF Attached*")
@@ -290,7 +300,8 @@ if prompt := st.chat_input("Ask a doubt (e.g. Rotational Motion)..."):
     )
 
     # --- STREAMING RESPONSE LOGIC ---
-    with st.chat_message("assistant"):
+    # Show Assistant Message with Your Logo Avatar
+    with st.chat_message("assistant", avatar=LOGO_URL):
         stream = client.beta.threads.runs.create(
             thread_id=st.session_state.thread_id,
             assistant_id=assistant_id,
@@ -307,21 +318,17 @@ if prompt := st.chat_input("Ask a doubt (e.g. Rotational Motion)..."):
         response_container = st.empty()
         collected_message = ""
         
-        # Iterate through the stream events
         for event in stream:
             if event.event == "thread.message.delta":
                 for content in event.data.delta.content:
                     if content.type == "text":
                         collected_message += content.text.value
-                        # Update the UI with the clean latex version so far
                         response_container.markdown(clean_latex(collected_message) + "▌")
             
             elif event.event == "thread.run.completed":
                 break
 
-        # Final update without the cursor
         response_container.markdown(clean_latex(collected_message))
         
-        # Save to history
         st.session_state.messages.append({"role": "assistant", "content": collected_message})
         st.session_state.uploader_key += 1
