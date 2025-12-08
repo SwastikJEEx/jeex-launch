@@ -5,59 +5,105 @@ import os
 import re
 from datetime import datetime, timedelta
 from fpdf import FPDF
-import base64
 
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="JEEx Pro", page_icon="⚛️", layout="centered", initial_sidebar_state="expanded")
 
-# --- 2. PROFESSIONAL INTERFACE CSS ---
+# --- 2. PROFESSIONAL GEMINI-STYLE CSS ---
 st.markdown("""
 <style>
+    /* Import Professional Font (Inter) */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
-    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+
+    html, body, [class*="css"] {
+        font-family: 'Inter', sans-serif;
+    }
+
+    /* Main Background & Text */
     .stApp { background-color: #0E1117; color: #E0E0E0; }
+    
+    /* Sidebar */
     [data-testid="stSidebar"] { background-color: #161B26; border-right: 1px solid #2B313E; }
-    .block-container { padding-top: 2rem; }
     
-    /* Chat Bubbles */
+    /* Center Layout alignment */
+    .block-container { padding-top: 2rem; padding-bottom: 150px; } /* Padding for bottom toolbar */
+    
+    /* --- CHAT BUBBLES --- */
     [data-testid="stChatMessage"] { background-color: transparent; border: none; padding: 10px 0px; }
+    
+    /* User Bubble */
     [data-testid="stChatMessage"][data-testid="user"] {
-        background-color: #1E2330; border-radius: 12px; padding: 15px 20px; margin-bottom: 10px; border: 1px solid #2B313E;
-    }
-    [data-testid="stChatMessage"][data-testid="assistant"] {
-        background-color: transparent; padding: 0px 20px; margin-bottom: 10px;
-    }
-    [data-testid="stChatMessage"] p, [data-testid="stChatMessage"] div {
-        font-size: 16px !important; line-height: 1.6 !important; color: #E6E6E6 !important;
+        background-color: #1E2330;
+        border-radius: 12px;
+        padding: 15px 20px;
+        margin-bottom: 10px;
+        border: 1px solid #2B313E;
     }
     
-    /* Highlights & Inputs */
+    /* Assistant Bubble */
+    [data-testid="stChatMessage"][data-testid="assistant"] {
+        background-color: transparent;
+        padding: 0px 20px;
+        margin-bottom: 10px;
+    }
+    
+    /* Text Size */
+    [data-testid="stChatMessage"] p, [data-testid="stChatMessage"] div {
+        font-size: 16px !important;
+        line-height: 1.6 !important;
+        color: #E6E6E6 !important;
+    }
+    
+    /* Highlights */
     strong { color: #FFD700 !important; } 
     code { color: #FF7043 !important; }
-    .stTextInput input, .stTextArea textarea { background-color: #1E2330 !important; color: white !important; border: 1px solid #3E4654 !important; border-radius: 10px; }
     
     /* Buttons */
     div.stButton > button { 
-        background-color: #2B313E !important; color: white !important; border: 1px solid #3E4654 !important; border-radius: 8px; width: 100%; transition: all 0.3s; font-weight: 600;
+        background-color: #2B313E !important; 
+        color: white !important; 
+        border: 1px solid #3E4654 !important; 
+        border-radius: 8px;
+        width: 100%; 
+        transition: all 0.3s;
+        font-weight: 600;
     }
-    div.stButton > button:hover { border-color: #4A90E2 !important; color: #4A90E2 !important; }
-    
-    /* Branding */
-    .branding-text { text-align: center; margin-top: -10px; margin-bottom: 30px; }
-    .branding-header { margin: 0; font-size: 36px; font-weight: 700; letter-spacing: 1px; color: #E6E6E6; }
-    .branding-sub { color: #AAAAAA; font-size: 14px; margin-top: 8px; }
+    div.stButton > button:hover { 
+        border-color: #4A90E2 !important; 
+        color: #4A90E2 !important;
+    }
     
     /* Hide Defaults */
-    #MainMenu {visibility: hidden;} footer {visibility: hidden;} .stDeployButton {display:none;}
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    .stDeployButton {display:none;}
+    
+    /* Math Formatting */
     .katex { font-size: 1.2em; color: #FFD700 !important; } 
+    
+    /* Attachment & Voice Styling */
     [data-testid="stFileUploader"] { padding: 0px; }
+    
+    /* Avatar Size */
     .stChatMessage .st-emotion-cache-1p1m4ay { width: 42px; height: 42px; }
+    
+    /* Bottom Toolbar Container */
+    .stBottomContainer {
+        position: fixed;
+        bottom: 60px;
+        left: 0;
+        right: 0;
+        background: #0E1117;
+        padding: 10px;
+        z-index: 99;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # --- 3. HELPER FUNCTIONS ---
 
 def clean_latex(text):
+    """Cleans OpenAI response: Removes source tags & fixes LaTeX"""
     if not text: return ""
     text = re.sub(r'【.*?†source】', '', text)
     text = re.sub(r'\\\[(.*?)\\\]', r'$$\1$$', text, flags=re.DOTALL)
@@ -65,21 +111,31 @@ def clean_latex(text):
     text = re.sub(r'(?<!\\)\[\s*(.*?=.*?)\s*\]', r'$$\1$$', text, flags=re.DOTALL)
     return text
 
+def sanitize_text_for_pdf(text):
+    """Removes Emojis and unsupported characters for PDF generation"""
+    # Encode to latin-1 and ignore errors to strip emojis, then decode back
+    return text.encode('latin-1', 'ignore').decode('latin-1')
+
 LOGO_URL = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/1d6ef8ca3ac05432ed370338d4c04d6a03541f23/logo.png.png"
 
 def show_branding():
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        try: st.image(LOGO_URL, use_container_width=True)
+        try: st.image(LOGO_URL, width=220)
         except: pass
-    st.markdown(f"""
-        <div class="branding-text">
-            <h1 class="branding-header">JEEx <span style="color:#4A90E2;">PRO</span></h1>
-            <p class="branding-sub">Your 24/7 AI Rank Booster | Master JEE Mains & Advanced 🚀</p>
+            
+    st.markdown("""
+        <div style="text-align: center; margin-top: -10px; margin-bottom: 30px;">
+            <h1 style="margin: 0; font-size: 36px; font-weight: 700; letter-spacing: 1px;">
+                JEEx <span style="color:#4A90E2;">PRO</span>
+            </h1>
+            <p style="color: #AAAAAA; font-size: 14px; margin-top: 8px;">
+                Your 24/7 AI Rank Booster | Master JEE Mains & Advanced 🚀
+            </p>
         </div>
     """, unsafe_allow_html=True)
 
-# --- 4. PDF GENERATOR (PROFESSIONAL NOTES) ---
+# --- 4. PDF GENERATOR (FIXED UNICODE ERROR) ---
 class PDF(FPDF):
     def header(self):
         self.set_font('Arial', 'B', 12)
@@ -89,13 +145,15 @@ class PDF(FPDF):
     def chapter_title(self, label):
         self.set_font('Arial', 'B', 12)
         self.set_text_color(74, 144, 226) # JEEx Blue
-        self.cell(0, 10, label, 0, 1, 'L')
+        self.cell(0, 10, sanitize_text_for_pdf(label), 0, 1, 'L')
         self.ln(2)
 
     def chapter_body(self, body):
         self.set_font('Arial', '', 11)
         self.set_text_color(50, 50, 50)
-        self.multi_cell(0, 7, body)
+        # Sanitize text before writing to prevent crash
+        clean_body = sanitize_text_for_pdf(body)
+        self.multi_cell(0, 7, clean_body)
         self.ln()
 
 def generate_pdf(messages):
@@ -103,31 +161,23 @@ def generate_pdf(messages):
     pdf.add_page()
     for msg in messages:
         role = "JEEx AI Tutor" if msg["role"] == "assistant" else "Student"
-        content = clean_latex(msg["content"]).replace('*', '').replace('#', '') # Basic markdown cleanup
+        content = clean_latex(msg["content"]).replace('*', '').replace('#', '') 
         pdf.chapter_title(role)
         pdf.chapter_body(content)
-    return pdf.output(dest='S').encode('latin-1', 'replace')
+    return pdf.output(dest='S').encode('latin-1', 'ignore') # IGNORE ERRORS TO PREVENT CRASH
 
-# --- 5. SMART KEY LOGIC (STRICT MODE) ---
+# --- 5. SMART KEY LOGIC (STRICT) ---
 def check_key_status(user_key):
-    # ADMIN
     if user_key == st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS"): return "ADMIN"
 
-    # STRICT EXPIRY CHECK
-    # Logic: Only keys present in [KEY_EXPIRY] are valid. Everything else is invalid.
     expiry_db = st.secrets.get("KEY_EXPIRY", {})
-    
     if user_key in expiry_db:
         try:
             expiry_date = datetime.strptime(expiry_db[user_key], "%Y-%m-%d").date()
-            if datetime.now().date() > expiry_date:
-                return "EXPIRED"
-            else:
-                return "VALID"
-        except:
-            return "INVALID" # Date format error = Invalid
+            if datetime.now().date() > expiry_date: return "EXPIRED"
+            else: return "VALID"
+        except: return "INVALID"
     
-    # If key is NOT in secrets, it's strictly INVALID (Locked by default)
     return "INVALID"
 
 # --- 6. LOGOUT ---
@@ -135,13 +185,29 @@ if st.session_state.get('logout', False):
     for key in list(st.session_state.keys()): del st.session_state[key]
     st.rerun()
 
-# --- 7. TERMS TEXT ---
+# --- 7. DETAILED TERMS & CONDITIONS ---
 terms_text = """
-**JEEx Terms of Service**
-**1. Service:** AI educational assistant for JEE.
-**2. Accuracy:** Verify critical data with NCERT.
-**3. Security:** Single User License. Sharing = Ban.
-**4. Refunds:** No Refunds. Sales are final.
+**JEEx Terms of Service & End User License Agreement**
+
+**1. Nature of Service**
+JEEx Pro is an advanced AI-driven educational tool designed to assist students in preparing for competitive exams (JEE Mains/Advanced). It provides explanations, solves numericals, and offers study strategies. It is not a substitute for formal schooling or official examinations.
+
+**2. Accuracy & Liability**
+* **AI Limitations:** While powered by state-of-the-art models (GPT-4), the AI may occasionally generate incorrect data ("hallucinations").
+* **User Responsibility:** Students must verify critical formulas and values with standard textbooks (NCERT).
+* **Liability:** JEEx is not liable for any exam results, loss of marks, or academic outcomes.
+
+**3. Account Usage & Security**
+* **Single Device Policy:** The Access Key is strictly for one student.
+* **Fraud Detection:** Our system logs IP addresses. Simultaneous logins from different locations will trigger an automatic security ban.
+* **Prohibited Content:** Attempting to use the AI for non-educational, illegal, or harmful purposes will result in termination.
+
+**4. Subscription & Refunds**
+* **Digital Goods:** Access Keys are digital products. Once issued/revealed, they cannot be returned. **No refunds** will be provided under any circumstances.
+* **Validity:** The subscription is valid for exactly 30 days from the activation date recorded in our system.
+
+**5. Data Privacy**
+We prioritize your privacy. Chat logs are processed securely for the purpose of generating responses. We do not sell user data to third-party advertisers.
 """
 
 # --- 8. SIDEBAR ---
@@ -182,7 +248,7 @@ if status == "ADMIN":
 # --- 10. MAIN APP ---
 show_branding()
 
-# LANDING PAGE
+# LANDING PAGE (DETAILED)
 if status != "VALID":
     st.markdown("---")
     st.markdown("""
@@ -193,11 +259,26 @@ if status != "VALID":
     
     st.markdown("""
     <div style="background-color: #161B26; padding: 35px; border-radius: 15px; border: 1px solid #2B313E;">
-        <h2 style="color: #4A90E2; margin-top: 0; text-align: center;">🏆 Why Top Rankers Choose JEEx <span style="color:#4A90E2">PRO</span></h2>
-        <div style="display: flex; flex-direction: column; gap: 20px;">
-            <div><strong style="color: #FFD700; font-size: 19px;">🧠 Advanced Solving</strong><br><span style="color: #CCCCCC;">Solves Irodov & Cengage level problems.</span></div>
-            <div><strong style="color: #FFD700; font-size: 19px;">👁️ Vision Intelligence</strong><br><span style="color: #CCCCCC;">Upload handwritten questions instantly.</span></div>
-            <div><strong style="color: #FFD700; font-size: 19px;">➗ Perfect Math</strong><br><span style="color: #CCCCCC;">LaTeX precision for Integrals & Matrices.</span></div>
+        <h2 style="color: #4A90E2; margin-top: 0; text-align: center; margin-bottom: 30px;">🏆 Why Top Rankers Choose JEEx <span style="color:#4A90E2">PRO</span></h2>
+        
+        <div style="margin-bottom: 25px;">
+            <strong style="color: #FFD700; font-size: 19px;">🧠 Advanced Problem Solving Engine</strong><br>
+            <span style="color: #CCCCCC; font-size: 16px;">Unlike basic AI, JEEx is tuned for Irodov, Cengage, and PathFinder level rigor. It breaks down complex mechanics and calculus problems into understandable, step-by-step logic.</span>
+        </div>
+
+        <div style="margin-bottom: 25px;">
+            <strong style="color: #FFD700; font-size: 19px;">👁️ Vision Intelligence (OCR)</strong><br>
+            <span style="color: #CCCCCC; font-size: 16px;">Stuck on a handwritten coaching module question? Just upload a photo. JEEx reads handwriting, diagrams, and graphs to give you the exact solution instantly.</span>
+        </div>
+
+        <div style="margin-bottom: 25px;">
+            <strong style="color: #FFD700; font-size: 19px;">📄 Full PDF Document Analysis</strong><br>
+            <span style="color: #CCCCCC; font-size: 16px;">Have a 50-page assignment? Upload the PDF. JEEx uses its "Code Interpreter" brain to analyze the entire document, finding context and solving multiple questions at once.</span>
+        </div>
+
+        <div>
+            <strong style="color: #FFD700; font-size: 19px;">➗ Perfect Math & Chemical Formatting</strong><br>
+            <span style="color: #CCCCCC; font-size: 16px;">No more broken text. JEEx renders complex Integrals, Matrices, Organic Mechanisms, and Vectors with textbook-quality LaTeX precision.</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -206,17 +287,10 @@ if status != "VALID":
 # UNLOCKED INTERFACE
 with st.sidebar:
     st.success(f"✅ Active")
-    st.markdown("---")
-    st.markdown("### 📎 Attach Question")
-    uploaded_file = st.file_uploader("Upload Image/PDF", type=["jpg", "png", "pdf"], key=f"uploader_{st.session_state.uploader_key}", label_visibility="collapsed")
-    if uploaded_file: st.info(f"Attached: {uploaded_file.name}")
-    
-    # PDF DOWNLOAD BUTTON
+    # PDF DOWNLOAD BUTTON IN SIDEBAR FOR EASY ACCESS
     if "messages" in st.session_state and len(st.session_state.messages) > 1:
-        st.markdown("---")
         pdf_bytes = generate_pdf(st.session_state.messages)
-        st.download_button(label="📥 Download Notes (PDF)", data=pdf_bytes, file_name="JEEx_Notes.pdf", mime="application/pdf")
-
+        st.download_button(label="📥 Download Session PDF", data=pdf_bytes, file_name="JEEx_Notes.pdf", mime="application/pdf")
     if st.button("End Session"): st.session_state['logout'] = True; st.rerun()
 
 # SETUP OPENAI
@@ -239,33 +313,42 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"], avatar=avatar_icon):
         st.markdown(clean_latex(msg["content"]))
 
-# --- VOICE & TEXT INPUT AREA ---
-col_mic, col_input = st.columns([1, 8])
+# --- GEMINI-STYLE INPUT TOOLBAR ---
+# Creating a container at the bottom for inputs
+input_container = st.container()
 
+with input_container:
+    # Two Columns: [ Tools ] [ Chat Input ] is tricky in Streamlit.
+    # We will put Tools ABOVE the input to ensure they are visible and functional.
+    
+    col_tools_1, col_tools_2 = st.columns([1, 1])
+    
+    with col_tools_1:
+        # VOICE INPUT
+        audio_value = st.audio_input("🎙️ Voice", label_visibility="visible")
+        
+    with col_tools_2:
+        # ATTACHMENT INPUT (Moved from Sidebar)
+        uploaded_file = st.file_uploader("📎 Attach", type=["jpg", "png", "pdf"], key=f"uploader_{st.session_state.uploader_key}", label_visibility="visible")
+
+    # Chat Input
+    text_prompt = st.chat_input("Ask a doubt (e.g. Rotational Motion)...")
+
+# --- HANDLING LOGIC ---
+
+# 1. Voice Logic
 audio_prompt = None
-with col_mic:
-    # VOICE INPUT (Using Native Streamlit Audio Input)
-    audio_value = st.audio_input("🎙️", label_visibility="collapsed")
-
-# Handle Audio Transcription
 if audio_value:
-    with st.spinner("Listening..."):
+    with st.spinner("Processing Voice..."):
         try:
-            transcription = client.audio.transcriptions.create(
-                model="whisper-1", 
-                file=audio_value
-            )
+            transcription = client.audio.transcriptions.create(model="whisper-1", file=audio_value)
             audio_prompt = transcription.text
-        except Exception as e:
-            st.error(f"Voice Error: {e}")
+        except Exception as e: st.error(f"Voice Error: {e}")
 
-# Text Input
-text_prompt = st.chat_input("Ask a doubt...")
-
-# Determine Final Prompt (Voice takes priority if present)
+# 2. Determine Final Prompt
 prompt = audio_prompt if audio_value else text_prompt
 
-# HANDLE MESSAGE
+# 3. Handle Send
 if prompt:
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user", avatar="🧑‍🎓"):
@@ -274,7 +357,7 @@ if prompt:
             if uploaded_file.type == "application/pdf": st.markdown(f"📄 *PDF Attached*")
             else: st.image(uploaded_file, width=200)
 
-    # Process Message
+    # Prepare Message
     message_content = [{"type": "text", "text": prompt}]
     attachments = [] 
     if uploaded_file:
@@ -325,5 +408,6 @@ if prompt:
         response_container.markdown(clean_latex(collected_message))
         st.session_state.messages.append({"role": "assistant", "content": collected_message})
         st.session_state.uploader_key += 1
-        # If using voice, rerun to clear the audio input widget for next turn
+        # Rerun to clear voice input if used
         if audio_value: time.sleep(1); st.rerun()
+        
