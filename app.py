@@ -6,24 +6,46 @@ import re
 from datetime import datetime
 
 # --- 1. CONFIGURATION ---
-st.set_page_config(page_title="JEEx", page_icon="⚛️", layout="centered", initial_sidebar_state="expanded")
+st.set_page_config(page_title="JEEx Pro", page_icon="⚛️", layout="centered", initial_sidebar_state="expanded")
 
-# --- 2. PROFESSIONAL DARK THEME CSS ---
+# --- 2. PROFESSIONAL & MODERN CSS (Gemini Style) ---
 st.markdown("""
 <style>
-    /* Base Theme */
-    .stApp { background-color: #0E1117; color: #FAFAFA; }
+    /* Main Background */
+    .stApp { background-color: #0E1117; color: #E0E0E0; }
+    
+    /* Sidebar */
     [data-testid="stSidebar"] { background-color: #161B26; border-right: 1px solid #2B313E; }
     
-    /* Text & Math Visibility */
-    h1, h2, h3, p, div, label, span, li { color: #E6E6E6 !important; }
-    .katex { font-size: 1.1em; color: #FFD700 !important; } 
+    /* Center Layout alignment */
+    .block-container { padding-top: 3rem; }
+    
+    /* Chat Bubbles - Gemini Style */
+    [data-testid="stChatMessage"] {
+        background-color: transparent;
+        border: none;
+    }
+    [data-testid="stChatMessage"][data-testid="user"] {
+        background-color: #1E2330;
+        border-radius: 15px;
+        padding: 15px;
+        margin-bottom: 10px;
+    }
+    [data-testid="stChatMessage"][data-testid="assistant"] {
+        padding: 15px;
+        margin-bottom: 10px;
+    }
+    
+    /* Text Colors */
+    h1, h2, h3, p, li, span { color: #E6E6E6 !important; }
+    strong { color: #FFD700 !important; } /* Gold highlights */
     
     /* Inputs */
     .stTextInput input, .stTextArea textarea { 
         background-color: #1E2330 !important; 
         color: white !important; 
         border: 1px solid #3E4654 !important; 
+        border-radius: 10px;
     }
     
     /* Buttons */
@@ -31,23 +53,25 @@ st.markdown("""
         background-color: #2B313E !important; 
         color: white !important; 
         border: 1px solid #3E4654 !important; 
+        border-radius: 8px;
         width: 100%; 
+        transition: all 0.3s;
     }
-    div.stButton > button:hover { border-color: #4A90E2 !important; }
+    div.stButton > button:hover { 
+        border-color: #4A90E2 !important; 
+        color: #4A90E2 !important;
+    }
     
-    /* Chat Bubbles */
-    [data-testid="stChatMessage"]:nth-child(odd) { background-color: #1E2330; border: 1px solid #2B313E; border-radius: 12px; }
-    [data-testid="stChatMessage"]:nth-child(even) { background-color: #131720; border: 1px solid #2B313E; border-radius: 12px; }
-    
-    /* Hide Menu */
+    /* Hide Default Streamlit Elements */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     .stDeployButton {display:none;}
     
-    /* Sidebar Attachment Style */
-    [data-testid="stFileUploader"] {
-        padding: 0px;
-    }
+    /* Math Formatting */
+    .katex { font-size: 1.15em; color: #FFD700 !important; } 
+    
+    /* Attachment Button (Clean) */
+    [data-testid="stFileUploader"] { padding: 0px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -59,19 +83,27 @@ def clean_latex(text):
     text = re.sub(r'(?<!\\)\[\s*(.*?=.*?)\s*\]', r'$$\1$$', text, flags=re.DOTALL)
     return text
 
-# --- 4. SHOW LOGO & BRANDING ---
-# Logic: Try to show the logo image. If file missing, fall back to text title.
-# --- 4. SHOW LOGO & BRANDING ---
-# Paste the HTTP link you copied from GitHub below inside the quotes
-logo_url = "https://github.com/SwastikJEEx/jeex-launch/blob/main/logo.png.png" 
+# --- 4. SHOW LOGO & BRANDING (Fixed) ---
+# We use columns to center the logo and text professionally
+col1, col2, col3 = st.columns([1, 2, 1])
 
-try:
-    st.image(logo_url, width=350)
-except:
-    # Fallback to text if link breaks
-    st.markdown("# ⚛️ **JEEx** <span style='color:#4A90E2; font-size:0.6em'>PRO</span>", unsafe_allow_html=True)
+with col2:
+    # 1. THE LOGO (Using Raw GitHub Link)
+    logo_url = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/main/logo.png"
+    try:
+        st.image(logo_url, use_column_width=True)
+    except:
+        st.markdown("## ⚛️ JEEx Pro") # Fallback if image fails
 
-st.caption("Your 24/7 AI Rank Booster | Master JEE Mains & Advanced with Precision 🚀")
+# 2. THE BRANDING TEXT (Centered)
+st.markdown("""
+    <div style="text-align: center; margin-top: -10px; margin-bottom: 20px;">
+        <h1 style="margin: 0; font-size: 40px;">JEEx <span style="color:#4A90E2;">PRO</span></h1>
+        <p style="color: #AAAAAA; font-size: 14px; margin-top: 5px;">
+            Your 24/7 AI Rank Booster | Master JEE Mains & Advanced 🚀
+        </p>
+    </div>
+""", unsafe_allow_html=True)
 
 # --- 5. LOGOUT LOGIC ---
 if st.session_state.get('logout', False):
@@ -79,35 +111,25 @@ if st.session_state.get('logout', False):
         del st.session_state[key]
     st.rerun()
 
-# --- 6. SMART KEY LOGIC (WITH EXPIRY) ---
+# --- 6. SMART KEY LOGIC ---
 def check_key_status(user_key):
-    # 1. Check Master Key
-    if user_key == st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS"): 
-        return "VALID"
+    if user_key == st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS"): return "VALID"
 
-    # 2. Check Expiry Date
+    # Check Expiry
     expiry_db = st.secrets.get("KEY_EXPIRY", {})
     if user_key in expiry_db:
         try:
             expiry_date = datetime.strptime(expiry_db[user_key], "%Y-%m-%d").date()
-            if datetime.now().date() > expiry_date:
-                return "EXPIRED"
-        except:
-            pass 
+            if datetime.now().date() > expiry_date: return "EXPIRED"
+        except: pass 
 
-    # 3. Check Whitelist
-    if user_key in st.secrets.get("VALID_KEYS", []): 
-        return "VALID"
-
-    # 4. Check Pattern "JEExa0001"
-    if len(user_key) != 9 or user_key[:5] != "JEExa" or not user_key[5:].isdigit(): 
-        return "INVALID"
-    if 1 <= int(user_key[5:]) <= 1000: 
-        return "VALID"
-        
+    # Check Whitelist & Pattern
+    if user_key in st.secrets.get("VALID_KEYS", []): return "VALID"
+    if len(user_key) != 9 or user_key[:5] != "JEExa" or not user_key[5:].isdigit(): return "INVALID"
+    if 1 <= int(user_key[5:]) <= 1000: return "VALID"
     return "INVALID"
 
-# --- 7. SIDEBAR (LOGIN & PAYMENT) ---
+# --- 7. SIDEBAR (LOGIN & TOOLS) ---
 with st.sidebar:
     st.markdown("## 🔐 Premium Access")
     
@@ -115,11 +137,9 @@ with st.sidebar:
         st.session_state.uploader_key = 0
         
     user_key = st.text_input("Enter Access Key:", type="password")
-    
-    # Check Status
     status = check_key_status(user_key)
     
-    # IF KEY IS INVALID/EXPIRED, SHOW PAYMENT OPTIONS IN SIDEBAR
+    # --- IF LOCKED ---
     if status != "VALID":
         if status == "EXPIRED":
             st.error("⚠️ Plan Expired")
@@ -128,20 +148,11 @@ with st.sidebar:
             if user_key: st.warning("🔒 Chat Locked")
             btn_text = "👉 Subscribe for ₹99 / Month"
             
-        payment_link = "https://rzp.io/rzp/wXI8i7t" # Your Page Link
+        payment_link = "https://rzp.io/rzp/wXI8i7t" 
         
         st.markdown(f"""
             <a href="{payment_link}" target="_blank">
-                <button style="
-                    width:100%; 
-                    background-color:#4A90E2; 
-                    color:white; 
-                    border:none; 
-                    padding:10px; 
-                    border-radius:5px; 
-                    cursor:pointer;
-                    font-weight: bold;
-                    font-size: 15px;">
+                <button style="width:100%; background-color:#4A90E2; color:white; border:none; padding:12px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:15px; margin-top:10px;">
                     {btn_text}
                 </button>
             </a>
@@ -149,157 +160,101 @@ with st.sidebar:
         
         st.markdown("---")
         with st.expander("📄 Terms & Conditions"):
-             st.markdown("""
-            **JEEx Usage Policy:**
-            1. **Accuracy:** AI may make errors. Verify data.
-            2. **Personal Use:** Keys are for single users only.
-            3. **No Refunds:** All sales are final.
-            """)
+             st.markdown("**JEEx Policy:** AI is a study aid. No refunds. Personal use only.")
 
 # --- 8. MAIN AREA LOGIC ---
 
-# SCENARIO A: USER IS LOCKED (Show Landing Page in Center)
+# SCENARIO A: LANDING PAGE (When Locked)
 if status != "VALID":
     st.markdown("---")
     
-    # 1. INSTRUCTION BOX
+    # Instruction Box
     st.markdown("""
-    <div style="background-color: #1E2330; padding: 20px; border-radius: 10px; border-left: 5px solid #4A90E2; margin-bottom: 30px;">
+    <div style="background-color: #1E2330; padding: 20px; border-radius: 12px; border-left: 5px solid #4A90E2; margin-bottom: 30px; text-align: center;">
         <p style="font-size: 18px; margin: 0; color: #E6E6E6;">
             👋 <strong>Welcome Student!</strong><br>
-            Please enter your <strong>Access Key</strong> in the Sidebar (↖️ Top Left) to unlock the AI.
+            Please enter your <strong>Access Key</strong> in the Sidebar (↖️ Top Left) to unlock.
         </p>
     </div>
     """, unsafe_allow_html=True)
 
-    # 2. PROFESSIONAL FEATURE LIST
+    # Feature List
     st.markdown("""
-    <div style="background-color: #161B26; padding: 30px; border-radius: 15px; border: 1px solid #2B313E; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
-        <h2 style="color: #4A90E2; margin-top: 0; font-size: 26px; border-bottom: 1px solid #3E4654; padding-bottom: 15px; margin-bottom: 20px;">
+    <div style="background-color: #161B26; padding: 30px; border-radius: 15px; border: 1px solid #2B313E;">
+        <h2 style="color: #4A90E2; margin-top: 0; font-size: 24px; border-bottom: 1px solid #3E4654; padding-bottom: 15px; margin-bottom: 20px; text-align: center;">
             🏆 Why Top Rankers Choose JEEx Pro
         </h2>
         <div style="display: flex; flex-direction: column; gap: 20px;">
-            <div>
-                <strong style="color: #FFD700; font-size: 20px;">🧠 Advanced Problem Solving</strong><br>
-                <span style="font-size: 17px; color: #CCCCCC; line-height: 1.6;">
-                    Instantly solves Irodov, Cengage, and PYQ level problems with step-by-step logic.
-                </span>
-            </div>
-            <div>
-                <strong style="color: #FFD700; font-size: 20px;">👁️ Vision Intelligence (OCR)</strong><br>
-                <span style="font-size: 17px; color: #CCCCCC; line-height: 1.6;">
-                    Stuck on a handwritten question? Just upload a photo. JEEx reads and solves it.
-                </span>
-            </div>
-            <div>
-                <strong style="color: #FFD700; font-size: 20px;">📄 Full Document Analysis</strong><br>
-                <span style="font-size: 17px; color: #CCCCCC; line-height: 1.6;">
-                    Upload entire PDF assignments or test papers. Analyzes full document context.
-                </span>
-            </div>
-            <div>
-                <strong style="color: #FFD700; font-size: 20px;">➗ Perfect Math Formatting</strong><br>
-                <span style="font-size: 17px; color: #CCCCCC; line-height: 1.6;">
-                    Powered by LaTeX to render complex integrals, matrices, and equations with precision.
-                </span>
-            </div>
-            <div>
-                <strong style="color: #FFD700; font-size: 20px;">⚡ 24/7 Personal Mentorship</strong><br>
-                <span style="font-size: 17px; color: #CCCCCC; line-height: 1.6;">
-                    Your AI Tutor never sleeps. Clear backlogs and doubts at 3 AM.
-                </span>
-            </div>
+            <div><strong style="color: #FFD700; font-size: 18px;">🧠 Advanced Problem Solving</strong><br><span style="color: #CCCCCC;">Solves Irodov, Cengage, and PYQ level problems with step-by-step logic.</span></div>
+            <div><strong style="color: #FFD700; font-size: 18px;">👁️ Vision Intelligence</strong><br><span style="color: #CCCCCC;">Stuck on a handwritten question? Just upload a photo. JEEx solves it.</span></div>
+            <div><strong style="color: #FFD700; font-size: 18px;">📄 Document Analysis</strong><br><span style="color: #CCCCCC;">Upload PDF assignments. Our Code Interpreter analyzes the full context.</span></div>
+            <div><strong style="color: #FFD700; font-size: 18px;">➗ Perfect Math Formatting</strong><br><span style="color: #CCCCCC;">Renders complex integrals and matrices with LaTeX precision.</span></div>
         </div>
     </div>
     """, unsafe_allow_html=True)
-    
-    st.stop() # ⛔ THIS STOPS THE APP HERE SO THEY CAN'T SEE CHAT
+    st.stop() 
 
-# SCENARIO B: USER IS UNLOCKED (Show Chat Interface)
+# SCENARIO B: UNLOCKED CHAT INTERFACE
 
-# Sidebar Tools (Only visible when unlocked)
+# Sidebar Tools
 with st.sidebar:
-    st.success(f"✅ Active: {user_key}")
+    st.success(f"✅ Active")
     st.markdown("---")
     st.markdown("### 📎 Attach Question")
-    uploaded_file = st.file_uploader(
-        "Upload Image or PDF", 
-        type=["jpg", "png", "jpeg", "pdf"], 
-        key=f"uploader_{st.session_state.uploader_key}",
-        label_visibility="collapsed"
-    )
-    if uploaded_file:
-        st.info(f"Attached: {uploaded_file.name}")
-    
+    uploaded_file = st.file_uploader("Upload Image/PDF", type=["jpg", "png", "pdf"], key=f"uploader_{st.session_state.uploader_key}", label_visibility="collapsed")
+    if uploaded_file: st.info(f"Attached: {uploaded_file.name}")
     st.markdown("---")
-    if st.button("End Session"):
-        st.session_state['logout'] = True
-        st.rerun()
+    if st.button("End Session"): st.session_state['logout'] = True; st.rerun()
 
-# Main Chat Logic
+# Setup OpenAI
 try:
     api_key = st.secrets["OPENAI_API_KEY"]
     assistant_id = st.secrets["ASSISTANT_ID"]
+    client = OpenAI(api_key=api_key)
 except:
-    st.error("🚨 Keys missing in Secrets.")
+    st.error("🚨 Configuration Error: Keys missing.")
     st.stop()
-
-client = OpenAI(api_key=api_key)
 
 if "thread_id" not in st.session_state:
     thread = client.beta.threads.create()
     st.session_state.thread_id = thread.id
-    welcome_msg = "Welcome Champ! 🎓 Main hoon JEEx. JEE ki journey mushkil hai par main tumhare saath hoon. \n\nKoi bhi doubt ho—Physics ka numerical, Chemistry ka reaction, ya Maths ka integral—bas photo bhejo ya type karo. Chalo phodte hain! 🚀"
+    # Greeting
+    welcome_msg = "Welcome Champ! 🎓 Main hoon JEEx. \n\nPhysics ka numerical, Chemistry ka reaction, ya Maths ka integral—bas photo bhejo ya type karo. Let's crack it! 🚀"
     st.session_state.messages = [{"role": "assistant", "content": welcome_msg}]
 
-# Display History
+# Display Chat History
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(clean_latex(msg["content"]))
 
-# Input Area
-prompt = st.chat_input("Ask a doubt...")
-
-# Handling Send
-if prompt:
+# Chat Input
+if prompt := st.chat_input("Ask a doubt (e.g. Rotational Motion)..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
         if uploaded_file:
-            if uploaded_file.type == "application/pdf":
-                st.markdown(f"📄 *Attached PDF: {uploaded_file.name}*")
-            else:
-                st.image(uploaded_file, caption="Attached Image", width=200)
+            if uploaded_file.type == "application/pdf": st.markdown(f"📄 *PDF Attached*")
+            else: st.image(uploaded_file, width=200)
 
+    # Prepare Message
     message_content = [{"type": "text", "text": prompt}]
     attachments = [] 
-
     if uploaded_file:
-        with st.spinner("Processing file..."):
+        with st.spinner("Analyzing file..."):
             try:
+                # Save & Upload
                 temp_filename = f"temp_{uploaded_file.name}"
-                with open(temp_filename, "wb") as f:
-                    f.write(uploaded_file.getbuffer())
-                
-                file_response = client.files.create(
-                    file=open(temp_filename, "rb"),
-                    purpose="assistants"
-                )
+                with open(temp_filename, "wb") as f: f.write(uploaded_file.getbuffer())
+                file_response = client.files.create(file=open(temp_filename, "rb"), purpose="assistants")
                 
                 if uploaded_file.type == "application/pdf":
-                    attachments.append({
-                        "file_id": file_response.id,
-                        "tools": [{"type": "code_interpreter"}]
-                    })
+                    attachments.append({"file_id": file_response.id, "tools": [{"type": "code_interpreter"}]})
                 else:
-                    message_content.append({
-                        "type": "image_file",
-                        "image_file": {"file_id": file_response.id}
-                    })
+                    message_content.append({"type": "image_file", "image_file": {"file_id": file_response.id}})
                 os.remove(temp_filename)
-            except Exception as e:
-                st.error(f"Upload failed: {e}")
+            except: st.error("File upload failed.")
 
+    # Send & Run with SMART INSTRUCTIONS
     client.beta.threads.messages.create(
         thread_id=st.session_state.thread_id,
         role="user",
@@ -307,35 +262,31 @@ if prompt:
         attachments=attachments if attachments else None
     )
 
+    # --- THE BRAIN: JEE KNOWLEDGE INJECTION ---
     run = client.beta.threads.runs.create(
         thread_id=st.session_state.thread_id,
         assistant_id=assistant_id,
         additional_instructions="""
-        IMPORTANT:
-        1. MATH: Use LaTeX ($x^2$ or $$x^2$$). DO NOT use \[ or \(.
-        2. PDF: Use 'code_interpreter' to read PDFs immediately.
+        You are JEEx, an expert JEE Advanced Tutor.
+        1. LEVEL: Solve problems using Irodov/Cengage level rigor. Never simplify unnecessarily.
+        2. FORMAT: STRICTLY use LaTeX for math ($$x^2$$). Do not use [ ] or ( ).
+        3. TONE: Professional, encouraging, and precise. Use "Hinglish" for motivation.
+        4. PDFS: Always use Code Interpreter to analyze uploaded PDFs deeper.
         """
     )
 
     with st.chat_message("assistant"):
         status_box = st.empty()
-        status_box.markdown("**Solving...** ⏳")
-        
+        status_box.markdown("**Thinking...** ⏳")
         while run.status in ['queued', 'in_progress', 'cancelling']:
             time.sleep(1)
-            run = client.beta.threads.runs.retrieve(
-                thread_id=st.session_state.thread_id, run_id=run.id
-            )
+            run = client.beta.threads.runs.retrieve(thread_id=st.session_state.thread_id, run_id=run.id)
         
         if run.status == 'completed':
             status_box.empty()
             messages = client.beta.threads.messages.list(thread_id=st.session_state.thread_id)
             final_response = clean_latex(messages.data[0].content[0].text.value)
-            
             st.markdown(final_response)
             st.session_state.messages.append({"role": "assistant", "content": final_response})
             st.session_state.uploader_key += 1
             st.rerun()
-
-
-
