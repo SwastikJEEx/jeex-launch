@@ -11,6 +11,14 @@ st.set_page_config(page_title="JEEx Pro", page_icon="⚛️", layout="centered",
 # --- 2. PROFESSIONAL GEMINI-STYLE CSS ---
 st.markdown("""
 <style>
+    /* Import Professional Font (Inter - similar to ChatGPT/Gemini) */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+    /* Apply Font Globally */
+    html, body, [class*="css"] {
+        font-family: 'Inter', sans-serif;
+    }
+
     /* Main Background & Text */
     .stApp { background-color: #0E1117; color: #E0E0E0; }
     
@@ -20,27 +28,41 @@ st.markdown("""
     /* Center Layout alignment */
     .block-container { padding-top: 2rem; }
     
-    /* Chat Bubbles */
-    [data-testid="stChatMessage"] { background-color: transparent; border: none; }
+    /* --- CHAT BUBBLES (Bigger & Better Font) --- */
+    
+    /* Message Container */
+    [data-testid="stChatMessage"] { 
+        background-color: transparent; 
+        border: none; 
+        padding: 10px 0px; 
+    }
     
     /* USER BUBBLE (Blue/Grey Professional) */
     [data-testid="stChatMessage"][data-testid="user"] {
         background-color: #1E2330;
-        border-radius: 15px;
-        padding: 15px;
-        margin-bottom: 10px;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 15px;
         border: 1px solid #2B313E;
     }
     
     /* ASSISTANT BUBBLE (Transparent) */
     [data-testid="stChatMessage"][data-testid="assistant"] {
         background-color: transparent;
-        padding: 15px;
-        margin-bottom: 10px;
+        padding: 10px 20px;
+        margin-bottom: 15px;
+    }
+    
+    /* INCREASE TEXT SIZE FOR CHAT */
+    [data-testid="stChatMessage"] p, 
+    [data-testid="stChatMessage"] div {
+        font-size: 17px !important; /* Bigger Text */
+        line-height: 1.6 !important; /* Better Spacing */
+        color: #E6E6E6 !important;
     }
     
     /* Text Colors & Highlights */
-    h1, h2, h3, p, li, span { color: #E6E6E6 !important; }
+    h1, h2, h3, li, span { color: #E6E6E6 !important; }
     strong { color: #FFD700 !important; } /* Gold highlights */
     
     /* Inputs */
@@ -49,6 +71,7 @@ st.markdown("""
         color: white !important; 
         border: 1px solid #3E4654 !important; 
         border-radius: 10px;
+        font-size: 16px;
     }
     
     /* Buttons */
@@ -59,6 +82,7 @@ st.markdown("""
         border-radius: 8px;
         width: 100%; 
         transition: all 0.3s;
+        font-weight: 600;
     }
     div.stButton > button:hover { 
         border-color: #4A90E2 !important; 
@@ -71,13 +95,13 @@ st.markdown("""
     .stDeployButton {display:none;}
     
     /* Math Formatting */
-    .katex { font-size: 1.15em; color: #FFD700 !important; } 
+    .katex { font-size: 1.2em; color: #FFD700 !important; } 
     
     /* Attachment Button Clean-up */
     [data-testid="stFileUploader"] { padding: 0px; }
     
-    /* Avatar Styling Fixes */
-    .stChatMessage .st-emotion-cache-1p1m4ay { width: 40px; height: 40px; }
+    /* Avatar Styling */
+    .stChatMessage .st-emotion-cache-1p1m4ay { width: 42px; height: 42px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -89,24 +113,23 @@ def clean_latex(text):
     text = re.sub(r'(?<!\\)\[\s*(.*?=.*?)\s*\]', r'$$\1$$', text, flags=re.DOTALL)
     return text
 
-# GLOBAL LOGO URL (Used for Branding AND Chat Avatar)
-# Corrected RAW link from your new permalink
+# GLOBAL LOGO URL
 LOGO_URL = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/1d6ef8ca3ac05432ed370338d4c04d6a03541f23/logo.png.png"
 
 def show_branding():
-    """Displays Logo and Title Centered"""
-    # Using columns to center the image perfectly
+    """Displays Logo and Title Perfectly Centered"""
+    # 1. Use columns to center the image
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         try:
             st.image(LOGO_URL, width=220)
-        except:
-            pass # Fail silently if image breaks
+        except: pass
             
+    # 2. Text Centered Below
     st.markdown("""
-        <div style="text-align: center; margin-bottom: 25px;">
-            <h1 style="margin: 0; font-size: 38px;">JEEx <span style="color:#4A90E2;">PRO</span></h1>
-            <p style="color: #AAAAAA; font-size: 14px; margin-top: 5px;">
+        <div style="text-align: center; margin-top: 10px; margin-bottom: 30px;">
+            <h1 style="margin: 0; font-size: 38px; font-weight: 700;">JEEx <span style="color:#4A90E2;">PRO</span></h1>
+            <p style="color: #AAAAAA; font-size: 15px; margin-top: 8px; font-weight: 400;">
                 Your 24/7 AI Rank Booster | Master JEE Mains & Advanced 🚀
             </p>
         </div>
@@ -192,7 +215,7 @@ with st.sidebar:
 
 # --- 8. MAIN APP LOGIC ---
 
-# DISPLAY BRANDING ON EVERY PAGE
+# DISPLAY BRANDING ON EVERY PAGE (Centered)
 show_branding()
 
 # SCENARIO A: LANDING PAGE (LOCKED)
@@ -200,8 +223,8 @@ if status != "VALID":
     st.markdown("---")
     
     st.markdown("""
-    <div style="background-color: #1E2330; padding: 20px; border-radius: 12px; border-left: 5px solid #4A90E2; margin-bottom: 30px; text-align: center;">
-        <p style="font-size: 18px; margin: 0; color: #E6E6E6;">
+    <div style="background-color: #1E2330; padding: 25px; border-radius: 12px; border-left: 5px solid #4A90E2; margin-bottom: 30px; text-align: center;">
+        <p style="font-size: 18px; margin: 0; color: #E6E6E6; line-height: 1.5;">
             👋 <strong>Welcome Student!</strong><br>
             Please enter your <strong>Access Key</strong> in the Sidebar (↖️ Top Left) to unlock.
         </p>
@@ -209,15 +232,15 @@ if status != "VALID":
     """, unsafe_allow_html=True)
 
     st.markdown("""
-    <div style="background-color: #161B26; padding: 30px; border-radius: 15px; border: 1px solid #2B313E;">
+    <div style="background-color: #161B26; padding: 35px; border-radius: 15px; border: 1px solid #2B313E;">
         <h2 style="color: #4A90E2; margin-top: 0; font-size: 24px; border-bottom: 1px solid #3E4654; padding-bottom: 15px; margin-bottom: 20px; text-align: center;">
             🏆 Why Top Rankers Choose JEEx <span style="color:#4A90E2">PRO</span>
         </h2>
         <div style="display: flex; flex-direction: column; gap: 20px;">
-            <div><strong style="color: #FFD700; font-size: 18px;">🧠 Advanced Problem Solving</strong><br><span style="color: #CCCCCC;">Solves Irodov, Cengage, and PYQ level problems with step-by-step logic.</span></div>
-            <div><strong style="color: #FFD700; font-size: 18px;">👁️ Vision Intelligence</strong><br><span style="color: #CCCCCC;">Stuck on a handwritten question? Just upload a photo. JEEx solves it.</span></div>
-            <div><strong style="color: #FFD700; font-size: 18px;">📄 Document Analysis</strong><br><span style="color: #CCCCCC;">Upload PDF assignments. Our Code Interpreter analyzes the full context.</span></div>
-            <div><strong style="color: #FFD700; font-size: 18px;">➗ Perfect Math Formatting</strong><br><span style="color: #CCCCCC;">Renders complex integrals and matrices with LaTeX precision.</span></div>
+            <div><strong style="color: #FFD700; font-size: 19px;">🧠 Advanced Problem Solving</strong><br><span style="color: #CCCCCC; font-size: 16px;">Solves Irodov, Cengage, and PYQ level problems with step-by-step logic.</span></div>
+            <div><strong style="color: #FFD700; font-size: 19px;">👁️ Vision Intelligence</strong><br><span style="color: #CCCCCC; font-size: 16px;">Stuck on a handwritten question? Just upload a photo. JEEx solves it.</span></div>
+            <div><strong style="color: #FFD700; font-size: 19px;">📄 Document Analysis</strong><br><span style="color: #CCCCCC; font-size: 16px;">Upload PDF assignments. Our Code Interpreter analyzes the full context.</span></div>
+            <div><strong style="color: #FFD700; font-size: 19px;">➗ Perfect Math Formatting</strong><br><span style="color: #CCCCCC; font-size: 16px;">Renders complex integrals and matrices with LaTeX precision.</span></div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -254,11 +277,10 @@ if "thread_id" not in st.session_state:
 
 # Display Chat History with CUSTOM AVATARS
 for msg in st.session_state.messages:
-    # Logic to choose avatar
     if msg["role"] == "assistant":
-        avatar_icon = LOGO_URL # Your Logo
+        avatar_icon = LOGO_URL
     else:
-        avatar_icon = "🧑‍🎓" # Professional Student Icon
+        avatar_icon = "🧑‍🎓"
         
     with st.chat_message(msg["role"], avatar=avatar_icon):
         st.markdown(clean_latex(msg["content"]))
@@ -267,14 +289,13 @@ for msg in st.session_state.messages:
 if prompt := st.chat_input("Ask a doubt (e.g. Rotational Motion)..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     
-    # Show User Message with Student Avatar
     with st.chat_message("user", avatar="🧑‍🎓"):
         st.markdown(prompt)
         if uploaded_file:
             if uploaded_file.type == "application/pdf": st.markdown(f"📄 *PDF Attached*")
             else: st.image(uploaded_file, width=200)
 
-    # Prepare Message Content
+    # Prepare Message
     message_content = [{"type": "text", "text": prompt}]
     attachments = [] 
     if uploaded_file:
@@ -299,8 +320,7 @@ if prompt := st.chat_input("Ask a doubt (e.g. Rotational Motion)..."):
         attachments=attachments if attachments else None
     )
 
-    # --- STREAMING RESPONSE LOGIC ---
-    # Show Assistant Message with Your Logo Avatar
+    # STREAMING RESPONSE
     with st.chat_message("assistant", avatar=LOGO_URL):
         stream = client.beta.threads.runs.create(
             thread_id=st.session_state.thread_id,
