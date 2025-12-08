@@ -328,7 +328,6 @@ for msg in st.session_state.messages:
         st.markdown(clean_latex(msg["content"]))
 
 # --- GEMINI-STYLE INPUT TOOLBAR (Tools above Input) ---
-# Create columns just above the chat input
 col_tools_1, col_tools_2 = st.columns([1, 1])
 
 with col_tools_1:
@@ -413,3 +412,4 @@ if prompt:
         st.session_state.messages.append({"role": "assistant", "content": collected_message})
         st.session_state.uploader_key += 1
         if audio_value: time.sleep(1); st.rerun()
+        
