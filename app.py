@@ -11,13 +11,10 @@ st.set_page_config(page_title="JEEx Pro", page_icon="⚛️", layout="centered",
 # --- 2. PROFESSIONAL GEMINI-STYLE CSS ---
 st.markdown("""
 <style>
-    /* Import Professional Font (Inter - similar to ChatGPT/Gemini) */
+    /* Import Professional Font (Inter) */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
-    /* Apply Font Globally */
-    html, body, [class*="css"] {
-        font-family: 'Inter', sans-serif;
-    }
+    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
     /* Main Background & Text */
     .stApp { background-color: #0E1117; color: #E0E0E0; }
@@ -28,16 +25,10 @@ st.markdown("""
     /* Center Layout alignment */
     .block-container { padding-top: 2rem; }
     
-    /* --- CHAT BUBBLES (Bigger & Better Font) --- */
+    /* --- CHAT BUBBLES --- */
+    [data-testid="stChatMessage"] { background-color: transparent; border: none; padding: 10px 0px; }
     
-    /* Message Container */
-    [data-testid="stChatMessage"] { 
-        background-color: transparent; 
-        border: none; 
-        padding: 10px 0px; 
-    }
-    
-    /* USER BUBBLE (Blue/Grey Professional) */
+    /* USER BUBBLE */
     [data-testid="stChatMessage"][data-testid="user"] {
         background-color: #1E2330;
         border-radius: 12px;
@@ -46,24 +37,23 @@ st.markdown("""
         border: 1px solid #2B313E;
     }
     
-    /* ASSISTANT BUBBLE (Transparent) */
+    /* ASSISTANT BUBBLE */
     [data-testid="stChatMessage"][data-testid="assistant"] {
         background-color: transparent;
         padding: 10px 20px;
         margin-bottom: 15px;
     }
     
-    /* INCREASE TEXT SIZE FOR CHAT */
-    [data-testid="stChatMessage"] p, 
-    [data-testid="stChatMessage"] div {
-        font-size: 17px !important; /* Bigger Text */
-        line-height: 1.6 !important; /* Better Spacing */
+    /* TEXT SIZE */
+    [data-testid="stChatMessage"] p, [data-testid="stChatMessage"] div {
+        font-size: 17px !important;
+        line-height: 1.6 !important;
         color: #E6E6E6 !important;
     }
     
-    /* Text Colors & Highlights */
+    /* Highlights */
     h1, h2, h3, li, span { color: #E6E6E6 !important; }
-    strong { color: #FFD700 !important; } /* Gold highlights */
+    strong { color: #FFD700 !important; }
     
     /* Inputs */
     .stTextInput input, .stTextArea textarea { 
@@ -84,12 +74,9 @@ st.markdown("""
         transition: all 0.3s;
         font-weight: 600;
     }
-    div.stButton > button:hover { 
-        border-color: #4A90E2 !important; 
-        color: #4A90E2 !important;
-    }
+    div.stButton > button:hover { border-color: #4A90E2 !important; color: #4A90E2 !important; }
     
-    /* Hide Default Streamlit Elements */
+    /* Hide Defaults */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     .stDeployButton {display:none;}
@@ -97,7 +84,7 @@ st.markdown("""
     /* Math Formatting */
     .katex { font-size: 1.2em; color: #FFD700 !important; } 
     
-    /* Attachment Button Clean-up */
+    /* Attachment Button */
     [data-testid="stFileUploader"] { padding: 0px; }
     
     /* Avatar Styling */
@@ -105,9 +92,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. HELPER FUNCTIONS ---
+# --- 3. HELPER FUNCTIONS (NOW REMOVES SOURCE TAGS) ---
 def clean_latex(text):
     if not text: return ""
+    # 1. Remove OpenAI Source Annotations like 【4:0†source】
+    text = re.sub(r'【.*?†source】', '', text)
+    # 2. Fix LaTeX formatting
     text = re.sub(r'\\\[(.*?)\\\]', r'$$\1$$', text, flags=re.DOTALL)
     text = re.sub(r'\\\((.*?)\\\)', r'$\1$', text, flags=re.DOTALL)
     text = re.sub(r'(?<!\\)\[\s*(.*?=.*?)\s*\]', r'$$\1$$', text, flags=re.DOTALL)
@@ -118,14 +108,11 @@ LOGO_URL = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/1d6ef8ca3a
 
 def show_branding():
     """Displays Logo and Title Perfectly Centered"""
-    # 1. Use columns to center the image
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        try:
-            st.image(LOGO_URL, width=220)
+        try: st.image(LOGO_URL, width=220)
         except: pass
             
-    # 2. Text Centered Below
     st.markdown("""
         <div style="text-align: center; margin-top: 10px; margin-bottom: 30px;">
             <h1 style="margin: 0; font-size: 38px; font-weight: 700;">JEEx <span style="color:#4A90E2;">PRO</span></h1>
@@ -199,7 +186,7 @@ with st.sidebar:
             if user_key: st.warning("🔒 Chat Locked")
             btn_text = "👉 Subscribe for ₹99 / Month"
             
-        payment_link = "https://rzp.io/rzp/wXI8i7t" 
+        payment_link = "https://pages.razorpay.com/pl_Hk7823hsk" 
         
         st.markdown(f"""
             <a href="{payment_link}" target="_blank">
@@ -275,7 +262,7 @@ if "thread_id" not in st.session_state:
     welcome_msg = "Welcome Champ! 🎓 Main hoon JEEx. \n\nPhysics ka numerical, Chemistry ka reaction, ya Maths ka integral—bas photo bhejo ya type karo. Let's crack it! 🚀"
     st.session_state.messages = [{"role": "assistant", "content": welcome_msg}]
 
-# Display Chat History with CUSTOM AVATARS
+# Display Chat History with CUSTOM AVATARS & CLEANED TEXT
 for msg in st.session_state.messages:
     if msg["role"] == "assistant":
         avatar_icon = LOGO_URL
@@ -343,6 +330,7 @@ if prompt := st.chat_input("Ask a doubt (e.g. Rotational Motion)..."):
                 for content in event.data.delta.content:
                     if content.type == "text":
                         collected_message += content.text.value
+                        # Clean tags on the fly
                         response_container.markdown(clean_latex(collected_message) + "▌")
             
             elif event.event == "thread.run.completed":
@@ -352,4 +340,3 @@ if prompt := st.chat_input("Ask a doubt (e.g. Rotational Motion)..."):
         
         st.session_state.messages.append({"role": "assistant", "content": collected_message})
         st.session_state.uploader_key += 1
-
