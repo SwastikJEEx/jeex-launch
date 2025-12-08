@@ -5,10 +5,15 @@ import os
 import re
 from datetime import datetime, timedelta
 from fpdf import FPDF
-import requests # NEW: For sending auto-notifications
+import requests # Needed for auto-email notifications
 
-# --- 1. CONFIGURATION ---
+# --- 1. CONFIGURATION & CONTACT DETAILS ---
 st.set_page_config(page_title="JEEx Pro", page_icon="⚛️", layout="centered", initial_sidebar_state="expanded")
+
+# YOUR BUSINESS DETAILS
+ADMIN_WHATSAPP = "919839940400"  
+ADMIN_EMAIL = "jeexaipro@gmail.com" 
+LOGO_URL = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/1d6ef8ca3ac05432ed370338d4c04d6a03541f23/logo.png.png"
 
 # --- 2. PROFESSIONAL CSS ---
 st.markdown("""
@@ -24,16 +29,16 @@ st.markdown("""
     /* Chat Bubbles */
     [data-testid="stChatMessage"] { background-color: transparent; border: none; padding: 10px 0px; }
     [data-testid="stChatMessage"][data-testid="user"] {
-        background-color: #1E2330; border-radius: 12px; padding: 15px 20px; 
+        background-color: #1E2330; border-radius: 12px; padding: 15px 25px; 
         margin-bottom: 10px; border: 1px solid #2B313E;
     }
     [data-testid="stChatMessage"][data-testid="assistant"] {
-        background-color: transparent; padding: 0px 20px; margin-bottom: 10px;
+        background-color: transparent; padding: 0px 25px; margin-bottom: 10px;
     }
     
-    /* Typography */
+    /* Text Size */
     p, li, div { font-size: 17px !important; line-height: 1.6 !important; color: #E6E6E6 !important; }
-    strong { color: #FFD700 !important; } 
+    strong { color: #FFD700 !important; font-weight: 600; } 
     code { color: #FF7043 !important; }
     
     /* Buttons */
@@ -43,27 +48,21 @@ st.markdown("""
     }
     div.stButton > button:hover { border-color: #4A90E2 !important; color: #4A90E2 !important; }
     
-    /* Inputs */
+    /* Sidebar Inputs */
     [data-testid="stFileUploader"] { padding: 0px; }
     .stAudioInput { margin-top: 10px; }
+    
+    /* Avatar Size */
     .stChatMessage .st-emotion-cache-1p1m4ay { width: 45px; height: 45px; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. GLOBAL CONFIG ---
-ADMIN_WHATSAPP = "919839940400" # Your Number
-# REPLACE THIS WITH YOUR EMAIL TO RECEIVE USER DETAILS AUTOMATICALLY
-ADMIN_EMAIL = "your-email@example.com" 
-
-LOGO_URL = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/1d6ef8ca3ac05432ed370338d4c04d6a03541f23/logo.png.png"
-
-# --- 4. HELPER FUNCTIONS ---
+# --- 3. HELPER FUNCTIONS ---
 
 def send_auto_notification(name, email, phone):
-    """Sends user details to Admin Email silently in the background"""
+    """Sends registration details to your Gmail automatically"""
     try:
-        # Using FormSubmit.co (Free API, no setup needed)
-        # It will email you the first time you run it to confirm
+        # Using FormSubmit to send email without backend server
         payload = {
             "subject": f"New JEEx Subscriber: {name}",
             "name": name,
@@ -71,9 +70,10 @@ def send_auto_notification(name, email, phone):
             "phone": phone,
             "timestamp": str(datetime.now())
         }
+        # Send silently
         requests.post(f"https://formsubmit.co/{ADMIN_EMAIL}", data=payload)
     except:
-        pass # Fail silently if network issue, don't block user
+        pass 
 
 def clean_latex(text):
     if not text: return ""
@@ -85,17 +85,19 @@ def clean_latex(text):
     return text
 
 def sanitize_text_for_pdf(text):
-    text = text.replace('•', '-').replace('—', '-')
+    text = text.replace('•', '-').replace('—', '-').replace('’', "'")
     return text.encode('latin-1', 'ignore').decode('latin-1')
 
 def show_branding():
+    """Displays Logo Centered and Bigger"""
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
-        try: st.image(LOGO_URL, width=220) 
+        try: st.image(LOGO_URL, width=280) # Bigger Logo
         except: pass
+            
     st.markdown("""
         <div style="text-align: center; margin-top: -15px; margin-bottom: 30px;">
-            <h1 style="margin: 0; font-size: 40px; font-weight: 700; letter-spacing: 1px;">
+            <h1 style="margin: 0; font-size: 42px; font-weight: 700; letter-spacing: 1px;">
                 JEEx <span style="color:#4A90E2;">PRO</span>
             </h1>
             <p style="color: #AAAAAA; font-size: 15px; margin-top: 8px;">
@@ -104,7 +106,7 @@ def show_branding():
         </div>
     """, unsafe_allow_html=True)
 
-# --- 5. PDF GENERATOR ---
+# --- 4. PDF GENERATOR ---
 class PDF(FPDF):
     def header(self):
         self.set_font('Arial', 'B', 12)
@@ -133,7 +135,7 @@ def generate_pdf(messages):
         pdf.chapter_body(content)
     return pdf.output(dest='S').encode('latin-1', 'ignore')
 
-# --- 6. AUTH & LOGIC ---
+# --- 5. AUTH & LOGIC ---
 def check_key_status(user_key):
     if user_key == st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS"): return "ADMIN"
     expiry_db = st.secrets.get("KEY_EXPIRY", {})
@@ -149,16 +151,43 @@ if st.session_state.get('logout', False):
     for key in list(st.session_state.keys()): del st.session_state[key]
     st.rerun()
 
-# --- 7. SIDEBAR (REGISTRATION + TOOLS) ---
+# --- 6. DETAILED TERMS & CONDITIONS (Restored) ---
+terms_text = """
+### JEEx Pro Terms of Service & End User License Agreement
+
+**1. Acceptance of Terms**
+By accessing JEEx Pro, you confirm that you are a student preparing for competitive exams and agree to use this tool solely for educational purposes.
+
+**2. License Grant & Restrictions**
+* **License:** JEEx grants you a limited, non-exclusive, non-transferable license to use the AI tutor.
+* **Single User Only:** Your Access Key is strictly personal. Sharing it on public forums (Telegram, WhatsApp, Reddit) or with friends is a violation of this agreement.
+* **Security Monitoring:** Our system actively logs IP addresses and device fingerprints. Simultaneous logins from multiple locations will trigger an automatic, irreversible ban.
+
+**3. AI Accuracy & Educational Disclaimer**
+* **Nature of AI:** JEEx Pro utilizes advanced LLMs (GPT-4o) to generate responses. While highly accurate, "hallucinations" (incorrect data) can occur.
+* **User Responsibility:** You agree to verify all formulas, constants, and solutions with standard textbooks (NCERT, H.C. Verma). JEEx is a study companion, not a replacement for official academic instruction.
+* **Liability:** JEEx is not liable for any loss of marks, exam results, or academic consequences resulting from reliance on the tool.
+
+**4. Payments & Refund Policy**
+* **Digital Goods:** Access Keys are classified as intangible digital goods. Once a key is generated and delivered to you, the service is considered "consumed."
+* **No Refunds:** We enforce a strict **No Refund Policy**. All sales are final.
+* **Validity:** Subscriptions are valid for exactly 30 days from the date of activation in our system.
+
+**5. Privacy Policy**
+We respect your privacy. Chat logs are processed securely via OpenAI APIs for generating responses. User data (Name, Phone, Email) collected during registration is used solely for account management and is not sold to third-party advertisers.
+"""
+
+# --- 7. SIDEBAR ---
 with st.sidebar:
     st.markdown("## 🔐 Premium Access")
     if "uploader_key" not in st.session_state: st.session_state.uploader_key = 0
     if "audio_key" not in st.session_state: st.session_state.audio_key = 0
     
-    user_key = st.text_input("Enter Access Key:", type="password", placeholder="JEEx-XXXX")
+    # LOGIN INPUT (Removed Placeholder for Security)
+    user_key = st.text_input("Enter Access Key:", type="password") 
     status = check_key_status(user_key)
     
-    # --- UNLOCKED MODE ---
+    # --- UNLOCKED TOOLS ---
     if status == "VALID" or status == "ADMIN":
         st.success(f"✅ Active")
         st.markdown("---")
@@ -176,7 +205,7 @@ with st.sidebar:
         
         if st.button("End Session"): st.session_state['logout'] = True; st.rerun()
 
-    # --- LOCKED MODE (AUTO-NOTIFY REGISTRATION) ---
+    # --- LOCKED (REGISTRATION) ---
     else:
         if user_key and status != "VALID": st.error("❌ Invalid or Expired Key")
         
@@ -192,18 +221,18 @@ with st.sidebar:
             
             if submitted:
                 if name and email and phone:
-                    # 1. AUTO-SEND DETAILS TO ADMIN (Background)
+                    # 1. AUTO-EMAIL NOTIFICATION
                     send_auto_notification(name, email, phone)
                     
-                    st.success("Registration Sent! Details forwarded to Admin.")
+                    st.success("Details Recorded!")
                     st.markdown("---")
                     st.markdown("**Step 1: Scan & Pay ₹99**")
                     try: st.image("upi_qr.png", caption="Scan UPI QR", use_container_width=True)
                     except: st.info(f"Pay to: **{ADMIN_WHATSAPP}@upi**")
                     
                     st.markdown("**Step 2: Send Screenshot**")
-                    # Pre-filled WhatsApp Link for Screenshot
-                    msg = f"Hello JEEx Team!%0A%0A*Subscription Payment*%0A👤 {name}%0A📱 {phone}%0A%0AI have paid ₹99. Here is the screenshot."
+                    # WhatsApp Link
+                    msg = f"Hello JEEx Team!%0A%0A*Subscription Payment*%0A👤 {name}%0A📧 {email}%0A📱 {phone}%0A%0AI have paid ₹99. Here is the screenshot."
                     wa_link = f"https://wa.me/{ADMIN_WHATSAPP}?text={msg}"
                     
                     st.markdown(f"""
@@ -218,7 +247,7 @@ with st.sidebar:
 
         st.markdown("---")
         with st.expander("📄 Terms & Conditions"): 
-            st.markdown("**JEEx Policy:**\n1. Personal Use Only.\n2. No Refunds.\n3. AI is a study aid.")
+            st.markdown("Please read the detailed terms on the main page.")
 
 # --- 8. ADMIN PANEL ---
 if status == "ADMIN":
@@ -231,7 +260,7 @@ if status == "ADMIN":
         st.code(f'"{new_id}" = "{exp}"', language="toml")
     st.stop()
 
-# --- 9. LANDING PAGE (FIXED FORMATTING) ---
+# --- 9. LANDING PAGE ---
 show_branding()
 
 if status != "VALID":
@@ -242,7 +271,6 @@ if status != "VALID":
     </div>
     """, unsafe_allow_html=True)
     
-    # 6 STRONG POINTS (CLEAN MARKDOWN)
     st.markdown("### 🏆 Why Top Rankers Choose JEEx **PRO**")
     
     c1, c2 = st.columns(2)
@@ -257,13 +285,8 @@ if status != "VALID":
         st.info("**⚡ 24/7 Strategic Mentorship**\n\nYour personal AI coach for study planning, backlog management, and exam strategy at 3 AM.")
     
     st.markdown("---")
-    with st.expander("📄 Detailed Terms & Conditions"):
-        st.markdown("""
-        **1. Acceptance of Terms:** By using JEEx Pro, you confirm you are a student using it for education.
-        **2. Single User License:** Keys are personal. Sharing leads to an instant ban.
-        **3. No Refunds:** Digital access keys are non-refundable.
-        **4. Accuracy:** AI can make errors. Verify with NCERT.
-        """)
+    with st.expander("📄 Read Detailed Terms & Conditions"):
+        st.markdown(terms_text)
     st.stop()
 
 # --- 10. CHAT INTERFACE ---
@@ -324,14 +347,14 @@ if prompt:
     user_msg_dict.update(file_data_entry)
     st.session_state.messages.append(user_msg_dict)
     
-    # 3. Render User Message
+    # 3. Render User Message Now
     with st.chat_message("user", avatar="🧑‍🎓"):
         st.markdown(prompt)
         if uploaded_file:
             if uploaded_file.type == "application/pdf": st.markdown(f"📄 *{uploaded_file.name}*")
             else: st.image(uploaded_file, width=200)
 
-    # 4. API Request
+    # 4. API Request & File Handling
     message_content = [{"type": "text", "text": prompt}]
     attachments = [] 
     if uploaded_file:
@@ -350,7 +373,7 @@ if prompt:
                 os.remove(temp_filename)
             except: st.error("File upload failed.")
 
-    # 5. Send & Stream
+    # 5. Send Message to Thread
     client.beta.threads.messages.create(
         thread_id=st.session_state.thread_id,
         role="user",
@@ -358,6 +381,7 @@ if prompt:
         attachments=attachments if attachments else None
     )
 
+    # 6. Stream Response
     with st.chat_message("assistant", avatar=LOGO_URL):
         stream = client.beta.threads.runs.create(
             thread_id=st.session_state.thread_id,
@@ -385,7 +409,7 @@ if prompt:
         response_container.markdown(clean_latex(collected_message))
         st.session_state.messages.append({"role": "assistant", "content": collected_message})
         
-        # 6. Reset Audio (Prevents Error Loop)
+        # 7. Safe Reset (Prevents Voice Error Loop)
         st.session_state.uploader_key += 1
         if locals().get('audio_value'): 
             st.session_state.audio_key += 1 
