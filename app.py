@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from fpdf import FPDF
 
 # --- 1. CONFIGURATION ---
-st.set_page_config(page_title="JEEx Pro", page_icon="⚛️", layout="centered", initial_sidebar_state="expanded")
+st.set_page_config(page_title="JEEx Pro", page_icon="⚛️", layout="centered", initial_sidebar_state="collapsed")
 
 # --- 2. PROFESSIONAL GEMINI-STYLE CSS ---
 st.markdown("""
@@ -26,7 +26,7 @@ st.markdown("""
     [data-testid="stSidebar"] { background-color: #161B26; border-right: 1px solid #2B313E; }
     
     /* Center Layout alignment */
-    .block-container { padding-top: 2rem; padding-bottom: 150px; } /* Padding for bottom toolbar */
+    .block-container { padding-top: 1rem; padding-bottom: 120px; }
     
     /* --- CHAT BUBBLES --- */
     [data-testid="stChatMessage"] { background-color: transparent; border: none; padding: 10px 0px; }
@@ -87,15 +87,16 @@ st.markdown("""
     /* Avatar Size */
     .stChatMessage .st-emotion-cache-1p1m4ay { width: 42px; height: 42px; }
     
-    /* Bottom Toolbar Container */
-    .stBottomContainer {
+    /* TOOLBAR CONTAINER (Fixed above chat input) */
+    .toolbar-container {
         position: fixed;
-        bottom: 60px;
-        left: 0;
-        right: 0;
-        background: #0E1117;
-        padding: 10px;
+        bottom: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100%;
+        max-width: 700px;
         z-index: 99;
+        padding: 0 20px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -105,25 +106,34 @@ st.markdown("""
 def clean_latex(text):
     """Cleans OpenAI response: Removes source tags & fixes LaTeX"""
     if not text: return ""
+    # Remove Source Tags like 【4:4†source】
     text = re.sub(r'【.*?†source】', '', text)
+    # Fix LaTeX brackets
     text = re.sub(r'\\\[(.*?)\\\]', r'$$\1$$', text, flags=re.DOTALL)
     text = re.sub(r'\\\((.*?)\\\)', r'$\1$', text, flags=re.DOTALL)
     text = re.sub(r'(?<!\\)\[\s*(.*?=.*?)\s*\]', r'$$\1$$', text, flags=re.DOTALL)
+    # Fix broken dollar signs like $$$a, b]$ -> $[a, b]$
+    text = text.replace('$$$', '$')
     return text
 
 def sanitize_text_for_pdf(text):
-    """Removes Emojis and unsupported characters for PDF generation"""
-    # Encode to latin-1 and ignore errors to strip emojis, then decode back
+    """Removes Emojis and unsupported characters to prevent PDF crash"""
+    # Replace common bullets with dashes
+    text = text.replace('•', '-')
+    # Encode to latin-1 and ignore errors (strips emojis), then decode
     return text.encode('latin-1', 'ignore').decode('latin-1')
 
 LOGO_URL = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/1d6ef8ca3ac05432ed370338d4c04d6a03541f23/logo.png.png"
 
 def show_branding():
+    """Displays Logo and Title PERFECTLY CENTERED"""
+    # 1. Logo Centered
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        try: st.image(LOGO_URL, width=220)
+        try: st.image(LOGO_URL, use_container_width=True)
         except: pass
             
+    # 2. Text Centered Below
     st.markdown("""
         <div style="text-align: center; margin-top: -10px; margin-bottom: 30px;">
             <h1 style="margin: 0; font-size: 36px; font-weight: 700; letter-spacing: 1px;">
@@ -135,7 +145,7 @@ def show_branding():
         </div>
     """, unsafe_allow_html=True)
 
-# --- 4. PDF GENERATOR (FIXED UNICODE ERROR) ---
+# --- 4. PDF GENERATOR (CRASH FIXED) ---
 class PDF(FPDF):
     def header(self):
         self.set_font('Arial', 'B', 12)
@@ -151,7 +161,6 @@ class PDF(FPDF):
     def chapter_body(self, body):
         self.set_font('Arial', '', 11)
         self.set_text_color(50, 50, 50)
-        # Sanitize text before writing to prevent crash
         clean_body = sanitize_text_for_pdf(body)
         self.multi_cell(0, 7, clean_body)
         self.ln()
@@ -164,13 +173,18 @@ def generate_pdf(messages):
         content = clean_latex(msg["content"]).replace('*', '').replace('#', '') 
         pdf.chapter_title(role)
         pdf.chapter_body(content)
-    return pdf.output(dest='S').encode('latin-1', 'ignore') # IGNORE ERRORS TO PREVENT CRASH
+    # Return binary data safely
+    return pdf.output(dest='S').encode('latin-1', 'ignore')
 
 # --- 5. SMART KEY LOGIC (STRICT) ---
 def check_key_status(user_key):
     if user_key == st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS"): return "ADMIN"
 
+    # STRICT LOGIC: If key is NOT in expiry_db, it is INVALID.
+    # It does NOT matter if it follows the "JEExa..." pattern.
+    # You MUST add the key to secrets.toml to activate it.
     expiry_db = st.secrets.get("KEY_EXPIRY", {})
+    
     if user_key in expiry_db:
         try:
             expiry_date = datetime.strptime(expiry_db[user_key], "%Y-%m-%d").date()
@@ -245,10 +259,11 @@ if status == "ADMIN":
     if st.button("Logout"): st.session_state['logout'] = True; st.rerun()
     st.stop()
 
-# --- 10. MAIN APP ---
+# --- 10. MAIN APP LOGIC ---
+
 show_branding()
 
-# LANDING PAGE (DETAILED)
+# LANDING PAGE (LOCKED)
 if status != "VALID":
     st.markdown("---")
     st.markdown("""
@@ -284,10 +299,9 @@ if status != "VALID":
     """, unsafe_allow_html=True)
     st.stop()
 
-# UNLOCKED INTERFACE
+# UNLOCKED INTERFACE (CHAT)
 with st.sidebar:
     st.success(f"✅ Active")
-    # PDF DOWNLOAD BUTTON IN SIDEBAR FOR EASY ACCESS
     if "messages" in st.session_state and len(st.session_state.messages) > 1:
         pdf_bytes = generate_pdf(st.session_state.messages)
         st.download_button(label="📥 Download Session PDF", data=pdf_bytes, file_name="JEEx_Notes.pdf", mime="application/pdf")
@@ -313,30 +327,22 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"], avatar=avatar_icon):
         st.markdown(clean_latex(msg["content"]))
 
-# --- GEMINI-STYLE INPUT TOOLBAR ---
-# Creating a container at the bottom for inputs
-input_container = st.container()
+# --- GEMINI-STYLE INPUT TOOLBAR (Tools above Input) ---
+# Create columns just above the chat input
+col_tools_1, col_tools_2 = st.columns([1, 1])
 
-with input_container:
-    # Two Columns: [ Tools ] [ Chat Input ] is tricky in Streamlit.
-    # We will put Tools ABOVE the input to ensure they are visible and functional.
+with col_tools_1:
+    # VOICE INPUT (Native Streamlit Audio)
+    audio_value = st.audio_input("🎙️ Voice", label_visibility="collapsed")
     
-    col_tools_1, col_tools_2 = st.columns([1, 1])
-    
-    with col_tools_1:
-        # VOICE INPUT
-        audio_value = st.audio_input("🎙️ Voice", label_visibility="visible")
-        
-    with col_tools_2:
-        # ATTACHMENT INPUT (Moved from Sidebar)
-        uploaded_file = st.file_uploader("📎 Attach", type=["jpg", "png", "pdf"], key=f"uploader_{st.session_state.uploader_key}", label_visibility="visible")
+with col_tools_2:
+    # ATTACHMENT INPUT
+    uploaded_file = st.file_uploader("📎 Attach", type=["jpg", "png", "pdf"], key=f"uploader_{st.session_state.uploader_key}", label_visibility="collapsed")
 
-    # Chat Input
-    text_prompt = st.chat_input("Ask a doubt (e.g. Rotational Motion)...")
+# CHAT INPUT (Bottom)
+text_prompt = st.chat_input("Ask a doubt...")
 
-# --- HANDLING LOGIC ---
-
-# 1. Voice Logic
+# LOGIC
 audio_prompt = None
 if audio_value:
     with st.spinner("Processing Voice..."):
@@ -345,10 +351,8 @@ if audio_value:
             audio_prompt = transcription.text
         except Exception as e: st.error(f"Voice Error: {e}")
 
-# 2. Determine Final Prompt
 prompt = audio_prompt if audio_value else text_prompt
 
-# 3. Handle Send
 if prompt:
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user", avatar="🧑‍🎓"):
@@ -408,6 +412,4 @@ if prompt:
         response_container.markdown(clean_latex(collected_message))
         st.session_state.messages.append({"role": "assistant", "content": collected_message})
         st.session_state.uploader_key += 1
-        # Rerun to clear voice input if used
         if audio_value: time.sleep(1); st.rerun()
-        
