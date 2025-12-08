@@ -8,10 +8,10 @@ from datetime import datetime
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="JEEx Pro", page_icon="⚛️", layout="centered", initial_sidebar_state="expanded")
 
-# --- 2. PROFESSIONAL & MODERN CSS (Gemini Style) ---
+# --- 2. PROFESSIONAL GEMINI-STYLE CSS ---
 st.markdown("""
 <style>
-    /* Main Background */
+    /* Main Background & Text */
     .stApp { background-color: #0E1117; color: #E0E0E0; }
     
     /* Sidebar */
@@ -20,7 +20,7 @@ st.markdown("""
     /* Center Layout alignment */
     .block-container { padding-top: 3rem; }
     
-    /* Chat Bubbles - Gemini Style */
+    /* Chat Bubbles - Modern Clean Look */
     [data-testid="stChatMessage"] {
         background-color: transparent;
         border: none;
@@ -30,13 +30,15 @@ st.markdown("""
         border-radius: 15px;
         padding: 15px;
         margin-bottom: 10px;
+        border: 1px solid #2B313E;
     }
     [data-testid="stChatMessage"][data-testid="assistant"] {
+        background-color: transparent;
         padding: 15px;
         margin-bottom: 10px;
     }
     
-    /* Text Colors */
+    /* Text Colors & Highlights */
     h1, h2, h3, p, li, span { color: #E6E6E6 !important; }
     strong { color: #FFD700 !important; } /* Gold highlights */
     
@@ -70,8 +72,13 @@ st.markdown("""
     /* Math Formatting */
     .katex { font-size: 1.15em; color: #FFD700 !important; } 
     
-    /* Attachment Button (Clean) */
+    /* Attachment Button Clean-up */
     [data-testid="stFileUploader"] { padding: 0px; }
+    
+    /* Success/Error Message Styling */
+    .stSuccess, .stError, .stInfo, .stWarning {
+        border-radius: 10px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -83,23 +90,22 @@ def clean_latex(text):
     text = re.sub(r'(?<!\\)\[\s*(.*?=.*?)\s*\]', r'$$\1$$', text, flags=re.DOTALL)
     return text
 
-# --- 4. SHOW LOGO & BRANDING (Fixed) ---
-# We use columns to center the logo and text professionally
-col1, col2, col3 = st.columns([1, 2, 1])
+# --- 4. SHOW LOGO & BRANDING (FIXED LOGO URL) ---
+col1, col2, col3 = st.columns([1, 6, 1])
 
 with col2:
-    # 1. THE LOGO (Using Raw GitHub Link)
-    logo_url = "https://github.com/SwastikJEEx/jeex-launch/blob/main/logo.png.png"
+    # UPDATED: Using the 'raw' link which works for image embedding
+    logo_url = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/main/logo.png"
     try:
-        st.image(logo_url, use_column_width=True)
+        st.image(logo_url, use_container_width=True)
     except:
-        st.markdown("## ⚛️ JEEx Pro") # Fallback if image fails
+        # Fallback if image fails to load
+        st.markdown("<h1 style='text-align: center'>⚛️ JEEx <span style='color:#4A90E2'>PRO</span></h1>", unsafe_allow_html=True)
 
-# 2. THE BRANDING TEXT (Centered)
+# Centered Branding Text
 st.markdown("""
-    <div style="text-align: center; margin-top: -10px; margin-bottom: 20px;">
-        <h1 style="margin: 0; font-size: 40px;">JEEx <span style="color:#4A90E2;">PRO</span></h1>
-        <p style="color: #AAAAAA; font-size: 14px; margin-top: 5px;">
+    <div style="text-align: center; margin-bottom: 30px;">
+        <p style="color: #AAAAAA; font-size: 14px; margin-top: -10px;">
             Your 24/7 AI Rank Booster | Master JEE Mains & Advanced 🚀
         </p>
     </div>
@@ -113,6 +119,7 @@ if st.session_state.get('logout', False):
 
 # --- 6. SMART KEY LOGIC ---
 def check_key_status(user_key):
+    # Check Master Key
     if user_key == st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS"): return "VALID"
 
     # Check Expiry
@@ -129,6 +136,29 @@ def check_key_status(user_key):
     if 1 <= int(user_key[5:]) <= 1000: return "VALID"
     return "INVALID"
 
+# --- DETAILED TERMS & CONDITIONS TEXT ---
+terms_text = """
+**JEEx Terms of Service & Usage Policy**
+
+**1. Service Description:**
+JEEx Pro is an AI-powered educational assistant designed to aid students in JEE preparation. While it utilizes advanced models (GPT-4o), it functions as a study companion and not a replacement for official textbooks.
+
+**2. Accuracy Disclaimer:**
+Artificial Intelligence can occasionally produce "hallucinations" or incorrect calculations. Users are strictly advised to verify critical data, formulas, and constants with standard resources (NCERT, HC Verma). JEEx is not liable for marks lost in examinations.
+
+**3. Account Security:**
+* **Single User License:** This Access Key is licensed to ONE individual.
+* **Ban Policy:** Our system monitors IP addresses and simultaneous logins. Sharing your key on Telegram, WhatsApp, or with friends will result in an immediate, permanent ban without refund.
+
+**4. Payments & Refunds:**
+* **No Refunds:** As this is a digital access service, all sales are final once the key is delivered.
+* **Validity:** Monthly subscriptions are valid for 30 days from the date of activation.
+* **Renewal:** Access will be automatically revoked upon expiry until renewed.
+
+**5. Privacy:**
+Your chat data is processed securely via OpenAI APIs. We do not sell your personal data to third parties.
+"""
+
 # --- 7. SIDEBAR (LOGIN & TOOLS) ---
 with st.sidebar:
     st.markdown("## 🔐 Premium Access")
@@ -142,13 +172,15 @@ with st.sidebar:
     # --- IF LOCKED ---
     if status != "VALID":
         if status == "EXPIRED":
+            # UPDATED EXPIRED MESSAGE
             st.error("⚠️ Plan Expired")
+            st.warning("Your JEEx Pro monthly Plan has expired.")
             btn_text = "👉 Renew Now (₹99)"
         else:
             if user_key: st.warning("🔒 Chat Locked")
             btn_text = "👉 Subscribe for ₹99 / Month"
             
-        payment_link = "https://rzp.io/rzp/wXI8i7t" 
+        payment_link = "https://pages.razorpay.com/pl_Hk7823hsk" 
         
         st.markdown(f"""
             <a href="{payment_link}" target="_blank">
@@ -160,7 +192,7 @@ with st.sidebar:
         
         st.markdown("---")
         with st.expander("📄 Terms & Conditions"):
-             st.markdown("**JEEx Policy:** AI is a study aid. No refunds. Personal use only.")
+             st.markdown(terms_text)
 
 # --- 8. MAIN AREA LOGIC ---
 
@@ -182,7 +214,7 @@ if status != "VALID":
     st.markdown("""
     <div style="background-color: #161B26; padding: 30px; border-radius: 15px; border: 1px solid #2B313E;">
         <h2 style="color: #4A90E2; margin-top: 0; font-size: 24px; border-bottom: 1px solid #3E4654; padding-bottom: 15px; margin-bottom: 20px; text-align: center;">
-            🏆 Why Top Rankers Choose JEEx Pro
+            🏆 Why Top Rankers Choose JEEx <span style="color:#4A90E2">PRO</span>
         </h2>
         <div style="display: flex; flex-direction: column; gap: 20px;">
             <div><strong style="color: #FFD700; font-size: 18px;">🧠 Advanced Problem Solving</strong><br><span style="color: #CCCCCC;">Solves Irodov, Cengage, and PYQ level problems with step-by-step logic.</span></div>
@@ -205,6 +237,10 @@ with st.sidebar:
     if uploaded_file: st.info(f"Attached: {uploaded_file.name}")
     st.markdown("---")
     if st.button("End Session"): st.session_state['logout'] = True; st.rerun()
+    
+    # Detailed T&C also visible when logged in
+    with st.expander("📄 Terms & Conditions"):
+         st.markdown(terms_text)
 
 # Setup OpenAI
 try:
@@ -254,7 +290,7 @@ if prompt := st.chat_input("Ask a doubt (e.g. Rotational Motion)..."):
                 os.remove(temp_filename)
             except: st.error("File upload failed.")
 
-    # Send & Run with SMART INSTRUCTIONS
+    # Send & Run with SUPER TUTOR INSTRUCTIONS
     client.beta.threads.messages.create(
         thread_id=st.session_state.thread_id,
         role="user",
@@ -262,17 +298,21 @@ if prompt := st.chat_input("Ask a doubt (e.g. Rotational Motion)..."):
         attachments=attachments if attachments else None
     )
 
-    # --- THE BRAIN: JEE KNOWLEDGE INJECTION ---
+    # --- THE BRAIN: JEE ADVANCED KNOWLEDGE INJECTION ---
+    # This prompt makes the model strictly follow JEE standards
+    system_instruction = """
+    You are JEEx, an elite JEE Advanced Tutor.
+    1. **Strict Rigor:** When solving Physics/Maths, always assume JEE Advanced level. Use Calculus-based derivations where applicable.
+    2. **Format:** STRICTLY use LaTeX for ALL math expressions ($$x^2$$ for block, $x$ for inline). Never use standard text for variables.
+    3. **Tone:** Professional yet encouraging (Mentor vibe). Use Hinglish for motivation if the user seems stuck.
+    4. **Safety:** Verify dimensional consistency in Physics answers.
+    5. **PDFs:** Always use the Code Interpreter tool to analyze uploaded PDF papers deeply before answering.
+    """
+    
     run = client.beta.threads.runs.create(
         thread_id=st.session_state.thread_id,
         assistant_id=assistant_id,
-        additional_instructions="""
-        You are JEEx, an expert JEE Advanced Tutor.
-        1. LEVEL: Solve problems using Irodov/Cengage level rigor. Never simplify unnecessarily.
-        2. FORMAT: STRICTLY use LaTeX for math ($$x^2$$). Do not use [ ] or ( ).
-        3. TONE: Professional, encouraging, and precise. Use "Hinglish" for motivation.
-        4. PDFS: Always use Code Interpreter to analyze uploaded PDFs deeper.
-        """
+        additional_instructions=system_instruction
     )
 
     with st.chat_message("assistant"):
@@ -290,4 +330,3 @@ if prompt := st.chat_input("Ask a doubt (e.g. Rotational Motion)..."):
             st.session_state.messages.append({"role": "assistant", "content": final_response})
             st.session_state.uploader_key += 1
             st.rerun()
-
