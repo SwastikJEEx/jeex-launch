@@ -5,17 +5,27 @@ import os
 import re
 from datetime import datetime, timedelta
 from fpdf import FPDF
-import requests # Needed for auto-email notifications
+import requests
 
-# --- 1. CONFIGURATION & CONTACT DETAILS ---
+# --- 1. CONFIGURATION ---
 st.set_page_config(page_title="JEEx Pro", page_icon="⚛️", layout="centered", initial_sidebar_state="expanded")
 
-# YOUR BUSINESS DETAILS
-ADMIN_WHATSAPP = "919839940400"  
-ADMIN_EMAIL = "jeexaipro@gmail.com" 
+# --- 2. GLOBAL CONSTANTS ---
+ADMIN_WHATSAPP = "919839940400"
+ADMIN_EMAIL = "jeexaipro@gmail.com"
 LOGO_URL = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/1d6ef8ca3ac05432ed370338d4c04d6a03541f23/logo.png.png"
 
-# --- 2. PROFESSIONAL CSS ---
+# --- 3. SESSION STATE INITIALIZATION ---
+# We initialize all variables here to prevent "KeyError" during reruns
+if "messages" not in st.session_state:
+    st.session_state.messages = [{"role": "assistant", "content": "Welcome Champ! 🎓 Physics, Chemistry ya Maths—bas photo bhejo ya type karo. Let's crack it! 🚀"}]
+if "processing" not in st.session_state: st.session_state.processing = False
+if "uploader_key" not in st.session_state: st.session_state.uploader_key = 0
+if "audio_key" not in st.session_state: st.session_state.audio_key = 0
+if "user_prompt" not in st.session_state: st.session_state.user_prompt = None
+if "pending_audio" not in st.session_state: st.session_state.pending_audio = None
+
+# --- 4. PROFESSIONAL CSS ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
@@ -23,8 +33,8 @@ st.markdown("""
     .stApp { background-color: #0E1117; color: #E0E0E0; }
     [data-testid="stSidebar"] { background-color: #161B26; border-right: 1px solid #2B313E; }
     
-    /* Layout */
-    .block-container { padding-top: 1rem; padding-bottom: 120px; }
+    /* Main Layout */
+    .block-container { padding-top: 1rem; padding-bottom: 140px; }
     
     /* Chat Bubbles */
     [data-testid="stChatMessage"] { background-color: transparent; border: none; padding: 10px 0px; }
@@ -36,7 +46,7 @@ st.markdown("""
         background-color: transparent; padding: 0px 25px; margin-bottom: 10px;
     }
     
-    /* Text Size */
+    /* Typography */
     p, li, div { font-size: 17px !important; line-height: 1.6 !important; color: #E6E6E6 !important; }
     strong { color: #FFD700 !important; font-weight: 600; } 
     code { color: #FF7043 !important; }
@@ -48,35 +58,36 @@ st.markdown("""
     }
     div.stButton > button:hover { border-color: #4A90E2 !important; color: #4A90E2 !important; }
     
-    /* Sidebar Inputs */
+    /* Input Styling */
     [data-testid="stFileUploader"] { padding: 0px; }
-    .stAudioInput { margin-top: 10px; }
-    
-    /* Avatar Size */
+    .stAudioInput { margin-top: 5px; }
     .stChatMessage .st-emotion-cache-1p1m4ay { width: 45px; height: 45px; }
+    
+    /* Disable interactions when processing */
+    .stApp[data-test-state="running"] .stChatInput { opacity: 0.5; pointer-events: none; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. HELPER FUNCTIONS ---
+# --- 5. HELPER FUNCTIONS ---
 
 def send_auto_notification(name, email, phone):
-    """Sends registration details to your Gmail automatically (FIXED)"""
+    """Sends registration email via FormSubmit"""
     try:
-        # FormSubmit API Configuration
         url = f"https://formsubmit.co/{ADMIN_EMAIL}"
         payload = {
             "_subject": f"New JEEx Subscriber: {name}",
-            "_captcha": "false",  # CRITICAL: Disables captcha for background sending
-            "_template": "table", # Makes email look professional
+            "_captcha": "false",
+            "_template": "table",
             "name": name,
             "email": email,
             "phone": phone,
+            "status": "Pending Payment",
             "date": str(datetime.now())
         }
-        # Send POST request
-        requests.post(url, data=payload)
-    except Exception as e:
-        print(f"Email Error: {e}") # Print error to console for debugging (user won't see)
+        resp = requests.post(url, data=payload)
+        return resp.status_code == 200
+    except:
+        return False
 
 def clean_latex(text):
     if not text: return ""
@@ -92,12 +103,10 @@ def sanitize_text_for_pdf(text):
     return text.encode('latin-1', 'ignore').decode('latin-1')
 
 def show_branding():
-    """Displays Logo Centered and Bigger"""
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
         try: st.image(LOGO_URL, width=280) 
         except: pass
-            
     st.markdown("""
         <div style="text-align: center; margin-top: -15px; margin-bottom: 30px;">
             <h1 style="margin: 0; font-size: 42px; font-weight: 700; letter-spacing: 1px;">
@@ -109,19 +118,16 @@ def show_branding():
         </div>
     """, unsafe_allow_html=True)
 
-# --- 4. PDF GENERATOR ---
 class PDF(FPDF):
     def header(self):
         self.set_font('Arial', 'B', 12)
         self.cell(0, 10, 'JEEx Pro - Study Session', 0, 1, 'C')
         self.ln(5)
-
     def chapter_title(self, label):
         self.set_font('Arial', 'B', 12)
         self.set_text_color(74, 144, 226)
         self.cell(0, 10, sanitize_text_for_pdf(label), 0, 1, 'L')
         self.ln(2)
-
     def chapter_body(self, body):
         self.set_font('Arial', '', 11)
         self.set_text_color(50, 50, 50)
@@ -138,7 +144,7 @@ def generate_pdf(messages):
         pdf.chapter_body(content)
     return pdf.output(dest='S').encode('latin-1', 'ignore')
 
-# --- 5. AUTH & LOGIC ---
+# --- 6. AUTH & LOGIC ---
 def check_key_status(user_key):
     if user_key == st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS"): return "ADMIN"
     expiry_db = st.secrets.get("KEY_EXPIRY", {})
@@ -154,37 +160,9 @@ if st.session_state.get('logout', False):
     for key in list(st.session_state.keys()): del st.session_state[key]
     st.rerun()
 
-# --- 6. DETAILED TERMS & CONDITIONS ---
-terms_text = """
-### JEEx Pro Terms of Service & End User License Agreement
-
-**1. Acceptance of Terms**
-By accessing JEEx Pro, you confirm that you are a student preparing for competitive exams and agree to use this tool solely for educational purposes.
-
-**2. License Grant & Restrictions**
-* **License:** JEEx grants you a limited, non-exclusive, non-transferable license to use the AI tutor.
-* **Single User Only:** Your Access Key is strictly personal. Sharing it on public forums (Telegram, WhatsApp, Reddit) or with friends is a violation of this agreement.
-* **Security Monitoring:** Our system actively logs IP addresses and device fingerprints. Simultaneous logins from multiple locations will trigger an automatic, irreversible ban.
-
-**3. AI Accuracy & Educational Disclaimer**
-* **Nature of AI:** JEEx Pro utilizes advanced LLMs (GPT-4o) to generate responses. While highly accurate, "hallucinations" (incorrect data) can occur.
-* **User Responsibility:** You agree to verify all formulas, constants, and solutions with standard textbooks (NCERT, H.C. Verma). JEEx is a study companion, not a replacement for official academic instruction.
-* **Liability:** JEEx is not liable for any loss of marks, exam results, or academic consequences resulting from reliance on the tool.
-
-**4. Payments & Refund Policy**
-* **Digital Goods:** Access Keys are classified as intangible digital goods. Once a key is generated and delivered to you, the service is considered "consumed."
-* **No Refunds:** We enforce a strict **No Refund Policy**. All sales are final.
-* **Validity:** Subscriptions are valid for exactly 30 days from the date of activation in our system.
-
-**5. Privacy Policy**
-We respect your privacy. Chat logs are processed securely via OpenAI APIs for generating responses. User data (Name, Phone, Email) collected during registration is used solely for account management and is not sold to third-party advertisers.
-"""
-
 # --- 7. SIDEBAR ---
 with st.sidebar:
     st.markdown("## 🔐 Premium Access")
-    if "uploader_key" not in st.session_state: st.session_state.uploader_key = 0
-    if "audio_key" not in st.session_state: st.session_state.audio_key = 0
     
     user_key = st.text_input("Enter Access Key:", type="password") 
     status = check_key_status(user_key)
@@ -198,10 +176,11 @@ with st.sidebar:
         uploaded_file = st.file_uploader("Upload", type=["jpg", "png", "pdf"], key=f"uploader_{st.session_state.uploader_key}", label_visibility="collapsed")
         
         st.markdown("**🎙️ Voice Chat**")
+        # Voice Widget - Logic handled in main loop
         audio_value = st.audio_input("Speak", key=f"audio_{st.session_state.audio_key}", label_visibility="collapsed")
         
         st.markdown("---")
-        if "messages" in st.session_state and len(st.session_state.messages) > 1:
+        if len(st.session_state.messages) > 1:
             pdf_bytes = generate_pdf(st.session_state.messages)
             st.download_button("📥 Download Notes", data=pdf_bytes, file_name="JEEx_Notes.pdf", mime="application/pdf")
         
@@ -223,10 +202,10 @@ with st.sidebar:
             
             if submitted:
                 if name and email and phone:
-                    # 1. AUTO-EMAIL NOTIFICATION
-                    send_auto_notification(name, email, phone)
+                    is_sent = send_auto_notification(name, email, phone)
+                    if is_sent: st.success("Registration Sent! Check your email for confirmation.")
+                    else: st.warning("Registration saved locally. Please proceed.")
                     
-                    st.success("Details Recorded!")
                     st.markdown("---")
                     st.markdown("**Step 1: Scan & Pay ₹99**")
                     try: st.image("upi_qr.png", caption="Scan UPI QR", use_container_width=True)
@@ -236,13 +215,7 @@ with st.sidebar:
                     msg = f"Hello JEEx Team!%0A%0A*Subscription Payment*%0A👤 {name}%0A📧 {email}%0A📱 {phone}%0A%0AI have paid ₹99. Here is the screenshot."
                     wa_link = f"https://wa.me/{ADMIN_WHATSAPP}?text={msg}"
                     
-                    st.markdown(f"""
-                        <a href="{wa_link}" target="_blank">
-                            <button style="width:100%; background-color:#25D366; color:white; border:none; padding:10px; border-radius:5px; cursor:pointer; font-weight:bold;">
-                                ✅ Attach Screenshot on WhatsApp
-                            </button>
-                        </a>
-                    """, unsafe_allow_html=True)
+                    st.markdown(f'<a href="{wa_link}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; border:none; padding:10px; border-radius:5px; cursor:pointer; font-weight:bold;">✅ Attach Screenshot on WhatsApp</button></a>', unsafe_allow_html=True)
                 else:
                     st.warning("⚠️ Please fill all details.")
 
@@ -286,11 +259,22 @@ if status != "VALID":
         st.info("**⚡ 24/7 Strategic Mentorship**\n\nYour personal AI coach for study planning, backlog management, and exam strategy at 3 AM.")
     
     st.markdown("---")
-    with st.expander("📄 Read Detailed Terms & Conditions"):
-        st.markdown(terms_text)
+    with st.expander("📄 Detailed Terms & Conditions"):
+        st.markdown("""
+        ### JEEx Pro Terms of Service
+        **1. Acceptance of Terms:** By accessing JEEx Pro, you confirm that you are a student preparing for competitive exams and agree to use this tool solely for educational purposes.
+        
+        **2. License Grant:** JEEx grants you a limited, non-exclusive, non-transferable license. Your Access Key is strictly personal. Sharing it will result in an immediate ban.
+        
+        **3. AI Accuracy:** JEEx utilizes GPT-4o. While highly accurate, hallucinations can occur. You agree to verify all formulas with standard textbooks (NCERT).
+        
+        **4. Refund Policy:** Access Keys are digital goods. **No Refunds** will be provided once a key is issued.
+        
+        **5. Privacy:** We respect your privacy. Chat logs are processed securely via OpenAI APIs.
+        """)
     st.stop()
 
-# --- 10. CHAT INTERFACE ---
+# --- 10. CHAT INTERFACE & LOGIC ---
 
 # Setup OpenAI
 try:
@@ -303,38 +287,62 @@ except:
 if "thread_id" not in st.session_state:
     thread = client.beta.threads.create()
     st.session_state.thread_id = thread.id
-    st.session_state.messages = [{"role": "assistant", "content": "Welcome Champ! 🎓 Physics, Chemistry ya Maths—bas photo bhejo ya type karo. Let's crack it! 🚀"}]
 
-# DISPLAY HISTORY
+# --- INPUT HANDLING (LOCKING LOGIC) ---
+
+# 1. Handle Voice Input FIRST (if new audio exists)
+if 'audio_value' in locals() and audio_value and not st.session_state.processing:
+    # Set flag immediately to lock UI on next rerun
+    st.session_state.processing = True 
+    st.session_state.pending_audio = audio_value
+    st.rerun() # Force rerun to update UI state (grey out input)
+
+# 2. Process Pending Audio (in locked state)
+if st.session_state.processing and st.session_state.pending_audio:
+    with st.spinner("🎧 Listening..."):
+        try:
+            # Context prompt helps Whisper understand Physics terms
+            transcription = client.audio.transcriptions.create(
+                model="whisper-1", 
+                file=st.session_state.pending_audio, 
+                language="en",
+                prompt="Physics, Chemistry, Mathematics, JEE, Integration, Derivative, Velocity, Mass"
+            )
+            st.session_state.user_prompt = transcription.text
+        except Exception as e:
+            st.error(f"Voice Error: {e}")
+            st.session_state.processing = False
+    st.session_state.pending_audio = None # Clear pending
+
+# 3. Display History
 for msg in st.session_state.messages:
     avatar_icon = LOGO_URL if msg["role"] == "assistant" else "🧑‍🎓"
     with st.chat_message(msg["role"], avatar=avatar_icon):
         if "file_data" in msg:
-            if msg["file_type"].startswith("image"):
-                st.image(msg["file_data"], width=200)
-            else:
-                st.markdown(f"📄 *{msg['file_name']}*")
+            if msg["file_type"].startswith("image"): st.image(msg["file_data"], width=200)
+            else: st.markdown(f"📄 *{msg['file_name']}*")
         st.markdown(clean_latex(msg["content"]))
 
-# --- CHAT INPUT & LOGIC ---
+# 4. Chat Input (Disabled if processing)
+if st.session_state.processing:
+    chat_val = st.chat_input("Thinking... Please wait.", disabled=True)
+else:
+    chat_val = st.chat_input("Ask a doubt...")
 
-# Voice Processing
-audio_prompt = None
-if 'audio_value' in locals() and audio_value:
-    with st.spinner("Processing Voice..."):
-        try:
-            transcription = client.audio.transcriptions.create(model="whisper-1", file=audio_value, language="en")
-            audio_prompt = transcription.text
-        except: pass 
+# 5. Determine Final Prompt
+final_prompt = None
+if st.session_state.user_prompt: # From Voice
+    final_prompt = st.session_state.user_prompt
+    st.session_state.user_prompt = None # Clear after use
+elif chat_val: # From Text
+    final_prompt = chat_val
+    st.session_state.processing = True # Lock for text input too
+    st.rerun() # Rerun to visualize lock
 
-# Text Input
-text_prompt = st.chat_input("Ask a doubt...")
-
-# Prompt Selection
-prompt = audio_prompt if (locals().get('audio_value')) else text_prompt
-
-if prompt:
-    # 1. Store File Data
+# --- MAIN EXECUTION BLOCK ---
+if final_prompt and st.session_state.processing:
+    
+    # A. Store File Data for History
     file_data_entry = {}
     if uploaded_file:
         file_data_entry = {
@@ -343,20 +351,20 @@ if prompt:
             "file_type": uploaded_file.type
         }
 
-    # 2. Append User Message
-    user_msg_dict = {"role": "user", "content": prompt}
+    # B. Append User Message
+    user_msg_dict = {"role": "user", "content": final_prompt}
     user_msg_dict.update(file_data_entry)
     st.session_state.messages.append(user_msg_dict)
     
-    # 3. Render User Message
+    # RENDER USER MESSAGE (So user sees it immediately)
     with st.chat_message("user", avatar="🧑‍🎓"):
-        st.markdown(prompt)
+        st.markdown(final_prompt)
         if uploaded_file:
             if uploaded_file.type == "application/pdf": st.markdown(f"📄 *{uploaded_file.name}*")
             else: st.image(uploaded_file, width=200)
 
-    # 4. API Request
-    message_content = [{"type": "text", "text": prompt}]
+    # C. API Request & File Handling
+    message_content = [{"type": "text", "text": final_prompt}]
     attachments = [] 
     if uploaded_file:
         with st.spinner("Analyzing file..."):
@@ -374,7 +382,7 @@ if prompt:
                 os.remove(temp_filename)
             except: st.error("File upload failed.")
 
-    # 5. Send & Stream
+    # D. Send & Stream
     client.beta.threads.messages.create(
         thread_id=st.session_state.thread_id,
         role="user",
@@ -409,9 +417,8 @@ if prompt:
         response_container.markdown(clean_latex(collected_message))
         st.session_state.messages.append({"role": "assistant", "content": collected_message})
         
-        # 6. Reset Audio (Prevents Error Loop)
+        # E. UNLOCK & RESET
         st.session_state.uploader_key += 1
-        if locals().get('audio_value'): 
-            st.session_state.audio_key += 1 
-            time.sleep(0.5) 
-            st.rerun()
+        st.session_state.audio_key += 1 # Reset audio widget
+        st.session_state.processing = False # Unlock input
+        st.rerun()
