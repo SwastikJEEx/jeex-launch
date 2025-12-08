@@ -9,24 +9,19 @@ from fpdf import FPDF
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="JEEx Pro", page_icon="⚛️", layout="centered", initial_sidebar_state="collapsed")
 
-# --- 2. PROFESSIONAL GEMINI-STYLE CSS ---
+# --- 2. PROFESSIONAL CSS (Gemini/ChatGPT Style) ---
 st.markdown("""
 <style>
-    /* Import Professional Font (Inter) */
+    /* Import Font */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
-
-    html, body, [class*="css"] {
-        font-family: 'Inter', sans-serif;
-    }
+    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
     /* Theme Colors */
     .stApp { background-color: #0E1117; color: #E0E0E0; }
-    
-    /* Sidebar */
     [data-testid="stSidebar"] { background-color: #161B26; border-right: 1px solid #2B313E; }
     
-    /* Layout Alignment */
-    .block-container { padding-top: 1rem; padding-bottom: 120px; }
+    /* Center Layout */
+    .block-container { padding-top: 1rem; padding-bottom: 150px; } /* Padding for bottom toolbar */
     
     /* Chat Bubbles */
     [data-testid="stChatMessage"] { background-color: transparent; border: none; padding: 10px 0px; }
@@ -34,23 +29,33 @@ st.markdown("""
         background-color: #1E2330; border-radius: 12px; padding: 15px 20px; 
         margin-bottom: 10px; border: 1px solid #2B313E;
     }
-    
-    /* Text Size */
-    [data-testid="stChatMessage"] p, [data-testid="stChatMessage"] div {
-        font-size: 16px !important; line-height: 1.6 !important; color: #E6E6E6 !important;
+    [data-testid="stChatMessage"][data-testid="assistant"] {
+        background-color: transparent; padding: 0px 20px; margin-bottom: 10px;
     }
     
-    /* Buttons */
+    /* Text Styling */
+    p, li, div { font-size: 16px !important; line-height: 1.6 !important; color: #E6E6E6 !important; }
+    strong { color: #FFD700 !important; } 
+    code { color: #FF7043 !important; }
+    
+    /* Buttons & Inputs */
+    .stTextInput input { background-color: #1E2330 !important; color: white !important; border-radius: 10px; }
     div.stButton > button { 
         background-color: #2B313E !important; color: white !important; border: 1px solid #3E4654 !important; 
         border-radius: 8px; width: 100%; transition: all 0.3s; font-weight: 600;
     }
+    div.stButton > button:hover { border-color: #4A90E2 !important; color: #4A90E2 !important; }
     
-    /* Attachment & Voice Layout Fix */
+    /* Hide Defaults */
+    #MainMenu {visibility: hidden;} footer {visibility: hidden;} .stDeployButton {display:none;}
+    
+    /* Math & Formatting */
+    .katex { font-size: 1.2em; color: #FFD700 !important; } 
     [data-testid="stFileUploader"] { padding: 0px; }
-    .stFileUploader { width: 100%; }
+    .stChatMessage .st-emotion-cache-1p1m4ay { width: 42px; height: 42px; }
+    
+    /* Toolbar Alignment */
     div[data-testid="column"] { display: flex; align-items: flex-end; }
-    .st-emotion-cache-1p1m4ay { width: 42px; height: 42px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -67,17 +72,19 @@ def clean_latex(text):
     return text
 
 def sanitize_text_for_pdf(text):
-    """Aggressively cleans text to prevent PDF crash"""
+    """Aggressively cleans text to prevent PDF crashes"""
+    # Replace common special chars
     text = text.replace('•', '-').replace('—', '-')
-    return text.encode('latin-1', 'ignore').decode('latin-1')
+    # Encode to ASCII, ignoring errors (removes emojis/korean/etc), then decode
+    return text.encode('ascii', 'ignore').decode('ascii')
 
 LOGO_URL = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/1d6ef8ca3ac05432ed370338d4c04d6a03541f23/logo.png.png"
 
 def show_branding():
-    """Displays Logo and Title PERFECTLY CENTERED (Logo width adjusted)"""
+    """Displays Logo and Title PERFECTLY CENTERED"""
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        try: st.image(LOGO_URL, width=180) # ADJUSTED WIDTH
+        try: st.image(LOGO_URL, use_container_width=True)
         except: pass
             
     st.markdown("""
@@ -91,24 +98,23 @@ def show_branding():
         </div>
     """, unsafe_allow_html=True)
 
-# --- 4. PDF GENERATOR ---
+# --- 4. PDF GENERATOR (FIXED) ---
 class PDF(FPDF):
     def header(self):
         self.set_font('Arial', 'B', 12)
-        self.cell(0, 10, 'JEEx Pro - Study Session Notes', 0, 1, 'C')
+        self.cell(0, 10, 'JEEx Pro - Study Session', 0, 1, 'C')
         self.ln(5)
 
     def chapter_title(self, label):
         self.set_font('Arial', 'B', 12)
-        self.set_text_color(74, 144, 226)
+        self.set_text_color(74, 144, 226) # Blue
         self.cell(0, 10, sanitize_text_for_pdf(label), 0, 1, 'L')
         self.ln(2)
 
     def chapter_body(self, body):
         self.set_font('Arial', '', 11)
         self.set_text_color(50, 50, 50)
-        clean_body = sanitize_text_for_pdf(body)
-        self.multi_cell(0, 7, clean_body)
+        self.multi_cell(0, 7, sanitize_text_for_pdf(body))
         self.ln()
 
 def generate_pdf(messages):
@@ -116,7 +122,7 @@ def generate_pdf(messages):
     pdf.add_page()
     for msg in messages:
         role = "JEEx" if msg["role"] == "assistant" else "Student"
-        content = clean_latex(msg["content"]).replace('*', '').replace('#', '') 
+        content = clean_latex(msg["content"]).replace('*', '')
         pdf.chapter_title(role)
         pdf.chapter_body(content)
     return pdf.output(dest='S').encode('latin-1', 'ignore')
@@ -124,7 +130,6 @@ def generate_pdf(messages):
 # --- 5. LOGIC & AUTH ---
 def check_key_status(user_key):
     if user_key == st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS"): return "ADMIN"
-
     expiry_db = st.secrets.get("KEY_EXPIRY", {})
     if user_key in expiry_db:
         try:
@@ -138,15 +143,11 @@ if st.session_state.get('logout', False):
     for key in list(st.session_state.keys()): del st.session_state[key]
     st.rerun()
 
-# Initialize processing state (used to disable input)
-if "processing" not in st.session_state:
-    st.session_state.processing = False
-
 # --- 6. SIDEBAR ---
 with st.sidebar:
     st.markdown("## 🔐 Premium Access")
     if "uploader_key" not in st.session_state: st.session_state.uploader_key = 0
-    if "audio_key" not in st.session_state: st.session_state.audio_key = 0
+    if "audio_key" not in st.session_state: st.session_state.audio_key = 0 # NEW: For resetting audio
     
     user_key = st.text_input("Enter Access Key:", type="password")
     status = check_key_status(user_key)
@@ -163,15 +164,15 @@ with st.sidebar:
         payment_link = "https://pages.razorpay.com/pl_Hk7823hsk" 
         st.markdown(f'<a href="{payment_link}" target="_blank"><button style="width:100%; background-color:#4A90E2; color:white; border:none; padding:12px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:15px; margin-top:10px;">{btn_text}</button></a>', unsafe_allow_html=True)
         st.markdown("---")
-        with st.expander("📄 Terms & Conditions"): st.markdown("See detailed T&C on the landing page.")
+        with st.expander("📄 Terms & Conditions"): 
+            st.markdown("**JEEx Policy:**\n1. Personal Use Only.\n2. No Refunds.\n3. AI may make errors; verify with NCERT.")
 
 # --- 7. ADMIN PANEL ---
 if status == "ADMIN":
     st.sidebar.success("🔑 Admin Mode")
-    st.markdown("## 🛠️ Admin Dashboard")
-    st.info("Generate code to PASTE into `secrets.toml` to activate a student.")
+    st.info("Generate Student Keys:")
     c1, c2 = st.columns(2)
-    with c1: new_id = st.text_input("Student Key (e.g. JEExa005)")
+    with c1: new_id = st.text_input("Key ID")
     with c2: days = st.number_input("Days", 30)
     if new_id:
         exp = (datetime.now() + timedelta(days=days)).strftime("%Y-%m-%d")
@@ -179,20 +180,18 @@ if status == "ADMIN":
     if st.button("Logout"): st.session_state['logout'] = True; st.rerun()
     st.stop()
 
-# --- 8. MAIN APP LOGIC ---
-
+# --- 8. LANDING PAGE (LOCKED) ---
 show_branding()
 
-# LANDING PAGE (LOCKED)
 if status != "VALID":
     st.markdown("---")
     st.markdown("""
-    <div style="background-color: #1E2330; padding: 25px; border-radius: 12px; border-left: 5px solid #4A90E2; margin-bottom: 30px; text-align: center;">
+    <div style="background-color: #1E2330; padding: 20px; border-radius: 12px; border-left: 5px solid #4A90E2; text-align: center; margin-bottom: 30px;">
         <p style="font-size: 18px; margin: 0; color: #E6E6E6;">👋 <strong>Welcome Student!</strong><br>Please enter your <strong>Access Key</strong> in the Sidebar to unlock.</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # FIXED: Replaced HTML with clean Markdown to prevent formatting errors
+    # FIXED: Clean Markdown Structure for description to prevent HTML errors
     st.markdown("### 🏆 Why Top Rankers Choose JEEx **PRO**")
     
     col1, col2 = st.columns(2)
@@ -202,15 +201,11 @@ if status != "VALID":
         st.markdown("**👁️ Vision Intelligence (OCR)**")
         st.caption("Stuck on a handwritten question? Just upload a photo. JEEx reads and solves it instantly.")
     with col2:
-        st.markdown("**📄 Full Document Analysis**")
+        st.markdown("**📄 Full PDF Document Analysis**")
         st.caption("Upload the PDF assignment. JEEx uses its Code Interpreter brain to analyze the entire document and solve multiple questions.")
         st.markdown("**➗ Perfect Math & Chemical Formatting**")
         st.caption("Renders complex integrals and Organic Mechanisms with textbook-quality LaTeX precision.")
     
-    st.markdown("---")
-    st.markdown("### Detailed Terms & Conditions")
-    # T&C link fix
-    st.markdown(f'<p style="font-size: 14px;">{terms_text}</p>', unsafe_allow_html=True)
     st.stop()
 
 # UNLOCKED INTERFACE (CHAT)
@@ -240,44 +235,35 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"], avatar=avatar_icon):
         st.markdown(clean_latex(msg["content"]))
 
-# --- INPUT TOOLBAR & PROCESSING ---
+# --- 9. INPUT TOOLBAR & PROCESSING ---
 
-# 1. TOOLBAR
-col_tools_1, col_tools_2, col_gap = st.columns([1, 1, 6])
+# 1. TOOLBAR: Placed above chat_input
+col_tools_1, col_tools_2, col_tools_gap = st.columns([1, 1, 6])
 
 with col_tools_1:
-    # VOICE INPUT
+    # VOICE INPUT (Microphone)
     audio_value = st.audio_input("🎙️", key=f"audio_{st.session_state.audio_key}", label_visibility="collapsed")
     
 with col_tools_2:
     # ATTACHMENT INPUT
     uploaded_file = st.file_uploader("📎", type=["jpg", "png", "pdf"], key=f"uploader_{st.session_state.uploader_key}", label_visibility="collapsed")
 
-# 2. CHAT INPUT (Disabled when processing)
-if st.session_state.processing:
-    text_prompt = st.chat_input("Processing response... Please wait.", disabled=True)
-else:
-    text_prompt = st.chat_input("Ask a doubt...")
+# 2. CHAT INPUT
+text_prompt = st.chat_input("Ask a doubt...")
 
 # 3. LOGIC
 audio_prompt = None
-if audio_value and not st.session_state.processing:
-    st.session_state.processing = True # Lock input
+if audio_value:
     with st.spinner("Processing Voice..."):
         try:
+            # FIXED: Force English to stop foreign language hallucinations
             transcription = client.audio.transcriptions.create(model="whisper-1", file=audio_value, language="en")
             audio_prompt = transcription.text
-        except Exception as e: 
-            st.error(f"Voice Error: {e}"); 
-            st.session_state.processing = False 
-            st.rerun() # Rerun to clear error message
+        except Exception as e: st.error(f"Voice Error: {e}")
 
 prompt = audio_prompt if audio_value else text_prompt
 
-if prompt and not st.session_state.processing:
-    st.session_state.processing = True # Set lock for text/voice submission
-
-    # 1. Add User Message
+if prompt:
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user", avatar="🧑‍🎓"):
         st.markdown(prompt)
@@ -285,7 +271,7 @@ if prompt and not st.session_state.processing:
             if uploaded_file.type == "application/pdf": st.markdown(f"📄 *PDF Attached*")
             else: st.image(uploaded_file, width=200)
 
-    # 2. Prepare/Upload File
+    # Prepare Message
     message_content = [{"type": "text", "text": prompt}]
     attachments = [] 
     if uploaded_file:
@@ -294,16 +280,21 @@ if prompt and not st.session_state.processing:
                 temp_filename = f"temp_{uploaded_file.name}"
                 with open(temp_filename, "wb") as f: f.write(uploaded_file.getbuffer())
                 file_response = client.files.create(file=open(temp_filename, "rb"), purpose="assistants")
-                if uploaded_file.type == "application/pdf": attachments.append({"file_id": file_response.id, "tools": [{"type": "code_interpreter"}]})
-                else: message_content.append({"type": "image_file", "image_file": {"file_id": file_response.id}})
+                if uploaded_file.type == "application/pdf":
+                    attachments.append({"file_id": file_response.id, "tools": [{"type": "code_interpreter"}]})
+                else:
+                    message_content.append({"type": "image_file", "image_file": {"file_id": file_response.id}})
                 os.remove(temp_filename)
             except: st.error("File upload failed.")
 
-    # 3. Send & Stream
     client.beta.threads.messages.create(
-        thread_id=st.session_state.thread_id, role="user", content=message_content, attachments=attachments if attachments else None
+        thread_id=st.session_state.thread_id,
+        role="user",
+        content=message_content,
+        attachments=attachments if attachments else None
     )
 
+    # STREAMING RESPONSE
     with st.chat_message("assistant", avatar=LOGO_URL):
         stream = client.beta.threads.runs.create(
             thread_id=st.session_state.thread_id,
@@ -331,8 +322,10 @@ if prompt and not st.session_state.processing:
         response_container.markdown(clean_latex(collected_message))
         st.session_state.messages.append({"role": "assistant", "content": collected_message})
         
-        # 4. FINAL RESET AND RERUN
+        # FIXED: Reset inputs properly to prevent loops
         st.session_state.uploader_key += 1
-        st.session_state.audio_key += 1 
-        st.session_state.processing = False # Release lock
-        st.rerun()
+        if audio_value: 
+            st.session_state.audio_key += 1 
+            time.sleep(0.5) 
+            st.rerun()
+            
