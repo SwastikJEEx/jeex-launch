@@ -5,6 +5,7 @@ import os
 import re
 from datetime import datetime, timedelta
 from fpdf import FPDF
+import requests # NEW: For sending auto-notifications
 
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="JEEx Pro", page_icon="⚛️", layout="centered", initial_sidebar_state="expanded")
@@ -49,31 +50,30 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. GLOBAL VARIABLES (Fixed NameError) ---
-TERMS_TEXT = """
-**JEEx Terms of Service & Usage Policy**
-
-**1. Service Description:**
-JEEx Pro is an AI-powered educational assistant designed to aid students in JEE preparation.
-
-**2. Accuracy Disclaimer:**
-Artificial Intelligence can occasionally produce "hallucinations". Users are strictly advised to verify critical data with standard resources (NCERT, HC Verma).
-
-**3. Account Security:**
-* **Single User License:** This Access Key is licensed to ONE individual.
-* **Ban Policy:** Sharing your key will result in an immediate, permanent ban without refund.
-
-**4. Payments & Refunds:**
-* **No Refunds:** All sales are final once the key is delivered.
-* **Validity:** Monthly subscriptions are valid for 30 days.
-
-**5. Privacy:**
-Your chat data is processed securely via OpenAI APIs.
-"""
+# --- 3. GLOBAL CONFIG ---
+ADMIN_WHATSAPP = "919839940400" # Your Number
+# REPLACE THIS WITH YOUR EMAIL TO RECEIVE USER DETAILS AUTOMATICALLY
+ADMIN_EMAIL = "your-email@example.com" 
 
 LOGO_URL = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/1d6ef8ca3ac05432ed370338d4c04d6a03541f23/logo.png.png"
 
 # --- 4. HELPER FUNCTIONS ---
+
+def send_auto_notification(name, email, phone):
+    """Sends user details to Admin Email silently in the background"""
+    try:
+        # Using FormSubmit.co (Free API, no setup needed)
+        # It will email you the first time you run it to confirm
+        payload = {
+            "subject": f"New JEEx Subscriber: {name}",
+            "name": name,
+            "email": email,
+            "phone": phone,
+            "timestamp": str(datetime.now())
+        }
+        requests.post(f"https://formsubmit.co/{ADMIN_EMAIL}", data=payload)
+    except:
+        pass # Fail silently if network issue, don't block user
 
 def clean_latex(text):
     if not text: return ""
@@ -91,11 +91,11 @@ def sanitize_text_for_pdf(text):
 def show_branding():
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
-        try: st.image(LOGO_URL, width=200) 
+        try: st.image(LOGO_URL, width=220) 
         except: pass
     st.markdown("""
         <div style="text-align: center; margin-top: -15px; margin-bottom: 30px;">
-            <h1 style="margin: 0; font-size: 42px; font-weight: 700; letter-spacing: 1px;">
+            <h1 style="margin: 0; font-size: 40px; font-weight: 700; letter-spacing: 1px;">
                 JEEx <span style="color:#4A90E2;">PRO</span>
             </h1>
             <p style="color: #AAAAAA; font-size: 15px; margin-top: 8px;">
@@ -149,7 +149,7 @@ if st.session_state.get('logout', False):
     for key in list(st.session_state.keys()): del st.session_state[key]
     st.rerun()
 
-# --- 7. SIDEBAR ---
+# --- 7. SIDEBAR (REGISTRATION + TOOLS) ---
 with st.sidebar:
     st.markdown("## 🔐 Premium Access")
     if "uploader_key" not in st.session_state: st.session_state.uploader_key = 0
@@ -158,7 +158,7 @@ with st.sidebar:
     user_key = st.text_input("Enter Access Key:", type="password", placeholder="JEEx-XXXX")
     status = check_key_status(user_key)
     
-    # --- IF UNLOCKED: SHOW TOOLS ---
+    # --- UNLOCKED MODE ---
     if status == "VALID" or status == "ADMIN":
         st.success(f"✅ Active")
         st.markdown("---")
@@ -176,45 +176,49 @@ with st.sidebar:
         
         if st.button("End Session"): st.session_state['logout'] = True; st.rerun()
 
-    # --- IF LOCKED: SHOW REGISTRATION FORM ---
+    # --- LOCKED MODE (AUTO-NOTIFY REGISTRATION) ---
     else:
         if user_key and status != "VALID": st.error("❌ Invalid or Expired Key")
         
         st.markdown("### ⚡ Subscribe Now")
         with st.expander("💎 Get Premium (₹99/mo)", expanded=True):
-            st.markdown("To get your instant key, fill details below:")
+            st.markdown("Fill details to get your key instantly:")
             
             with st.form("reg_form"):
                 name = st.text_input("Name")
                 email = st.text_input("Email")
-                phone = st.text_input("Mobile No")
+                phone = st.text_input("WhatsApp No.")
                 submitted = st.form_submit_button("🚀 Proceed to Pay")
             
             if submitted:
                 if name and email and phone:
-                    st.success("Registration Recorded!")
+                    # 1. AUTO-SEND DETAILS TO ADMIN (Background)
+                    send_auto_notification(name, email, phone)
+                    
+                    st.success("Registration Sent! Details forwarded to Admin.")
                     st.markdown("---")
                     st.markdown("**Step 1: Scan & Pay ₹99**")
-                    try: st.image("upi_qr.png", caption="UPI QR Code", use_container_width=True)
-                    except: st.info("Pay to: **9839940400@upi**")
+                    try: st.image("upi_qr.png", caption="Scan UPI QR", use_container_width=True)
+                    except: st.info(f"Pay to: **{ADMIN_WHATSAPP}@upi**")
                     
-                    st.markdown("**Step 2: Verify Payment**")
-                    msg = f"Hello JEEx Team!%0A%0A*New Subscription Request*%0A👤 Name: {name}%0A📧 Email: {email}%0A📱 Phone: {phone}%0A%0AI have paid ₹99 via UPI. Please verify and send my Access Key."
-                    wa_link = f"https://wa.me/919839940400?text={msg}"
+                    st.markdown("**Step 2: Send Screenshot**")
+                    # Pre-filled WhatsApp Link for Screenshot
+                    msg = f"Hello JEEx Team!%0A%0A*Subscription Payment*%0A👤 {name}%0A📱 {phone}%0A%0AI have paid ₹99. Here is the screenshot."
+                    wa_link = f"https://wa.me/{ADMIN_WHATSAPP}?text={msg}"
                     
                     st.markdown(f"""
                         <a href="{wa_link}" target="_blank">
                             <button style="width:100%; background-color:#25D366; color:white; border:none; padding:10px; border-radius:5px; cursor:pointer; font-weight:bold;">
-                                ✅ Send Screenshot on WhatsApp
+                                ✅ Attach Screenshot on WhatsApp
                             </button>
                         </a>
                     """, unsafe_allow_html=True)
                 else:
-                    st.warning("⚠️ Fill all details.")
+                    st.warning("⚠️ Please fill all details.")
 
         st.markdown("---")
         with st.expander("📄 Terms & Conditions"): 
-            st.markdown(TERMS_TEXT)
+            st.markdown("**JEEx Policy:**\n1. Personal Use Only.\n2. No Refunds.\n3. AI is a study aid.")
 
 # --- 8. ADMIN PANEL ---
 if status == "ADMIN":
@@ -227,7 +231,7 @@ if status == "ADMIN":
         st.code(f'"{new_id}" = "{exp}"', language="toml")
     st.stop()
 
-# --- 9. LANDING PAGE (LOCKED) ---
+# --- 9. LANDING PAGE (FIXED FORMATTING) ---
 show_branding()
 
 if status != "VALID":
@@ -238,9 +242,9 @@ if status != "VALID":
     </div>
     """, unsafe_allow_html=True)
     
+    # 6 STRONG POINTS (CLEAN MARKDOWN)
     st.markdown("### 🏆 Why Top Rankers Choose JEEx **PRO**")
     
-    # 6 Strong Points
     c1, c2 = st.columns(2)
     with c1:
         st.info("**🧠 Advanced Problem Solving**\n\nSolves Irodov, Cengage, and PYQ level problems with step-by-step logic, not just answers.")
@@ -253,11 +257,16 @@ if status != "VALID":
         st.info("**⚡ 24/7 Strategic Mentorship**\n\nYour personal AI coach for study planning, backlog management, and exam strategy at 3 AM.")
     
     st.markdown("---")
-    with st.expander("📄 Read Detailed Terms & Conditions"):
-        st.markdown(TERMS_TEXT)
+    with st.expander("📄 Detailed Terms & Conditions"):
+        st.markdown("""
+        **1. Acceptance of Terms:** By using JEEx Pro, you confirm you are a student using it for education.
+        **2. Single User License:** Keys are personal. Sharing leads to an instant ban.
+        **3. No Refunds:** Digital access keys are non-refundable.
+        **4. Accuracy:** AI can make errors. Verify with NCERT.
+        """)
     st.stop()
 
-# --- 10. UNLOCKED CHAT INTERFACE ---
+# --- 10. CHAT INTERFACE ---
 
 # Setup OpenAI
 try:
@@ -272,7 +281,7 @@ if "thread_id" not in st.session_state:
     st.session_state.thread_id = thread.id
     st.session_state.messages = [{"role": "assistant", "content": "Welcome Champ! 🎓 Physics, Chemistry ya Maths—bas photo bhejo ya type karo. Let's crack it! 🚀"}]
 
-# DISPLAY HISTORY (With Persistent Attachments)
+# DISPLAY HISTORY (Attachments Persist)
 for msg in st.session_state.messages:
     avatar_icon = LOGO_URL if msg["role"] == "assistant" else "🧑‍🎓"
     with st.chat_message(msg["role"], avatar=avatar_icon):
@@ -315,14 +324,14 @@ if prompt:
     user_msg_dict.update(file_data_entry)
     st.session_state.messages.append(user_msg_dict)
     
-    # 3. Render User Message Now
+    # 3. Render User Message
     with st.chat_message("user", avatar="🧑‍🎓"):
         st.markdown(prompt)
         if uploaded_file:
             if uploaded_file.type == "application/pdf": st.markdown(f"📄 *{uploaded_file.name}*")
             else: st.image(uploaded_file, width=200)
 
-    # 4. API Request & File Handling
+    # 4. API Request
     message_content = [{"type": "text", "text": prompt}]
     attachments = [] 
     if uploaded_file:
@@ -341,7 +350,7 @@ if prompt:
                 os.remove(temp_filename)
             except: st.error("File upload failed.")
 
-    # 5. Send Message to Thread
+    # 5. Send & Stream
     client.beta.threads.messages.create(
         thread_id=st.session_state.thread_id,
         role="user",
@@ -349,7 +358,6 @@ if prompt:
         attachments=attachments if attachments else None
     )
 
-    # 6. Stream Response
     with st.chat_message("assistant", avatar=LOGO_URL):
         stream = client.beta.threads.runs.create(
             thread_id=st.session_state.thread_id,
@@ -377,7 +385,7 @@ if prompt:
         response_container.markdown(clean_latex(collected_message))
         st.session_state.messages.append({"role": "assistant", "content": collected_message})
         
-        # 7. Safe Reset (Prevents Voice Error Loop)
+        # 6. Reset Audio (Prevents Error Loop)
         st.session_state.uploader_key += 1
         if locals().get('audio_value'): 
             st.session_state.audio_key += 1 
