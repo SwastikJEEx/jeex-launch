@@ -26,51 +26,46 @@ if "audio_key" not in st.session_state: st.session_state.audio_key = 0
 if "payment_step" not in st.session_state: st.session_state.payment_step = 1
 if "user_details" not in st.session_state: st.session_state.user_details = {}
 
-# --- 4. PROFESSIONAL CSS (NUCLEAR DARK MODE) ---
+# --- 4. PROFESSIONAL CSS (UNIVERSAL VISIBILITY FIX) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     
-    /* 1. FORCE MAIN DARK BACKGROUNDS */
+    /* 1. FORCE DARK BACKGROUNDS (Overrides Browser Theme) */
     .stApp { background-color: #0E1117 !important; color: #E0E0E0 !important; }
     [data-testid="stSidebar"] { background-color: #161B26 !important; border-right: 1px solid #2B313E !important; }
     
-    /* 2. FORCE TEXT COLORS */
+    /* 2. UNIVERSAL TEXT VISIBILITY */
     h1, h2, h3, h4, h5, h6, p, li, div, span, label { color: #E0E0E0 !important; }
     strong { color: #FFD700 !important; font-weight: 600; }
     code { color: #FF7043 !important; }
 
-    /* 3. INPUT FIELDS & DROPDOWNS (The "White Theme" Killer) */
-    div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="base-input"] {
+    /* 3. INPUT FIELDS (Forced High Contrast) */
+    /* Target all input containers to force dark background */
+    div[data-baseweb="input"] {
         background-color: #1E2330 !important;
-        border: 1px solid #4A90E2 !important;
+        border: 1px solid #4A90E2 !important; /* Blue Border */
         border-radius: 8px !important;
     }
-    input, textarea, .stSelectbox div {
-        color: #FFFFFF !important;
+    /* Target the actual text input area */
+    input[type="text"], input[type="password"], textarea {
         background-color: transparent !important;
+        color: #FFFFFF !important; /* Force White Text */
+        -webkit-text-fill-color: #FFFFFF !important;
+        caret-color: #4A90E2 !important;
     }
-    /* Placeholder Text */
+    /* Force Placeholder Color */
     ::placeholder { color: #AAAAAA !important; opacity: 1; }
+    /* Force Label Color */
+    label, .stTextInput > label { color: #FFFFFF !important; }
     
-    /* 4. EXPANDERS (Terms & Payment Box) */
-    .streamlit-expanderHeader {
-        background-color: #2B313E !important;
-        color: #FFFFFF !important;
-        border: 1px solid #4A90E2 !important;
-        border-radius: 8px;
-    }
-    .streamlit-expanderContent {
-        background-color: #161B26 !important;
-        color: #E0E0E0 !important;
-        border: 1px solid #2B313E;
-        border-top: none;
-    }
+    /* Fix "Show Password" Eye Icon Visibility */
+    button[aria-label="Show password"] { color: #E0E0E0 !important; }
 
-    /* 5. BUTTONS (Professional Blue) */
+    /* 4. BUTTONS (Professional Blue) */
     div.stButton > button { 
-        background-color: #4A90E2 !important; 
+        background-color: #4A90E2 !important; /* JEEx Blue */
         color: white !important; 
         border: none !important; 
         border-radius: 8px; 
@@ -79,20 +74,36 @@ st.markdown("""
         transition: all 0.3s;
     }
     div.stButton > button:hover { 
-        background-color: #357ABD !important; 
+        background-color: #357ABD !important; /* Darker Blue Hover */
         box-shadow: 0px 4px 15px rgba(74, 144, 226, 0.4);
     }
-    
-    /* 6. PASSWORD EYE ICON FIX */
-    button[aria-label="Show password"] { color: #E0E0E0 !important; }
 
-    /* 7. LAYOUT FIXES */
+    /* 5. EXPANDER / DROPDOWN HEADERS (Fix White-on-White) */
+    .streamlit-expanderHeader {
+        background-color: #2B313E !important; /* Dark Grey Background */
+        color: #FFFFFF !important; /* White Text */
+        border-radius: 8px;
+        border: 1px solid #4A90E2 !important;
+    }
+    .streamlit-expanderHeader p {
+        color: #FFFFFF !important;
+        font-weight: 600;
+        font-size: 16px;
+    }
+    .streamlit-expanderContent {
+        background-color: #161B26 !important;
+        color: #E0E0E0 !important;
+        border: 1px solid #2B313E;
+        border-radius: 0 0 8px 8px;
+    }
+    
+    /* 6. LAYOUT FIXES */
     .block-container { padding-top: 1rem; padding-bottom: 140px; }
     [data-testid="stFileUploader"] { padding: 0px; }
     .stAudioInput { margin-top: 5px; }
     .stChatMessage .st-emotion-cache-1p1m4ay { width: 45px; height: 45px; }
     
-    /* 8. LOCK UI WHEN THINKING */
+    /* Lock Input when Processing */
     .stApp[data-test-state="running"] .stChatInput { opacity: 0.5; pointer-events: none; }
 </style>
 """, unsafe_allow_html=True)
@@ -107,7 +118,7 @@ def send_final_notification(name, email, phone, trans_id):
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         }
         payload = {
-            "_subject": f"💰 NEW PAYMENT: {name}",
+            "_subject": f"💰 PAYMENT VERIFICATION: {name}",
             "_captcha": "false",
             "_template": "table",
             "Name": name,
@@ -135,12 +146,10 @@ def sanitize_text_for_pdf(text):
     return text.encode('latin-1', 'ignore').decode('latin-1')
 
 def show_branding():
-    # Centering Logic using Columns
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
         try: st.image(LOGO_URL, width=280) 
         except: pass
-            
     st.markdown("""
         <div style="text-align: center; margin-top: -15px; margin-bottom: 30px;">
             <h1 style="margin: 0; font-size: 42px; font-weight: 700; letter-spacing: 1px;">
@@ -198,7 +207,6 @@ if st.session_state.get('logout', False):
 with st.sidebar:
     st.markdown("## 🔐 Premium Access")
     
-    # Password Box (Dark Mode Forced)
     user_key = st.text_input("Enter Access Key:", type="password") 
     status = check_key_status(user_key)
     
@@ -252,7 +260,7 @@ with st.sidebar:
                 st.markdown("---")
                 st.markdown("**Step 2: Enter Transaction ID**")
                 trans_id = st.text_input("UPI Transaction ID:", placeholder="e.g. T230...")
-                st.caption("ℹ️ *Found in Payment History (GPay/PhonePe/Paytm). Looks like: T2308191234 or UTR: 323481...*")
+                st.caption("ℹ️ Found in GPay/PhonePe History")
                 
                 if st.button("✅ Verify & Submit"):
                     if len(trans_id) > 6:
@@ -283,7 +291,7 @@ with st.sidebar:
                     st.rerun()
 
         st.markdown("---")
-        with st.expander("📄 Detailed Terms & Conditions"): 
+        with st.expander("📄 Terms & Conditions"): 
             st.markdown("""
             **1. Service Scope:** JEEx Pro is an AI-powered educational aid for JEE preparation. It provides explanations, solves numericals, and offers strategies.
             
@@ -357,8 +365,10 @@ prompt = audio_prompt if audio_prompt else text_prompt
 if prompt:
     st.session_state.processing = True
     msg_data = {"role": "user", "content": prompt}
+    
     if uploaded_file:
         msg_data.update({"file_data": uploaded_file.getvalue(), "file_name": uploaded_file.name, "file_type": uploaded_file.type})
+    
     st.session_state.messages.append(msg_data)
     st.rerun()
 
@@ -382,9 +392,11 @@ if st.session_state.processing and st.session_state.messages[-1]["role"] == "use
             with open(tfile, "wb") as f: f.write(uploaded_file.getbuffer())
             fres = client.files.create(file=open(tfile, "rb"), purpose="assistants")
             
+            # CRITICAL FIX: Distinguish between Image Content and File Attachment
             if uploaded_file.type == "application/pdf":
                 att.append({"file_id": fres.id, "tools": [{"type": "code_interpreter"}]})
             else:
+                # Images go directly into content for Vision
                 api_content.append({"type": "image_file", "image_file": {"file_id": fres.id}})
             
             os.remove(tfile)
