@@ -89,7 +89,7 @@ col1, col2, col3 = st.columns([1, 2, 1])
 
 with col2:
     # 1. THE LOGO (Using Raw GitHub Link)
-    logo_url = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/main/logo.png"
+    logo_url = "https://github.com/SwastikJEEx/jeex-launch/blob/main/logo.png.png"
     try:
         st.image(logo_url, use_column_width=True)
     except:
@@ -290,3 +290,4 @@ if prompt := st.chat_input("Ask a doubt (e.g. Rotational Motion)..."):
             st.session_state.messages.append({"role": "assistant", "content": final_response})
             st.session_state.uploader_key += 1
             st.rerun()
+
