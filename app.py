@@ -3,12 +3,12 @@ import time
 from openai import OpenAI
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="JEEx Pro", page_icon="⚛️", layout="centered", initial_sidebar_state="expanded")
 
-# --- 2. PROFESSIONAL UI CSS (ChatGPT/Gemini Style) ---
+# --- 2. PROFESSIONAL GEMINI-STYLE CSS ---
 st.markdown("""
 <style>
     /* Import Professional Font (Inter) */
@@ -18,21 +18,17 @@ st.markdown("""
         font-family: 'Inter', sans-serif;
     }
 
-    /* Main Background */
+    /* Main Background & Text */
     .stApp { background-color: #0E1117; color: #E0E0E0; }
     
     /* Sidebar */
     [data-testid="stSidebar"] { background-color: #161B26; border-right: 1px solid #2B313E; }
     
-    /* Layout Adjustments */
+    /* Center Layout alignment */
     .block-container { padding-top: 2rem; }
     
     /* --- CHAT BUBBLES --- */
-    [data-testid="stChatMessage"] { 
-        background-color: transparent; 
-        border: none; 
-        padding: 10px 0px; 
-    }
+    [data-testid="stChatMessage"] { background-color: transparent; border: none; padding: 10px 0px; }
     
     /* User Bubble */
     [data-testid="stChatMessage"][data-testid="user"] {
@@ -50,7 +46,7 @@ st.markdown("""
         margin-bottom: 10px;
     }
     
-    /* Chat Text Size & Color */
+    /* Text Size */
     [data-testid="stChatMessage"] p, [data-testid="stChatMessage"] div {
         font-size: 16px !important;
         line-height: 1.6 !important;
@@ -58,16 +54,8 @@ st.markdown("""
     }
     
     /* Highlights */
-    strong { color: #FFD700 !important; } /* Gold for emphasis */
-    code { color: #FF7043 !important; }   /* Orange for code/math */
-    
-    /* Inputs */
-    .stTextInput input, .stTextArea textarea { 
-        background-color: #1E2330 !important; 
-        color: white !important; 
-        border: 1px solid #3E4654 !important; 
-        border-radius: 10px;
-    }
+    strong { color: #FFD700 !important; } 
+    code { color: #FF7043 !important; }
     
     /* Buttons */
     div.stButton > button { 
@@ -92,10 +80,7 @@ st.markdown("""
     /* Math Formatting */
     .katex { font-size: 1.2em; color: #FFD700 !important; } 
     
-    /* Remove Padding from File Uploader */
-    [data-testid="stFileUploader"] { padding: 0px; }
-    
-    /* Avatar Size Fix */
+    /* Avatar Size */
     .stChatMessage .st-emotion-cache-1p1m4ay { width: 42px; height: 42px; }
 </style>
 """, unsafe_allow_html=True)
@@ -105,25 +90,19 @@ st.markdown("""
 def clean_latex(text):
     """Cleans OpenAI response: Removes source tags & fixes LaTeX"""
     if not text: return ""
-    # 1. Remove Source Tags like 【4:4†source】
     text = re.sub(r'【.*?†source】', '', text)
-    # 2. Fix LaTeX brackets
     text = re.sub(r'\\\[(.*?)\\\]', r'$$\1$$', text, flags=re.DOTALL)
     text = re.sub(r'\\\((.*?)\\\)', r'$\1$', text, flags=re.DOTALL)
     text = re.sub(r'(?<!\\)\[\s*(.*?=.*?)\s*\]', r'$$\1$$', text, flags=re.DOTALL)
     return text
 
-# GLOBAL LOGO URL (Raw Link)
 LOGO_URL = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/1d6ef8ca3ac05432ed370338d4c04d6a03541f23/logo.png.png"
 
 def show_branding():
-    """Displays Centered Logo and Branding"""
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        try:
-            st.image(LOGO_URL, use_container_width=True)
-        except:
-            pass 
+        try: st.image(LOGO_URL, width=220)
+        except: pass
             
     st.markdown("""
         <div style="text-align: center; margin-top: -10px; margin-bottom: 30px;">
@@ -142,10 +121,13 @@ if st.session_state.get('logout', False):
         del st.session_state[key]
     st.rerun()
 
-# --- 5. SMART KEY LOGIC ---
+# --- 5. SMART KEY LOGIC & ADMIN CHECK ---
 def check_key_status(user_key):
-    if user_key == st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS"): return "VALID"
+    # ADMIN CHECK
+    master_key = st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS")
+    if user_key == master_key: return "ADMIN"
 
+    # EXPIRY CHECK
     expiry_db = st.secrets.get("KEY_EXPIRY", {})
     if user_key in expiry_db:
         try:
@@ -153,26 +135,27 @@ def check_key_status(user_key):
             if datetime.now().date() > expiry_date: return "EXPIRED"
         except: pass 
 
+    # VALIDITY CHECK
     if user_key in st.secrets.get("VALID_KEYS", []): return "VALID"
     if len(user_key) != 9 or user_key[:5] != "JEExa" or not user_key[5:].isdigit(): return "INVALID"
     if 1 <= int(user_key[5:]) <= 1000: return "VALID"
     return "INVALID"
 
-# --- 6. DETAILED TERMS & CONDITIONS ---
+# --- 6. TERMS & CONDITIONS ---
 terms_text = """
 **JEEx Terms of Service & Usage Policy**
 
-**1. Service Description** JEEx Pro is an AI-powered educational assistant designed to aid students in JEE preparation. It uses advanced language models to solve problems and explain concepts.
+**1. Service Description** JEEx Pro is an AI-powered educational assistant designed to aid students in JEE preparation.
 
-**2. Accuracy Disclaimer** Artificial Intelligence can occasionally produce "hallucinations" or calculation errors. Users are strictly advised to verify critical data, formulas, and constants with standard resources (NCERT, HC Verma). JEEx is a study aid, not a replacement for official textbooks.
+**2. Accuracy Disclaimer** Artificial Intelligence can occasionally produce "hallucinations". Users are strictly advised to verify critical data with standard resources (NCERT, HC Verma).
 
 **3. Account Security** * **Single User License:** This Access Key is licensed to ONE individual only.
-* **Zero Tolerance:** Our system monitors IP addresses. Sharing your key on Telegram, WhatsApp, or with friends will result in an **immediate, permanent ban** without refund.
+* **Ban Policy:** Sharing your key will result in an immediate, permanent ban.
 
-**4. Payments & Refunds** * **No Refunds:** As this is a digital access service, all sales are final once the key is delivered.
-* **Validity:** Monthly subscriptions are valid for exactly 30 days from activation.
+**4. Payments & Refunds** * **No Refunds:** All sales are final.
+* **Validity:** Monthly subscriptions are valid for 30 days.
 
-**5. Privacy** Your chat data is processed securely via OpenAI APIs. We do not sell your personal data.
+**5. Privacy** Your chat data is processed securely via OpenAI APIs.
 """
 
 # --- 7. SIDEBAR LOGIC ---
@@ -186,7 +169,7 @@ with st.sidebar:
     status = check_key_status(user_key)
     
     # --- IF LOCKED ---
-    if status != "VALID":
+    if status != "VALID" and status != "ADMIN":
         if status == "EXPIRED":
             st.error("⚠️ Plan Expired")
             st.warning("Your JEEx Pro monthly Plan has expired.")
@@ -209,16 +192,38 @@ with st.sidebar:
         with st.expander("📄 Terms & Conditions"):
              st.markdown(terms_text)
 
-# --- 8. MAIN APP LOGIC ---
+# --- 8. ADMIN DASHBOARD (HIDDEN FEATURE) ---
+if status == "ADMIN":
+    st.sidebar.success("🔑 Admin Mode Active")
+    st.markdown("## 🛠️ Admin Dashboard")
+    st.info("Use this tool to generate code for your `secrets.toml` file.")
+    
+    col_a, col_b = st.columns(2)
+    with col_a:
+        new_key_id = st.text_input("Student Key ID (e.g. JEExa005)")
+    with col_b:
+        days_valid = st.number_input("Days Valid", min_value=30, value=30)
+    
+    if new_key_id:
+        expiry_date = datetime.now() + timedelta(days=days_valid)
+        date_str = expiry_date.strftime("%Y-%m-%d")
+        
+        st.code(f'"{new_key_id}" = "{date_str}"', language="toml")
+        st.caption("Copy the line above and paste it into your Streamlit Secrets [KEY_EXPIRY] section.")
+    
+    if st.button("Logout Admin"):
+        st.session_state['logout'] = True
+        st.rerun()
+    st.stop() # Stop here for admin
 
-# SHOW BRANDING ON ALL PAGES
+# --- 9. MAIN APP LOGIC ---
+
 show_branding()
 
 # SCENARIO A: LANDING PAGE (LOCKED)
 if status != "VALID":
     st.markdown("---")
     
-    # Instruction Box
     st.markdown("""
     <div style="background-color: #1E2330; padding: 25px; border-radius: 12px; border-left: 5px solid #4A90E2; margin-bottom: 30px; text-align: center;">
         <p style="font-size: 18px; margin: 0; color: #E6E6E6;">
@@ -228,29 +233,16 @@ if status != "VALID":
     </div>
     """, unsafe_allow_html=True)
 
-    # Features List
     st.markdown("""
     <div style="background-color: #161B26; padding: 35px; border-radius: 15px; border: 1px solid #2B313E;">
         <h2 style="color: #4A90E2; margin-top: 0; font-size: 24px; border-bottom: 1px solid #3E4654; padding-bottom: 15px; margin-bottom: 20px; text-align: center;">
             🏆 Why Top Rankers Choose JEEx <span style="color:#4A90E2">PRO</span>
         </h2>
         <div style="display: flex; flex-direction: column; gap: 20px;">
-            <div>
-                <strong style="color: #FFD700; font-size: 19px;">🧠 Advanced Problem Solving</strong><br>
-                <span style="color: #CCCCCC; font-size: 16px;">Instantly solves Irodov, Cengage, and PYQ level problems with step-by-step logic.</span>
-            </div>
-            <div>
-                <strong style="color: #FFD700; font-size: 19px;">👁️ Vision Intelligence</strong><br>
-                <span style="color: #CCCCCC; font-size: 16px;">Stuck on a handwritten question? Just upload a photo. JEEx solves it.</span>
-            </div>
-            <div>
-                <strong style="color: #FFD700; font-size: 19px;">📄 Document Analysis</strong><br>
-                <span style="color: #CCCCCC; font-size: 16px;">Upload entire PDF assignments. Our Code Interpreter analyzes the full context.</span>
-            </div>
-            <div>
-                <strong style="color: #FFD700; font-size: 19px;">➗ Perfect Math Formatting</strong><br>
-                <span style="color: #CCCCCC; font-size: 16px;">Renders complex integrals and matrices with textbook LaTeX precision.</span>
-            </div>
+            <div><strong style="color: #FFD700; font-size: 19px;">🧠 Advanced Problem Solving</strong><br><span style="color: #CCCCCC; font-size: 16px;">Solves Irodov, Cengage, and PYQ level problems with step-by-step logic.</span></div>
+            <div><strong style="color: #FFD700; font-size: 19px;">👁️ Vision Intelligence</strong><br><span style="color: #CCCCCC; font-size: 16px;">Stuck on a handwritten question? Just upload a photo. JEEx solves it.</span></div>
+            <div><strong style="color: #FFD700; font-size: 19px;">📄 Document Analysis</strong><br><span style="color: #CCCCCC; font-size: 16px;">Upload entire PDF assignments. Our Code Interpreter analyzes the full context.</span></div>
+            <div><strong style="color: #FFD700; font-size: 19px;">➗ Perfect Math Formatting</strong><br><span style="color: #CCCCCC; font-size: 16px;">Renders complex integrals and matrices with LaTeX precision.</span></div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -265,7 +257,23 @@ with st.sidebar:
     st.markdown("### 📎 Attach Question")
     uploaded_file = st.file_uploader("Upload Image/PDF", type=["jpg", "png", "pdf"], key=f"uploader_{st.session_state.uploader_key}", label_visibility="collapsed")
     if uploaded_file: st.info(f"Attached: {uploaded_file.name}")
+    
     st.markdown("---")
+    
+    # DOWNLOAD HISTORY BUTTON (Feature #2)
+    chat_str = ""
+    if "messages" in st.session_state:
+        for msg in st.session_state.messages:
+            role = "JEEx" if msg["role"] == "assistant" else "Student"
+            chat_str += f"{role}: {msg['content']}\n\n"
+    
+    st.download_button(
+        label="💾 Save Session Notes",
+        data=chat_str,
+        file_name="JEEx_Study_Session.txt",
+        mime="text/plain"
+    )
+
     if st.button("End Session"): st.session_state['logout'] = True; st.rerun()
     with st.expander("📄 Terms & Conditions"):
          st.markdown(terms_text)
@@ -288,9 +296,9 @@ if "thread_id" not in st.session_state:
 # Display Chat History with CUSTOM AVATARS
 for msg in st.session_state.messages:
     if msg["role"] == "assistant":
-        avatar_icon = LOGO_URL # Your Logo
+        avatar_icon = LOGO_URL
     else:
-        avatar_icon = "🧑‍🎓" # Student Icon
+        avatar_icon = "🧑‍🎓"
         
     with st.chat_message(msg["role"], avatar=avatar_icon):
         st.markdown(clean_latex(msg["content"]))
@@ -299,14 +307,13 @@ for msg in st.session_state.messages:
 if prompt := st.chat_input("Ask a doubt (e.g. Rotational Motion)..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     
-    # Show User Message
     with st.chat_message("user", avatar="🧑‍🎓"):
         st.markdown(prompt)
         if uploaded_file:
             if uploaded_file.type == "application/pdf": st.markdown(f"📄 *PDF Attached*")
             else: st.image(uploaded_file, width=200)
 
-    # Prepare Message Content
+    # Prepare Message
     message_content = [{"type": "text", "text": prompt}]
     attachments = [] 
     if uploaded_file:
@@ -331,7 +338,7 @@ if prompt := st.chat_input("Ask a doubt (e.g. Rotational Motion)..."):
         attachments=attachments if attachments else None
     )
 
-    # STREAMING RESPONSE
+    # STREAMING RESPONSE (Feature #1)
     with st.chat_message("assistant", avatar=LOGO_URL):
         stream = client.beta.threads.runs.create(
             thread_id=st.session_state.thread_id,
@@ -354,7 +361,6 @@ if prompt := st.chat_input("Ask a doubt (e.g. Rotational Motion)..."):
                 for content in event.data.delta.content:
                     if content.type == "text":
                         collected_message += content.text.value
-                        # Clean on the fly
                         response_container.markdown(clean_latex(collected_message) + "▌")
             
             elif event.event == "thread.run.completed":
