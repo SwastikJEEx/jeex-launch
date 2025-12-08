@@ -10,12 +10,12 @@ import requests
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="JEEx Pro", page_icon="⚛️", layout="centered", initial_sidebar_state="expanded")
 
-# --- 2. GLOBAL CONSTANTS ---
+# --- 2. GLOBAL SETTINGS ---
 ADMIN_WHATSAPP = "919839940400"
 ADMIN_EMAIL = "jeexaipro@gmail.com"
 LOGO_URL = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/1d6ef8ca3ac05432ed370338d4c04d6a03541f23/logo.png.png"
 
-# --- 3. SESSION STATE INITIALIZATION ---
+# --- 3. SESSION STATE SETUP ---
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "assistant", "content": "Welcome Champ! 🎓 Physics, Chemistry ya Maths—bas photo bhejo ya type karo. Let's crack it! 🚀"}]
 if "processing" not in st.session_state: st.session_state.processing = False
@@ -30,7 +30,7 @@ st.markdown("""
     .stApp { background-color: #0E1117; color: #E0E0E0; }
     [data-testid="stSidebar"] { background-color: #161B26; border-right: 1px solid #2B313E; }
     
-    /* Main Layout */
+    /* Layout */
     .block-container { padding-top: 1rem; padding-bottom: 140px; }
     
     /* Chat Bubbles */
@@ -43,12 +43,10 @@ st.markdown("""
         background-color: transparent; padding: 0px 25px; margin-bottom: 10px;
     }
     
-    /* Typography */
+    /* Text & Buttons */
     p, li, div { font-size: 17px !important; line-height: 1.6 !important; color: #E6E6E6 !important; }
     strong { color: #FFD700 !important; font-weight: 600; } 
     code { color: #FF7043 !important; }
-    
-    /* Buttons */
     div.stButton > button { 
         background-color: #2B313E !important; color: white !important; border: 1px solid #3E4654 !important; 
         border-radius: 8px; width: 100%; transition: all 0.3s; font-weight: 600;
@@ -60,19 +58,20 @@ st.markdown("""
     .stAudioInput { margin-top: 5px; }
     .stChatMessage .st-emotion-cache-1p1m4ay { width: 45px; height: 45px; }
     
-    /* Locking UI */
+    /* Lock Input when Processing */
     .stApp[data-test-state="running"] .stChatInput { opacity: 0.5; pointer-events: none; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 5. HELPER FUNCTIONS ---
-
+# --- 5. ROBUST EMAIL FUNCTION ---
 def send_auto_notification(name, email, phone):
-    """Sends registration email via FormSubmit (Improved Reliability)"""
+    """Sends email with Browser Headers to bypass Spam Filters"""
     try:
         url = f"https://formsubmit.co/{ADMIN_EMAIL}"
+        # Fake Browser Header to trick the server
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            "Referer": "https://jeex-pro.streamlit.app/"
         }
         payload = {
             "_subject": f"New Subscriber: {name}",
@@ -81,15 +80,21 @@ def send_auto_notification(name, email, phone):
             "name": name,
             "email": email,
             "phone": phone,
-            "status": "Awaiting Payment",
-            "date": str(datetime.now())
+            "status": "Pending Payment",
+            "timestamp": str(datetime.now())
         }
-        # Send Request
         resp = requests.post(url, data=payload, headers=headers)
-        return resp.status_code == 200
-    except:
+        
+        # Debugging: If it fails, print status to sidebar (hidden from main view)
+        if resp.status_code != 200:
+            print(f"Email Failed: Status {resp.status_code}")
+            return False
+        return True
+    except Exception as e:
+        print(f"Email Error: {e}")
         return False
 
+# --- 6. HELPER FUNCTIONS ---
 def clean_latex(text):
     if not text: return ""
     text = re.sub(r'【.*?†source】', '', text)
@@ -145,7 +150,7 @@ def generate_pdf(messages):
         pdf.chapter_body(content)
     return pdf.output(dest='S').encode('latin-1', 'ignore')
 
-# --- 6. AUTH & LOGIC ---
+# --- 7. AUTH & LOGIC ---
 def check_key_status(user_key):
     if user_key == st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS"): return "ADMIN"
     expiry_db = st.secrets.get("KEY_EXPIRY", {})
@@ -161,7 +166,7 @@ if st.session_state.get('logout', False):
     for key in list(st.session_state.keys()): del st.session_state[key]
     st.rerun()
 
-# --- 7. SIDEBAR ---
+# --- 8. SIDEBAR ---
 with st.sidebar:
     st.markdown("## 🔐 Premium Access")
     
@@ -178,7 +183,7 @@ with st.sidebar:
         uploaded_file = st.file_uploader("Upload", type=["jpg", "png", "pdf"], key=f"uploader_{st.session_state.uploader_key}", label_visibility="collapsed")
         
         st.markdown("**🎙️ Voice Chat**")
-        # Audio Widget - Reset key only changes after full processing cycle
+        # IMPORTANT: Key is dynamic to prevent "Error" on rerun
         audio_value = st.audio_input("Speak", key=f"audio_{st.session_state.audio_key}", label_visibility="collapsed")
         
         st.markdown("---")
@@ -204,7 +209,7 @@ with st.sidebar:
             
             if submitted:
                 if name and email and phone:
-                    # 1. AUTO-EMAIL NOTIFICATION
+                    # 1. AUTO-EMAIL NOTIFICATION (Robust)
                     is_sent = send_auto_notification(name, email, phone)
                     
                     if is_sent:
@@ -227,9 +232,9 @@ with st.sidebar:
 
         st.markdown("---")
         with st.expander("📄 Terms & Conditions"): 
-            st.markdown("Please read the detailed terms on the main page.")
+            st.markdown("Detailed terms available on main page.")
 
-# --- 8. ADMIN PANEL ---
+# --- 9. ADMIN PANEL ---
 if status == "ADMIN":
     st.sidebar.success("🔑 Admin Mode")
     c1, c2 = st.columns(2)
@@ -240,7 +245,7 @@ if status == "ADMIN":
         st.code(f'"{new_id}" = "{exp}"', language="toml")
     st.stop()
 
-# --- 9. LANDING PAGE ---
+# --- 10. LANDING PAGE ---
 show_branding()
 
 if status != "VALID":
@@ -276,7 +281,7 @@ if status != "VALID":
         """)
     st.stop()
 
-# --- 10. CHAT INTERFACE & LOGIC ---
+# --- 11. CHAT INTERFACE & LOGIC ---
 
 # Setup OpenAI
 try:
