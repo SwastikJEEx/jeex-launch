@@ -10,17 +10,21 @@ import requests
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="JEEx Pro", page_icon="⚛️", layout="centered", initial_sidebar_state="expanded")
 
-# --- 2. GLOBAL SETTINGS ---
+# --- 2. GLOBAL CONSTANTS ---
 ADMIN_WHATSAPP = "919839940400"
 ADMIN_EMAIL = "jeexaipro@gmail.com"
 LOGO_URL = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/1d6ef8ca3ac05432ed370338d4c04d6a03541f23/logo.png.png"
 
-# --- 3. SESSION STATE SETUP ---
+# --- 3. SESSION STATE INITIALIZATION ---
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "assistant", "content": "Welcome Champ! 🎓 Physics, Chemistry ya Maths—bas photo bhejo ya type karo. Let's crack it! 🚀"}]
 if "processing" not in st.session_state: st.session_state.processing = False
 if "uploader_key" not in st.session_state: st.session_state.uploader_key = 0
 if "audio_key" not in st.session_state: st.session_state.audio_key = 0
+
+# PAYMENT STATE
+if "payment_step" not in st.session_state: st.session_state.payment_step = 1
+if "user_details" not in st.session_state: st.session_state.user_details = {}
 
 # --- 4. PROFESSIONAL CSS ---
 st.markdown("""
@@ -43,10 +47,12 @@ st.markdown("""
         background-color: transparent; padding: 0px 25px; margin-bottom: 10px;
     }
     
-    /* Text & Buttons */
+    /* Typography */
     p, li, div { font-size: 17px !important; line-height: 1.6 !important; color: #E6E6E6 !important; }
     strong { color: #FFD700 !important; font-weight: 600; } 
     code { color: #FF7043 !important; }
+    
+    /* Buttons */
     div.stButton > button { 
         background-color: #2B313E !important; color: white !important; border: 1px solid #3E4654 !important; 
         border-radius: 8px; width: 100%; transition: all 0.3s; font-weight: 600;
@@ -58,43 +64,37 @@ st.markdown("""
     .stAudioInput { margin-top: 5px; }
     .stChatMessage .st-emotion-cache-1p1m4ay { width: 45px; height: 45px; }
     
-    /* Lock Input when Processing */
+    /* Locking UI */
     .stApp[data-test-state="running"] .stChatInput { opacity: 0.5; pointer-events: none; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 5. ROBUST EMAIL FUNCTION ---
-def send_auto_notification(name, email, phone):
-    """Sends email with Browser Headers to bypass Spam Filters"""
+# --- 5. HELPER FUNCTIONS ---
+
+def send_final_notification(name, email, phone, trans_id):
+    """Sends FINAL email with Transaction ID to Admin"""
     try:
         url = f"https://formsubmit.co/{ADMIN_EMAIL}"
-        # Fake Browser Header to trick the server
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
             "Referer": "https://jeex-pro.streamlit.app/"
         }
         payload = {
-            "_subject": f"New Subscriber: {name}",
+            "_subject": f"💰 PAYMENT VERIFICATION: {name}",
             "_captcha": "false",
             "_template": "table",
-            "name": name,
-            "email": email,
-            "phone": phone,
-            "status": "Pending Payment",
-            "timestamp": str(datetime.now())
+            "Name": name,
+            "Email": email,
+            "Phone": phone,
+            "Transaction ID": trans_id,
+            "Status": "Paid - Waiting for Key",
+            "Timestamp": str(datetime.now())
         }
         resp = requests.post(url, data=payload, headers=headers)
-        
-        # Debugging: If it fails, print status to sidebar (hidden from main view)
-        if resp.status_code != 200:
-            print(f"Email Failed: Status {resp.status_code}")
-            return False
-        return True
-    except Exception as e:
-        print(f"Email Error: {e}")
+        return resp.status_code == 200
+    except:
         return False
 
-# --- 6. HELPER FUNCTIONS ---
 def clean_latex(text):
     if not text: return ""
     text = re.sub(r'【.*?†source】', '', text)
@@ -150,7 +150,7 @@ def generate_pdf(messages):
         pdf.chapter_body(content)
     return pdf.output(dest='S').encode('latin-1', 'ignore')
 
-# --- 7. AUTH & LOGIC ---
+# --- 6. AUTH & LOGIC ---
 def check_key_status(user_key):
     if user_key == st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS"): return "ADMIN"
     expiry_db = st.secrets.get("KEY_EXPIRY", {})
@@ -166,11 +166,10 @@ if st.session_state.get('logout', False):
     for key in list(st.session_state.keys()): del st.session_state[key]
     st.rerun()
 
-# --- 8. SIDEBAR ---
+# --- 7. SIDEBAR (SMART PAYMENT FLOW) ---
 with st.sidebar:
     st.markdown("## 🔐 Premium Access")
     
-    # Hide password with dots
     user_key = st.text_input("Enter Access Key:", type="password") 
     status = check_key_status(user_key)
     
@@ -183,7 +182,6 @@ with st.sidebar:
         uploaded_file = st.file_uploader("Upload", type=["jpg", "png", "pdf"], key=f"uploader_{st.session_state.uploader_key}", label_visibility="collapsed")
         
         st.markdown("**🎙️ Voice Chat**")
-        # IMPORTANT: Key is dynamic to prevent "Error" on rerun
         audio_value = st.audio_input("Speak", key=f"audio_{st.session_state.audio_key}", label_visibility="collapsed")
         
         st.markdown("---")
@@ -193,48 +191,83 @@ with st.sidebar:
         
         if st.button("End Session"): st.session_state['logout'] = True; st.rerun()
 
-    # --- LOCKED (REGISTRATION) ---
+    # --- LOCKED (NEW PAYMENT WORKFLOW) ---
     else:
         if user_key and status != "VALID": st.error("❌ Invalid or Expired Key")
         
         st.markdown("### ⚡ Subscribe Now")
         with st.expander("💎 Get Premium (₹99/mo)", expanded=True):
-            st.markdown("Fill details to get your key instantly:")
             
-            with st.form("reg_form"):
-                name = st.text_input("Name")
-                email = st.text_input("Email")
-                phone = st.text_input("WhatsApp No.")
-                submitted = st.form_submit_button("🚀 Proceed to Pay")
-            
-            if submitted:
-                if name and email and phone:
-                    # 1. AUTO-EMAIL NOTIFICATION (Robust)
-                    is_sent = send_auto_notification(name, email, phone)
-                    
-                    if is_sent:
-                        st.success("Details Sent! Admin notified.")
+            # STEP 1: COLLECT USER DETAILS
+            if st.session_state.payment_step == 1:
+                st.markdown("Fill details to get your key:")
+                with st.form("reg_form"):
+                    name = st.text_input("Name")
+                    email = st.text_input("Email")
+                    phone = st.text_input("WhatsApp No.")
+                    submitted = st.form_submit_button("🚀 Proceed to Pay")
+                
+                if submitted:
+                    if name and email and phone:
+                        # Save details locally (No Email Yet)
+                        st.session_state.user_details = {"name": name, "email": email, "phone": phone}
+                        st.session_state.payment_step = 2 # Move to Payment
+                        st.rerun()
                     else:
-                        st.warning("Network busy, but registration saved locally.")
+                        st.warning("⚠️ Please fill all details.")
+
+            # STEP 2: QR + TRANSACTION ID INPUT
+            elif st.session_state.payment_step == 2:
+                st.info(f"Hi {st.session_state.user_details['name']}, scan to pay:")
+                
+                # Show QR
+                try: st.image("upi_qr.png", caption="Scan UPI QR", use_container_width=True)
+                except: st.info(f"Pay to: **{ADMIN_WHATSAPP}@upi**")
+                
+                st.markdown("---")
+                
+                # Transaction ID Form
+                st.markdown("**Step 2: Enter Transaction ID**")
+                trans_id = st.text_input("UPI Transaction ID (or Ref No.):", placeholder="e.g. T2308191234")
+                st.caption("ℹ️ *Open GPay/PhonePe > History > Tap Transaction > Copy 'Txn ID' or 'UPI Ref No'*")
+                
+                # VERIFY BUTTON (Triggers Email)
+                if st.button("✅ Verify & Submit"):
+                    if len(trans_id) > 8: # Basic validation
+                        details = st.session_state.user_details
+                        # NOW SEND EMAIL
+                        is_sent = send_final_notification(details['name'], details['email'], details['phone'], trans_id)
                         
-                    st.markdown("---")
-                    st.markdown("**Step 1: Scan & Pay ₹99**")
-                    try: st.image("upi_qr.png", caption="Scan UPI QR", use_container_width=True)
-                    except: st.info(f"Pay to: **{ADMIN_WHATSAPP}@upi**")
-                    
-                    st.markdown("**Step 2: Send Screenshot**")
-                    msg = f"Hello JEEx Team!%0A%0A*Subscription Payment*%0A👤 {name}%0A📧 {email}%0A📱 {phone}%0A%0AI have paid ₹99. Here is the screenshot."
-                    wa_link = f"https://wa.me/{ADMIN_WHATSAPP}?text={msg}"
-                    
-                    st.markdown(f'<a href="{wa_link}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; border:none; padding:10px; border-radius:5px; cursor:pointer; font-weight:bold;">✅ Attach Screenshot on WhatsApp</button></a>', unsafe_allow_html=True)
-                else:
-                    st.warning("⚠️ Please fill all details.")
+                        st.session_state.user_details['trans_id'] = trans_id
+                        st.session_state.payment_step = 3
+                        st.rerun()
+                    else:
+                        st.error("⚠️ Please enter a valid Transaction ID.")
+                
+                if st.button("🔙 Go Back"):
+                    st.session_state.payment_step = 1
+                    st.rerun()
+
+            # STEP 3: SUCCESS & WHATSAPP
+            elif st.session_state.payment_step == 3:
+                st.success("🎉 Payment Submitted! Admin notified.")
+                st.markdown("We have received your details. Please allow 5-10 mins for verification.")
+                
+                details = st.session_state.user_details
+                msg = f"Hello JEEx Team!%0A%0A*PAYMENT VERIFICATION REQUEST*%0A👤 Name: {details['name']}%0A📧 Email: {details['email']}%0A📱 Phone: {details['phone']}%0A🆔 Trans ID: {details['trans_id']}%0A%0AI have paid ₹99. Please send my key."
+                wa_link = f"https://wa.me/{ADMIN_WHATSAPP}?text={msg}"
+                
+                st.markdown(f'<a href="{wa_link}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; border:none; padding:12px; border-radius:5px; cursor:pointer; font-weight:bold;">👉 Chat on WhatsApp (Faster)</button></a>', unsafe_allow_html=True)
+                
+                if st.button("Start Over"):
+                    st.session_state.payment_step = 1
+                    st.rerun()
 
         st.markdown("---")
         with st.expander("📄 Terms & Conditions"): 
             st.markdown("Detailed terms available on main page.")
 
-# --- 9. ADMIN PANEL ---
+# --- 8. ADMIN PANEL ---
 if status == "ADMIN":
     st.sidebar.success("🔑 Admin Mode")
     c1, c2 = st.columns(2)
@@ -245,7 +278,7 @@ if status == "ADMIN":
         st.code(f'"{new_id}" = "{exp}"', language="toml")
     st.stop()
 
-# --- 10. LANDING PAGE ---
+# --- 9. LANDING PAGE ---
 show_branding()
 
 if status != "VALID":
@@ -281,7 +314,7 @@ if status != "VALID":
         """)
     st.stop()
 
-# --- 11. CHAT INTERFACE & LOGIC ---
+# --- 10. CHAT INTERFACE & LOGIC ---
 
 # Setup OpenAI
 try:
@@ -298,14 +331,12 @@ if "thread_id" not in st.session_state:
 # --- INPUT HANDLING (FIXED VOICE & LOCKING) ---
 
 # 1. Processing Logic (Voice First)
-# Note: We do NOT use st.rerun() inside here to avoid crashing the widget
 user_input_content = None
 
 if 'audio_value' in locals() and audio_value:
-    if not st.session_state.processing: # Only process if not already busy
+    if not st.session_state.processing:
         with st.spinner("🎧 Listening..."):
             try:
-                # Force English to fix hallucinations
                 transcription = client.audio.transcriptions.create(
                     model="whisper-1", 
                     file=audio_value, 
@@ -350,7 +381,7 @@ if prompt and not st.session_state.processing:
         **file_data_entry
     })
     
-    # 3. Force UI Update to show user message immediately
+    # 3. Force UI Update
     st.rerun()
 
 # --- DISPLAY HISTORY ---
@@ -364,17 +395,15 @@ for msg in st.session_state.messages:
                 st.markdown(f"📄 *{msg['file_name']}*")
         st.markdown(clean_latex(msg["content"]))
 
-# --- GENERATE RESPONSE (Run only if we just added a user msg and haven't answered yet) ---
+# --- GENERATE RESPONSE ---
 if st.session_state.processing and st.session_state.messages[-1]["role"] == "user":
     
     last_msg = st.session_state.messages[-1]
     msg_text = last_msg["content"]
     
-    # 4. API Request
     message_content = [{"type": "text", "text": msg_text}]
     attachments = [] 
     
-    # Handle File Upload to OpenAI (Hidden Logic)
     if uploaded_file:
         with st.spinner("Analyzing file..."):
             try:
@@ -390,7 +419,6 @@ if st.session_state.processing and st.session_state.messages[-1]["role"] == "use
                 os.remove(temp_filename)
             except: st.error("File upload failed.")
 
-    # 5. Send & Stream
     client.beta.threads.messages.create(
         thread_id=st.session_state.thread_id,
         role="user",
@@ -425,11 +453,10 @@ if st.session_state.processing and st.session_state.messages[-1]["role"] == "use
         response_container.markdown(clean_latex(collected_message))
         st.session_state.messages.append({"role": "assistant", "content": collected_message})
         
-    # 6. UNLOCK AND RESET (CRITICAL FIX FOR VOICE ERROR)
+    # 6. UNLOCK AND RESET
     st.session_state.uploader_key += 1
-    # Only change audio key IF audio was used, to clear the widget
     if 'audio_value' in locals() and audio_value:
         st.session_state.audio_key += 1
         
-    st.session_state.processing = False # Unlock input
+    st.session_state.processing = False
     st.rerun()
