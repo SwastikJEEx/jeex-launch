@@ -19,74 +19,43 @@ st.markdown("""
         font-family: 'Inter', sans-serif;
     }
 
-    /* Main Background & Text */
+    /* Theme Colors */
     .stApp { background-color: #0E1117; color: #E0E0E0; }
     
     /* Sidebar */
     [data-testid="stSidebar"] { background-color: #161B26; border-right: 1px solid #2B313E; }
     
-    /* Center Layout alignment */
+    /* Layout Alignment */
     .block-container { padding-top: 1rem; padding-bottom: 120px; }
     
-    /* --- CHAT BUBBLES --- */
+    /* Chat Bubbles */
     [data-testid="stChatMessage"] { background-color: transparent; border: none; padding: 10px 0px; }
-    
-    /* User Bubble */
     [data-testid="stChatMessage"][data-testid="user"] {
-        background-color: #1E2330;
-        border-radius: 12px;
-        padding: 15px 20px;
-        margin-bottom: 10px;
-        border: 1px solid #2B313E;
-    }
-    
-    /* Assistant Bubble */
-    [data-testid="stChatMessage"][data-testid="assistant"] {
-        background-color: transparent;
-        padding: 0px 20px;
-        margin-bottom: 10px;
+        background-color: #1E2330; border-radius: 12px; padding: 15px 20px; 
+        margin-bottom: 10px; border: 1px solid #2B313E;
     }
     
     /* Text Size */
     [data-testid="stChatMessage"] p, [data-testid="stChatMessage"] div {
-        font-size: 16px !important;
-        line-height: 1.6 !important;
-        color: #E6E6E6 !important;
+        font-size: 16px !important; line-height: 1.6 !important; color: #E6E6E6 !important;
     }
-    
-    /* Highlights */
-    strong { color: #FFD700 !important; } 
-    code { color: #FF7043 !important; }
     
     /* Buttons */
     div.stButton > button { 
-        background-color: #2B313E !important; 
-        color: white !important; 
-        border: 1px solid #3E4654 !important; 
-        border-radius: 8px;
-        width: 100%; 
-        transition: all 0.3s;
-        font-weight: 600;
+        background-color: #2B313E !important; color: white !important; border-radius: 8px; font-weight: 600;
     }
-    div.stButton > button:hover { 
-        border-color: #4A90E2 !important; 
-        color: #4A90E2 !important;
-    }
+    div.stButton > button:hover { border-color: #4A90E2 !important; color: #4A90E2 !important; }
     
     /* Hide Defaults */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    .stDeployButton {display:none;}
-    
-    /* Math Formatting */
+    #MainMenu {visibility: hidden;} footer {visibility: hidden;} .stDeployButton {display:none;}
     .katex { font-size: 1.2em; color: #FFD700 !important; } 
     
-    /* Attachment & Voice Styling */
+    /* Attachment & Voice Styling - Make them smaller icons */
     [data-testid="stFileUploader"] { padding: 0px; }
+    .stFileUploader { width: 50px; } /* Constrain width of uploader button container */
     
-    /* Avatar Size */
-    .stChatMessage .st-emotion-cache-1p1m4ay { width: 42px; height: 42px; }
-    
+    /* Center Branding Fix */
+    .st-emotion-cache-18ni7ap { width: 42px; height: 42px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -95,34 +64,28 @@ st.markdown("""
 def clean_latex(text):
     """Cleans OpenAI response: Removes source tags & fixes LaTeX"""
     if not text: return ""
-    # Remove Source Tags like 【4:4†source】
     text = re.sub(r'【.*?†source】', '', text)
-    # Fix LaTeX brackets
     text = re.sub(r'\\\[(.*?)\\\]', r'$$\1$$', text, flags=re.DOTALL)
     text = re.sub(r'\\\((.*?)\\\)', r'$\1$', text, flags=re.DOTALL)
     text = re.sub(r'(?<!\\)\[\s*(.*?=.*?)\s*\]', r'$$\1$$', text, flags=re.DOTALL)
-    # Fix broken dollar signs like $$$a, b]$ -> $[a, b]$
     text = text.replace('$$$', '$')
     return text
 
 def sanitize_text_for_pdf(text):
-    """Removes Emojis and unsupported characters to prevent PDF crash"""
-    # Replace common bullets with dashes
+    """Aggressively cleans text to prevent PDF crash"""
     text = text.replace('•', '-').replace('—', '-')
-    # Encode to latin-1 and ignore errors (strips emojis), then decode
+    # Encode to latin-1 and ignore errors (strips emojis/korean/etc), then decode
     return text.encode('latin-1', 'ignore').decode('latin-1')
 
 LOGO_URL = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/1d6ef8ca3ac05432ed370338d4c04d6a03541f23/logo.png.png"
 
 def show_branding():
     """Displays Logo and Title PERFECTLY CENTERED"""
-    # 1. Logo Centered
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        try: st.image(LOGO_URL, use_container_width=True)
+        try: st.image(LOGO_URL, width=220)
         except: pass
             
-    # 2. Text Centered Below
     st.markdown("""
         <div style="text-align: center; margin-top: -10px; margin-bottom: 30px;">
             <h1 style="margin: 0; font-size: 36px; font-weight: 700; letter-spacing: 1px;">
@@ -134,7 +97,7 @@ def show_branding():
         </div>
     """, unsafe_allow_html=True)
 
-# --- 4. PDF GENERATOR (CRASH FIXED) ---
+# --- 4. PDF GENERATOR ---
 class PDF(FPDF):
     def header(self):
         self.set_font('Arial', 'B', 12)
@@ -143,7 +106,7 @@ class PDF(FPDF):
 
     def chapter_title(self, label):
         self.set_font('Arial', 'B', 12)
-        self.set_text_color(74, 144, 226) # JEEx Blue
+        self.set_text_color(74, 144, 226)
         self.cell(0, 10, sanitize_text_for_pdf(label), 0, 1, 'L')
         self.ln(2)
 
@@ -158,64 +121,36 @@ def generate_pdf(messages):
     pdf = PDF()
     pdf.add_page()
     for msg in messages:
-        role = "JEEx AI Tutor" if msg["role"] == "assistant" else "Student"
+        role = "JEEx" if msg["role"] == "assistant" else "Student"
         content = clean_latex(msg["content"]).replace('*', '').replace('#', '') 
         pdf.chapter_title(role)
         pdf.chapter_body(content)
-    # Return binary data safely
     return pdf.output(dest='S').encode('latin-1', 'ignore')
 
-# --- 5. SMART KEY LOGIC (STRICT) ---
+# --- 5. LOGIC & AUTH ---
 def check_key_status(user_key):
     if user_key == st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS"): return "ADMIN"
-
-    # STRICT LOGIC: If key is NOT in expiry_db, it is INVALID.
     expiry_db = st.secrets.get("KEY_EXPIRY", {})
-    
     if user_key in expiry_db:
         try:
             expiry_date = datetime.strptime(expiry_db[user_key], "%Y-%m-%d").date()
             if datetime.now().date() > expiry_date: return "EXPIRED"
             else: return "VALID"
         except: return "INVALID"
-    
     return "INVALID"
 
-# --- 6. LOGOUT ---
 if st.session_state.get('logout', False):
     for key in list(st.session_state.keys()): del st.session_state[key]
     st.rerun()
 
-# --- 7. DETAILED TERMS & CONDITIONS ---
-terms_text = """
-**JEEx Terms of Service & End User License Agreement**
+# Initialize processing state (used to disable input during stream)
+if "processing" not in st.session_state:
+    st.session_state.processing = False
 
-**1. Nature of Service**
-JEEx Pro is an advanced AI-driven educational tool designed to assist students in preparing for competitive exams (JEE Mains/Advanced). It provides explanations, solves numericals, and offers study strategies. It is not a substitute for formal schooling or official examinations.
-
-**2. Accuracy & Liability**
-* **AI Limitations:** While powered by state-of-the-art models (GPT-4), the AI may occasionally generate incorrect data ("hallucinations").
-* **User Responsibility:** Students must verify critical formulas and values with standard textbooks (NCERT).
-* **Liability:** JEEx is not liable for any exam results, loss of marks, or academic outcomes.
-
-**3. Account Usage & Security**
-* **Single Device Policy:** The Access Key is strictly for one student.
-* **Fraud Detection:** Our system logs IP addresses. Simultaneous logins from different locations will trigger an automatic security ban.
-* **Prohibited Content:** Attempting to use the AI for non-educational, illegal, or harmful purposes will result in termination.
-
-**4. Subscription & Refunds**
-* **Digital Goods:** Access Keys are digital products. Once issued/revealed, they cannot be returned. **No refunds** will be provided under any circumstances.
-* **Validity:** The subscription is valid for exactly 30 days from the activation date recorded in our system.
-
-**5. Data Privacy**
-We prioritize your privacy. Chat logs are processed securely for the purpose of generating responses. We do not sell user data to third-party advertisers.
-"""
-
-# --- 8. SIDEBAR ---
+# --- 6. SIDEBAR ---
 with st.sidebar:
     st.markdown("## 🔐 Premium Access")
     if "uploader_key" not in st.session_state: st.session_state.uploader_key = 0
-    # NEW: Audio key to reset voice input
     if "audio_key" not in st.session_state: st.session_state.audio_key = 0
     
     user_key = st.text_input("Enter Access Key:", type="password")
@@ -233,9 +168,9 @@ with st.sidebar:
         payment_link = "https://pages.razorpay.com/pl_Hk7823hsk" 
         st.markdown(f'<a href="{payment_link}" target="_blank"><button style="width:100%; background-color:#4A90E2; color:white; border:none; padding:12px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:15px; margin-top:10px;">{btn_text}</button></a>', unsafe_allow_html=True)
         st.markdown("---")
-        with st.expander("📄 Terms & Conditions"): st.markdown(terms_text)
+        with st.expander("📄 Terms & Conditions"): st.markdown("See detailed T&C on the landing page.")
 
-# --- 9. ADMIN PANEL ---
+# --- 7. ADMIN PANEL ---
 if status == "ADMIN":
     st.sidebar.success("🔑 Admin Mode")
     st.markdown("## 🛠️ Admin Dashboard")
@@ -249,7 +184,7 @@ if status == "ADMIN":
     if st.button("Logout"): st.session_state['logout'] = True; st.rerun()
     st.stop()
 
-# --- 10. MAIN APP LOGIC ---
+# --- 8. MAIN APP LOGIC ---
 
 show_branding()
 
@@ -257,30 +192,29 @@ show_branding()
 if status != "VALID":
     st.markdown("---")
     st.markdown("""
-    <div style="background-color: #1E2330; padding: 25px; border-radius: 12px; border-left: 5px solid #4A90E2; margin-bottom: 30px; text-align: center;">
+    <div style="background-color: #1E2330; padding: 20px; border-radius: 12px; border-left: 5px solid #4A90E2; text-align: center; margin-bottom: 30px;">
         <p style="font-size: 18px; margin: 0; color: #E6E6E6;">👋 <strong>Welcome Student!</strong><br>Please enter your <strong>Access Key</strong> in the Sidebar to unlock.</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # FIXED: Replaced HTML description with clean Markdown to fix formatting issues
-    st.markdown("""
-    <div style="background-color: #161B26; padding: 35px; border-radius: 15px; border: 1px solid #2B313E;">
-        <h2 style="color: #4A90E2; margin-top: 0; text-align: center; margin-bottom: 30px;">🏆 Why Top Rankers Choose JEEx <span style="color:#4A90E2">PRO</span></h2>
-    </div>
-    """, unsafe_allow_html=True)
+    # FIXED: Clean Markdown Structure for description to prevent HTML errors
+    st.markdown("### 🏆 Why Top Rankers Choose JEEx **PRO**")
     
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown("**🧠 Advanced Problem Solving**")
-        st.caption("Solves Irodov, Cengage, and PYQ level problems with step-by-step logic.")
+        st.markdown("**🧠 Advanced Problem Solving Engine**")
+        st.caption("Tuned for Irodov, Cengage, and PathFinder level rigor. It breaks down complex mechanics and calculus problems.")
         st.markdown("**👁️ Vision Intelligence (OCR)**")
-        st.caption("Stuck on a handwritten question? Just upload a photo. JEEx reads and solves it.")
+        st.caption("Stuck on a handwritten coaching module question? Just upload a photo. JEEx reads and solves it instantly.")
     with col2:
-        st.markdown("**📄 Full Document Analysis**")
-        st.caption("Upload PDF assignments. Our Code Interpreter analyzes the full context.")
-        st.markdown("**➗ Perfect Math Formatting**")
-        st.caption("Renders complex integrals and matrices with LaTeX precision.")
+        st.markdown("**📄 Full PDF Document Analysis**")
+        st.caption("Upload the PDF assignment. JEEx uses its Code Interpreter brain to analyze the entire document and solve multiple questions.")
+        st.markdown("**➗ Perfect Math & Chemical Formatting**")
+        st.caption("No more broken text. JEEx renders complex Integrals and Organic Mechanisms with textbook-quality LaTeX precision.")
     
+    st.markdown("---")
+    st.markdown("### Detailed Terms & Conditions")
+    st.markdown(terms_text)
     st.stop()
 
 # UNLOCKED INTERFACE (CHAT)
@@ -302,8 +236,7 @@ except:
 if "thread_id" not in st.session_state:
     thread = client.beta.threads.create()
     st.session_state.thread_id = thread.id
-    welcome_msg = "Welcome Champ! 🎓 Main hoon JEEx. \n\nPhysics, Chemistry ya Maths—bas photo bhejo ya type karo. Let's crack it! 🚀"
-    st.session_state.messages = [{"role": "assistant", "content": welcome_msg}]
+    st.session_state.messages = [{"role": "assistant", "content": "Welcome Champ! 🎓 Physics, Chemistry ya Maths—bas photo bhejo ya type karo. Let's crack it! 🚀"}]
 
 # DISPLAY HISTORY
 for msg in st.session_state.messages:
@@ -311,37 +244,44 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"], avatar=avatar_icon):
         st.markdown(clean_latex(msg["content"]))
 
-# --- GEMINI-STYLE INPUT TOOLBAR (Fixed Proportion) ---
-input_container = st.container()
+# --- 9. INPUT TOOLBAR & PROCESSING ---
 
-with input_container:
-    # UPDATED: Use tight columns [1, 1, 8] to keep buttons grouped but proportionate
-    col_voice, col_attach, col_gap = st.columns([1, 1, 6])
-    
-    with col_voice:
-        # VOICE INPUT (Resettable key)
-        audio_value = st.audio_input("🎙️", key=f"audio_{st.session_state.audio_key}", label_visibility="collapsed")
-    
-    with col_attach:
-        # ATTACHMENT INPUT
-        uploaded_file = st.file_uploader("📎", type=["jpg", "png", "pdf"], key=f"uploader_{st.session_state.uploader_key}", label_visibility="collapsed")
+# 1. TOOLBAR: Placed above chat_input
+col_tools_1, col_tools_2, col_tools_gap = st.columns([1, 1, 6])
 
-    # CHAT INPUT
+with col_tools_1:
+    # VOICE INPUT (Microphone)
+    audio_value = st.audio_input("🎙️", key=f"audio_{st.session_state.audio_key}", label_visibility="collapsed")
+    
+with col_tools_2:
+    # ATTACHMENT INPUT
+    uploaded_file = st.file_uploader("📎", type=["jpg", "png", "pdf"], key=f"uploader_{st.session_state.uploader_key}", label_visibility="collapsed")
+
+# 2. CHAT INPUT (Disabled during processing)
+if st.session_state.processing:
+    text_prompt = st.chat_input("Processing response... Please wait.", disabled=True)
+else:
     text_prompt = st.chat_input("Ask a doubt...")
 
-# --- LOGIC (Fixed Voice Loop) ---
+# 3. LOGIC
 audio_prompt = None
 if audio_value:
+    st.session_state.processing = True # Start processing flag
     with st.spinner("Processing Voice..."):
         try:
-            # FIXED: Force English to stop Korean hallucinations
+            # FIXED: Force English to stop foreign language hallucinations
             transcription = client.audio.transcriptions.create(model="whisper-1", file=audio_value, language="en")
             audio_prompt = transcription.text
-        except Exception as e: st.error(f"Voice Error: {e}")
+        except Exception as e: 
+            st.error(f"Voice Error: {e}"); 
+            st.session_state.processing = False # Reset flag on error
 
 prompt = audio_prompt if audio_value else text_prompt
 
-if prompt:
+if prompt and not st.session_state.processing:
+    st.session_state.processing = True # Set flag immediately before API call
+
+    # 1. Add User Message
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user", avatar="🧑‍🎓"):
         st.markdown(prompt)
@@ -349,7 +289,7 @@ if prompt:
             if uploaded_file.type == "application/pdf": st.markdown(f"📄 *PDF Attached*")
             else: st.image(uploaded_file, width=200)
 
-    # Prepare Message
+    # 2. Prepare/Upload File
     message_content = [{"type": "text", "text": prompt}]
     attachments = [] 
     if uploaded_file:
@@ -358,21 +298,16 @@ if prompt:
                 temp_filename = f"temp_{uploaded_file.name}"
                 with open(temp_filename, "wb") as f: f.write(uploaded_file.getbuffer())
                 file_response = client.files.create(file=open(temp_filename, "rb"), purpose="assistants")
-                if uploaded_file.type == "application/pdf":
-                    attachments.append({"file_id": file_response.id, "tools": [{"type": "code_interpreter"}]})
-                else:
-                    message_content.append({"type": "image_file", "image_file": {"file_id": file_response.id}})
+                if uploaded_file.type == "application/pdf": attachments.append({"file_id": file_response.id, "tools": [{"type": "code_interpreter"}]})
+                else: message_content.append({"type": "image_file", "image_file": {"file_id": file_response.id}})
                 os.remove(temp_filename)
             except: st.error("File upload failed.")
 
+    # 3. Send & Stream
     client.beta.threads.messages.create(
-        thread_id=st.session_state.thread_id,
-        role="user",
-        content=message_content,
-        attachments=attachments if attachments else None
+        thread_id=st.session_state.thread_id, role="user", content=message_content, attachments=attachments if attachments else None
     )
 
-    # STREAMING RESPONSE
     with st.chat_message("assistant", avatar=LOGO_URL):
         stream = client.beta.threads.runs.create(
             thread_id=st.session_state.thread_id,
@@ -400,9 +335,8 @@ if prompt:
         response_container.markdown(clean_latex(collected_message))
         st.session_state.messages.append({"role": "assistant", "content": collected_message})
         
-        # FIXED: Reset inputs properly to prevent loops
+        # 4. FINAL RESET AND RERUN
         st.session_state.uploader_key += 1
-        if audio_value: 
-            st.session_state.audio_key += 1 
-            time.sleep(0.5) 
-            st.rerun()
+        st.session_state.audio_key += 1 
+        st.session_state.processing = False # Release lock
+        st.rerun()
