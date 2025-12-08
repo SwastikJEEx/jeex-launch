@@ -8,52 +8,58 @@ from datetime import datetime
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="JEEx Pro", page_icon="⚛️", layout="centered", initial_sidebar_state="expanded")
 
-# --- 2. PROFESSIONAL GEMINI-STYLE CSS ---
+# --- 2. PROFESSIONAL UI CSS (ChatGPT/Gemini Style) ---
 st.markdown("""
 <style>
     /* Import Professional Font (Inter) */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
-    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+    html, body, [class*="css"] {
+        font-family: 'Inter', sans-serif;
+    }
 
-    /* Main Background & Text */
+    /* Main Background */
     .stApp { background-color: #0E1117; color: #E0E0E0; }
     
     /* Sidebar */
     [data-testid="stSidebar"] { background-color: #161B26; border-right: 1px solid #2B313E; }
     
-    /* Center Layout alignment */
+    /* Layout Adjustments */
     .block-container { padding-top: 2rem; }
     
     /* --- CHAT BUBBLES --- */
-    [data-testid="stChatMessage"] { background-color: transparent; border: none; padding: 10px 0px; }
+    [data-testid="stChatMessage"] { 
+        background-color: transparent; 
+        border: none; 
+        padding: 10px 0px; 
+    }
     
-    /* USER BUBBLE */
+    /* User Bubble */
     [data-testid="stChatMessage"][data-testid="user"] {
         background-color: #1E2330;
         border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 15px;
+        padding: 15px 20px;
+        margin-bottom: 10px;
         border: 1px solid #2B313E;
     }
     
-    /* ASSISTANT BUBBLE */
+    /* Assistant Bubble */
     [data-testid="stChatMessage"][data-testid="assistant"] {
         background-color: transparent;
-        padding: 10px 20px;
-        margin-bottom: 15px;
+        padding: 0px 20px;
+        margin-bottom: 10px;
     }
     
-    /* TEXT SIZE */
+    /* Chat Text Size & Color */
     [data-testid="stChatMessage"] p, [data-testid="stChatMessage"] div {
-        font-size: 17px !important;
+        font-size: 16px !important;
         line-height: 1.6 !important;
         color: #E6E6E6 !important;
     }
     
     /* Highlights */
-    h1, h2, h3, li, span { color: #E6E6E6 !important; }
-    strong { color: #FFD700 !important; }
+    strong { color: #FFD700 !important; } /* Gold for emphasis */
+    code { color: #FF7043 !important; }   /* Orange for code/math */
     
     /* Inputs */
     .stTextInput input, .stTextArea textarea { 
@@ -61,7 +67,6 @@ st.markdown("""
         color: white !important; 
         border: 1px solid #3E4654 !important; 
         border-radius: 10px;
-        font-size: 16px;
     }
     
     /* Buttons */
@@ -74,7 +79,10 @@ st.markdown("""
         transition: all 0.3s;
         font-weight: 600;
     }
-    div.stButton > button:hover { border-color: #4A90E2 !important; color: #4A90E2 !important; }
+    div.stButton > button:hover { 
+        border-color: #4A90E2 !important; 
+        color: #4A90E2 !important;
+    }
     
     /* Hide Defaults */
     #MainMenu {visibility: hidden;}
@@ -84,39 +92,45 @@ st.markdown("""
     /* Math Formatting */
     .katex { font-size: 1.2em; color: #FFD700 !important; } 
     
-    /* Attachment Button */
+    /* Remove Padding from File Uploader */
     [data-testid="stFileUploader"] { padding: 0px; }
     
-    /* Avatar Styling */
+    /* Avatar Size Fix */
     .stChatMessage .st-emotion-cache-1p1m4ay { width: 42px; height: 42px; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. HELPER FUNCTIONS (NOW REMOVES SOURCE TAGS) ---
+# --- 3. HELPER FUNCTIONS ---
+
 def clean_latex(text):
+    """Cleans OpenAI response: Removes source tags & fixes LaTeX"""
     if not text: return ""
-    # 1. Remove OpenAI Source Annotations like 【4:0†source】
+    # 1. Remove Source Tags like 【4:4†source】
     text = re.sub(r'【.*?†source】', '', text)
-    # 2. Fix LaTeX formatting
+    # 2. Fix LaTeX brackets
     text = re.sub(r'\\\[(.*?)\\\]', r'$$\1$$', text, flags=re.DOTALL)
     text = re.sub(r'\\\((.*?)\\\)', r'$\1$', text, flags=re.DOTALL)
     text = re.sub(r'(?<!\\)\[\s*(.*?=.*?)\s*\]', r'$$\1$$', text, flags=re.DOTALL)
     return text
 
-# GLOBAL LOGO URL
+# GLOBAL LOGO URL (Raw Link)
 LOGO_URL = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/1d6ef8ca3ac05432ed370338d4c04d6a03541f23/logo.png.png"
 
 def show_branding():
-    """Displays Logo and Title Perfectly Centered"""
+    """Displays Centered Logo and Branding"""
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        try: st.image(LOGO_URL, width=220)
-        except: pass
+        try:
+            st.image(LOGO_URL, use_container_width=True)
+        except:
+            pass 
             
     st.markdown("""
-        <div style="text-align: center; margin-top: 10px; margin-bottom: 30px;">
-            <h1 style="margin: 0; font-size: 38px; font-weight: 700;">JEEx <span style="color:#4A90E2;">PRO</span></h1>
-            <p style="color: #AAAAAA; font-size: 15px; margin-top: 8px; font-weight: 400;">
+        <div style="text-align: center; margin-top: -10px; margin-bottom: 30px;">
+            <h1 style="margin: 0; font-size: 36px; font-weight: 700; letter-spacing: 1px;">
+                JEEx <span style="color:#4A90E2;">PRO</span>
+            </h1>
+            <p style="color: #AAAAAA; font-size: 14px; margin-top: 8px;">
                 Your 24/7 AI Rank Booster | Master JEE Mains & Advanced 🚀
             </p>
         </div>
@@ -144,26 +158,21 @@ def check_key_status(user_key):
     if 1 <= int(user_key[5:]) <= 1000: return "VALID"
     return "INVALID"
 
-# --- 6. TERMS & CONDITIONS TEXT ---
+# --- 6. DETAILED TERMS & CONDITIONS ---
 terms_text = """
 **JEEx Terms of Service & Usage Policy**
 
-**1. Service Description:**
-JEEx Pro is an AI-powered educational assistant designed to aid students in JEE preparation.
+**1. Service Description** JEEx Pro is an AI-powered educational assistant designed to aid students in JEE preparation. It uses advanced language models to solve problems and explain concepts.
 
-**2. Accuracy Disclaimer:**
-Artificial Intelligence can occasionally produce "hallucinations". Users are strictly advised to verify critical data with standard resources (NCERT, HC Verma).
+**2. Accuracy Disclaimer** Artificial Intelligence can occasionally produce "hallucinations" or calculation errors. Users are strictly advised to verify critical data, formulas, and constants with standard resources (NCERT, HC Verma). JEEx is a study aid, not a replacement for official textbooks.
 
-**3. Account Security:**
-* **Single User License:** This Access Key is licensed to ONE individual.
-* **Ban Policy:** Sharing your key will result in an immediate, permanent ban without refund.
+**3. Account Security** * **Single User License:** This Access Key is licensed to ONE individual only.
+* **Zero Tolerance:** Our system monitors IP addresses. Sharing your key on Telegram, WhatsApp, or with friends will result in an **immediate, permanent ban** without refund.
 
-**4. Payments & Refunds:**
-* **No Refunds:** All sales are final once the key is delivered.
-* **Validity:** Monthly subscriptions are valid for 30 days.
+**4. Payments & Refunds** * **No Refunds:** As this is a digital access service, all sales are final once the key is delivered.
+* **Validity:** Monthly subscriptions are valid for exactly 30 days from activation.
 
-**5. Privacy:**
-Your chat data is processed securely via OpenAI APIs.
+**5. Privacy** Your chat data is processed securely via OpenAI APIs. We do not sell your personal data.
 """
 
 # --- 7. SIDEBAR LOGIC ---
@@ -202,32 +211,46 @@ with st.sidebar:
 
 # --- 8. MAIN APP LOGIC ---
 
-# DISPLAY BRANDING ON EVERY PAGE (Centered)
+# SHOW BRANDING ON ALL PAGES
 show_branding()
 
 # SCENARIO A: LANDING PAGE (LOCKED)
 if status != "VALID":
     st.markdown("---")
     
+    # Instruction Box
     st.markdown("""
     <div style="background-color: #1E2330; padding: 25px; border-radius: 12px; border-left: 5px solid #4A90E2; margin-bottom: 30px; text-align: center;">
-        <p style="font-size: 18px; margin: 0; color: #E6E6E6; line-height: 1.5;">
+        <p style="font-size: 18px; margin: 0; color: #E6E6E6;">
             👋 <strong>Welcome Student!</strong><br>
-            Please enter your <strong>Access Key</strong> in the Sidebar (↖️ Top Left) to unlock.
+            Please enter your <strong>Access Key</strong> in the Sidebar (↖️ Top Left) to unlock the AI.
         </p>
     </div>
     """, unsafe_allow_html=True)
 
+    # Features List
     st.markdown("""
     <div style="background-color: #161B26; padding: 35px; border-radius: 15px; border: 1px solid #2B313E;">
         <h2 style="color: #4A90E2; margin-top: 0; font-size: 24px; border-bottom: 1px solid #3E4654; padding-bottom: 15px; margin-bottom: 20px; text-align: center;">
             🏆 Why Top Rankers Choose JEEx <span style="color:#4A90E2">PRO</span>
         </h2>
         <div style="display: flex; flex-direction: column; gap: 20px;">
-            <div><strong style="color: #FFD700; font-size: 19px;">🧠 Advanced Problem Solving</strong><br><span style="color: #CCCCCC; font-size: 16px;">Solves Irodov, Cengage, and PYQ level problems with step-by-step logic.</span></div>
-            <div><strong style="color: #FFD700; font-size: 19px;">👁️ Vision Intelligence</strong><br><span style="color: #CCCCCC; font-size: 16px;">Stuck on a handwritten question? Just upload a photo. JEEx solves it.</span></div>
-            <div><strong style="color: #FFD700; font-size: 19px;">📄 Document Analysis</strong><br><span style="color: #CCCCCC; font-size: 16px;">Upload PDF assignments. Our Code Interpreter analyzes the full context.</span></div>
-            <div><strong style="color: #FFD700; font-size: 19px;">➗ Perfect Math Formatting</strong><br><span style="color: #CCCCCC; font-size: 16px;">Renders complex integrals and matrices with LaTeX precision.</span></div>
+            <div>
+                <strong style="color: #FFD700; font-size: 19px;">🧠 Advanced Problem Solving</strong><br>
+                <span style="color: #CCCCCC; font-size: 16px;">Instantly solves Irodov, Cengage, and PYQ level problems with step-by-step logic.</span>
+            </div>
+            <div>
+                <strong style="color: #FFD700; font-size: 19px;">👁️ Vision Intelligence</strong><br>
+                <span style="color: #CCCCCC; font-size: 16px;">Stuck on a handwritten question? Just upload a photo. JEEx solves it.</span>
+            </div>
+            <div>
+                <strong style="color: #FFD700; font-size: 19px;">📄 Document Analysis</strong><br>
+                <span style="color: #CCCCCC; font-size: 16px;">Upload entire PDF assignments. Our Code Interpreter analyzes the full context.</span>
+            </div>
+            <div>
+                <strong style="color: #FFD700; font-size: 19px;">➗ Perfect Math Formatting</strong><br>
+                <span style="color: #CCCCCC; font-size: 16px;">Renders complex integrals and matrices with textbook LaTeX precision.</span>
+            </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -262,12 +285,12 @@ if "thread_id" not in st.session_state:
     welcome_msg = "Welcome Champ! 🎓 Main hoon JEEx. \n\nPhysics ka numerical, Chemistry ka reaction, ya Maths ka integral—bas photo bhejo ya type karo. Let's crack it! 🚀"
     st.session_state.messages = [{"role": "assistant", "content": welcome_msg}]
 
-# Display Chat History with CUSTOM AVATARS & CLEANED TEXT
+# Display Chat History with CUSTOM AVATARS
 for msg in st.session_state.messages:
     if msg["role"] == "assistant":
-        avatar_icon = LOGO_URL
+        avatar_icon = LOGO_URL # Your Logo
     else:
-        avatar_icon = "🧑‍🎓"
+        avatar_icon = "🧑‍🎓" # Student Icon
         
     with st.chat_message(msg["role"], avatar=avatar_icon):
         st.markdown(clean_latex(msg["content"]))
@@ -276,13 +299,14 @@ for msg in st.session_state.messages:
 if prompt := st.chat_input("Ask a doubt (e.g. Rotational Motion)..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     
+    # Show User Message
     with st.chat_message("user", avatar="🧑‍🎓"):
         st.markdown(prompt)
         if uploaded_file:
             if uploaded_file.type == "application/pdf": st.markdown(f"📄 *PDF Attached*")
             else: st.image(uploaded_file, width=200)
 
-    # Prepare Message
+    # Prepare Message Content
     message_content = [{"type": "text", "text": prompt}]
     attachments = [] 
     if uploaded_file:
@@ -330,7 +354,7 @@ if prompt := st.chat_input("Ask a doubt (e.g. Rotational Motion)..."):
                 for content in event.data.delta.content:
                     if content.type == "text":
                         collected_message += content.text.value
-                        # Clean tags on the fly
+                        # Clean on the fly
                         response_container.markdown(clean_latex(collected_message) + "▌")
             
             elif event.event == "thread.run.completed":
