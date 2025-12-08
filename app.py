@@ -251,7 +251,8 @@ with st.sidebar:
             # STEP 3: SUCCESS & WHATSAPP
             elif st.session_state.payment_step == 3:
                 st.success("🎉 Payment Submitted! Admin notified.")
-                st.markdown("We have received your details. Please allow 5-10 mins for verification.")
+                # UPDATED TEXT HERE
+                st.markdown("Please allow few hours for verification. Once verified you will receive your access key on the provided email and Whatsapp number.")
                 
                 details = st.session_state.user_details
                 msg = f"Hello JEEx Team!%0A%0A*PAYMENT VERIFICATION REQUEST*%0A👤 Name: {details['name']}%0A📧 Email: {details['email']}%0A📱 Phone: {details['phone']}%0A🆔 Trans ID: {details['trans_id']}%0A%0AI have paid ₹99. Please send my key."
@@ -337,6 +338,7 @@ if 'audio_value' in locals() and audio_value:
     if not st.session_state.processing:
         with st.spinner("🎧 Listening..."):
             try:
+                # Force English to fix hallucinations
                 transcription = client.audio.transcriptions.create(
                     model="whisper-1", 
                     file=audio_value, 
@@ -401,6 +403,7 @@ if st.session_state.processing and st.session_state.messages[-1]["role"] == "use
     last_msg = st.session_state.messages[-1]
     msg_text = last_msg["content"]
     
+    # 4. API Request
     message_content = [{"type": "text", "text": msg_text}]
     attachments = [] 
     
