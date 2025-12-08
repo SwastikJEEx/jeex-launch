@@ -202,7 +202,7 @@ with st.sidebar:
             if user_key: st.warning("🔒 Chat Locked")
             btn_text = "👉 Subscribe for ₹99 / Month"
         
-        payment_link = "https://pages.razorpay.com/pl_Hk7823hsk" 
+        payment_link = "https://rzp.io/rzp/wXI8i7t" 
         st.markdown(f'<a href="{payment_link}" target="_blank"><button style="width:100%; background-color:#4A90E2; color:white; border:none; padding:12px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:15px; margin-top:10px;">{btn_text}</button></a>', unsafe_allow_html=True)
         st.markdown("---")
         with st.expander("📄 Terms & Conditions"): 
@@ -380,3 +380,4 @@ if prompt:
             st.session_state.audio_key += 1 
             time.sleep(0.5) # Increased buffer for stability
             st.rerun()
+
