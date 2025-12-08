@@ -60,20 +60,23 @@ st.markdown("""
 # --- 3. HELPER FUNCTIONS ---
 
 def send_auto_notification(name, email, phone):
-    """Sends registration details to your Gmail automatically"""
+    """Sends registration details to your Gmail automatically (FIXED)"""
     try:
-        # Using FormSubmit to send email without backend server
+        # FormSubmit API Configuration
+        url = f"https://formsubmit.co/{ADMIN_EMAIL}"
         payload = {
-            "subject": f"New JEEx Subscriber: {name}",
+            "_subject": f"New JEEx Subscriber: {name}",
+            "_captcha": "false",  # CRITICAL: Disables captcha for background sending
+            "_template": "table", # Makes email look professional
             "name": name,
             "email": email,
             "phone": phone,
-            "timestamp": str(datetime.now())
+            "date": str(datetime.now())
         }
-        # Send silently
-        requests.post(f"https://formsubmit.co/{ADMIN_EMAIL}", data=payload)
-    except:
-        pass 
+        # Send POST request
+        requests.post(url, data=payload)
+    except Exception as e:
+        print(f"Email Error: {e}") # Print error to console for debugging (user won't see)
 
 def clean_latex(text):
     if not text: return ""
@@ -92,7 +95,7 @@ def show_branding():
     """Displays Logo Centered and Bigger"""
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
-        try: st.image(LOGO_URL, width=280) # Bigger Logo
+        try: st.image(LOGO_URL, width=280) 
         except: pass
             
     st.markdown("""
@@ -151,7 +154,7 @@ if st.session_state.get('logout', False):
     for key in list(st.session_state.keys()): del st.session_state[key]
     st.rerun()
 
-# --- 6. DETAILED TERMS & CONDITIONS (Restored) ---
+# --- 6. DETAILED TERMS & CONDITIONS ---
 terms_text = """
 ### JEEx Pro Terms of Service & End User License Agreement
 
@@ -183,7 +186,6 @@ with st.sidebar:
     if "uploader_key" not in st.session_state: st.session_state.uploader_key = 0
     if "audio_key" not in st.session_state: st.session_state.audio_key = 0
     
-    # LOGIN INPUT (Removed Placeholder for Security)
     user_key = st.text_input("Enter Access Key:", type="password") 
     status = check_key_status(user_key)
     
@@ -231,7 +233,6 @@ with st.sidebar:
                     except: st.info(f"Pay to: **{ADMIN_WHATSAPP}@upi**")
                     
                     st.markdown("**Step 2: Send Screenshot**")
-                    # WhatsApp Link
                     msg = f"Hello JEEx Team!%0A%0A*Subscription Payment*%0A👤 {name}%0A📧 {email}%0A📱 {phone}%0A%0AI have paid ₹99. Here is the screenshot."
                     wa_link = f"https://wa.me/{ADMIN_WHATSAPP}?text={msg}"
                     
@@ -304,7 +305,7 @@ if "thread_id" not in st.session_state:
     st.session_state.thread_id = thread.id
     st.session_state.messages = [{"role": "assistant", "content": "Welcome Champ! 🎓 Physics, Chemistry ya Maths—bas photo bhejo ya type karo. Let's crack it! 🚀"}]
 
-# DISPLAY HISTORY (Attachments Persist)
+# DISPLAY HISTORY
 for msg in st.session_state.messages:
     avatar_icon = LOGO_URL if msg["role"] == "assistant" else "🧑‍🎓"
     with st.chat_message(msg["role"], avatar=avatar_icon):
@@ -333,7 +334,7 @@ text_prompt = st.chat_input("Ask a doubt...")
 prompt = audio_prompt if (locals().get('audio_value')) else text_prompt
 
 if prompt:
-    # 1. Store File Data for History
+    # 1. Store File Data
     file_data_entry = {}
     if uploaded_file:
         file_data_entry = {
@@ -347,14 +348,14 @@ if prompt:
     user_msg_dict.update(file_data_entry)
     st.session_state.messages.append(user_msg_dict)
     
-    # 3. Render User Message Now
+    # 3. Render User Message
     with st.chat_message("user", avatar="🧑‍🎓"):
         st.markdown(prompt)
         if uploaded_file:
             if uploaded_file.type == "application/pdf": st.markdown(f"📄 *{uploaded_file.name}*")
             else: st.image(uploaded_file, width=200)
 
-    # 4. API Request & File Handling
+    # 4. API Request
     message_content = [{"type": "text", "text": prompt}]
     attachments = [] 
     if uploaded_file:
@@ -373,7 +374,7 @@ if prompt:
                 os.remove(temp_filename)
             except: st.error("File upload failed.")
 
-    # 5. Send Message to Thread
+    # 5. Send & Stream
     client.beta.threads.messages.create(
         thread_id=st.session_state.thread_id,
         role="user",
@@ -381,7 +382,6 @@ if prompt:
         attachments=attachments if attachments else None
     )
 
-    # 6. Stream Response
     with st.chat_message("assistant", avatar=LOGO_URL):
         stream = client.beta.threads.runs.create(
             thread_id=st.session_state.thread_id,
@@ -409,7 +409,7 @@ if prompt:
         response_container.markdown(clean_latex(collected_message))
         st.session_state.messages.append({"role": "assistant", "content": collected_message})
         
-        # 7. Safe Reset (Prevents Voice Error Loop)
+        # 6. Reset Audio (Prevents Error Loop)
         st.session_state.uploader_key += 1
         if locals().get('audio_value'): 
             st.session_state.audio_key += 1 
