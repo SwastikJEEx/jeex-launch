@@ -187,7 +187,6 @@ if st.session_state.get('logout', False):
 with st.sidebar:
     st.markdown("## 🔐 Premium Access")
     
-    # FIXED LINE: Password input was broken in your copy-paste
     user_key = st.text_input("Enter Access Key:", type="password") 
     status = check_key_status(user_key)
     
@@ -200,6 +199,7 @@ with st.sidebar:
         uploaded_file = st.file_uploader("Upload", type=["jpg", "png", "pdf"], key=f"uploader_{st.session_state.uploader_key}", label_visibility="collapsed")
         
         st.markdown("**🎙️ Voice Chat**")
+        # NOTE: Key is kept dynamic to allow reset, but layout is cleaner now
         audio_value = st.audio_input("Speak", key=f"audio_{st.session_state.audio_key}", label_visibility="collapsed")
         
         st.markdown("---")
@@ -307,6 +307,7 @@ if status != "VALID":
     </div>
     """, unsafe_allow_html=True)
     
+    # FIXED: Replaced HTML with Native Streamlit Columns for clean layout
     st.markdown("### 🏆 Why Top Rankers Choose JEEx **PRO**")
     
     c1, c2 = st.columns(2)
