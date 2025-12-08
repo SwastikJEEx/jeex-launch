@@ -90,12 +90,14 @@ def clean_latex(text):
 
 def show_branding():
     """Displays Logo and Title Centered"""
-    col1, col2, col3 = st.columns([1, 4, 1])
+    # UPDATED: Changed column ratios for a narrower center column
+    col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         # Corrected RAW link for image
         logo_url = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/87964f529cbef542ac7b4a40c1e3fa732c453998/logo.png.png"
         try:
-            st.image(logo_url, use_container_width=True)
+            # UPDATED: Set fixed width for a professional, smaller look
+            st.image(logo_url, width=220)
         except:
             pass # Fail silently if image breaks
             
@@ -301,26 +303,6 @@ if prompt := st.chat_input("Ask a doubt (e.g. Rotational Motion)..."):
             4. PDFS: Use Code Interpreter to analyze uploaded PDFs.
             """
         )
-        
-        # Generator for streaming
-        def stream_generator():
-            full_text = ""
-            for event in stream:
-                if event.event == 'thread.message.delta':
-                    for content in event.data.delta.content:
-                        if content.type == 'text':
-                            # Get the text chunk
-                            text_chunk = content.text.value
-                            # Clean it on the fly (basic cleaning)
-                            text_chunk = clean_latex(text_chunk) 
-                            full_text += text_chunk
-                            yield text_chunk
-            return full_text
-
-        # Use st.write_stream for the typing effect
-        # Note: 'stream' in create() returns a generator of events. We need to handle them carefully.
-        # Since 'assistants' API streaming is complex, we use a simpler 'run_and_poll' fallback if stream fails,
-        # BUT here is the robust way to stream with the Beta SDK:
         
         response_container = st.empty()
         collected_message = ""
