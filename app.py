@@ -61,9 +61,14 @@ def clean_latex(text):
 
 # --- 4. SHOW LOGO & BRANDING ---
 # Logic: Try to show the logo image. If file missing, fall back to text title.
+# --- 4. SHOW LOGO & BRANDING ---
+# Paste the HTTP link you copied from GitHub below inside the quotes
+logo_url = "https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/logo.png" 
+
 try:
-    st.image("logo.png", width=350) # Ensure 'logo.png' is in your folder
+    st.image(logo_url, width=350)
 except:
+    # Fallback to text if link breaks
     st.markdown("# ⚛️ **JEEx** <span style='color:#4A90E2; font-size:0.6em'>PRO</span>", unsafe_allow_html=True)
 
 st.caption("Your 24/7 AI Rank Booster | Master JEE Mains & Advanced with Precision 🚀")
@@ -331,4 +336,5 @@ if prompt:
             st.session_state.messages.append({"role": "assistant", "content": final_response})
             st.session_state.uploader_key += 1
             st.rerun()
+
 
