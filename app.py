@@ -23,7 +23,7 @@ if "processing" not in st.session_state: st.session_state.processing = False
 if "uploader_key" not in st.session_state: st.session_state.uploader_key = 0
 if "audio_key" not in st.session_state: st.session_state.audio_key = 0
 
-# --- 4. PROFESSIONAL CSS (BLUE THEME & VISIBILITY FIXED) ---
+# --- 4. PROFESSIONAL CSS (CONSTANT BLUE & VISIBILITY) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
@@ -67,15 +67,16 @@ st.markdown("""
         color: white !important;
     }
 
-    /* 5. EXPANDERS & DROPDOWNS (Professional Blue Heading) */
+    /* 5. EXPANDERS & DROPDOWNS (Constant Blue Heading) */
     .streamlit-expanderHeader {
         background-color: #4A90E2 !important; /* Professional Blue Background */
         color: #FFFFFF !important; /* White Text */
         border-radius: 8px;
         border: 1px solid #357ABD !important;
     }
+    /* Remove hover color change (Keep it Blue) */
     .streamlit-expanderHeader:hover {
-        background-color: #357ABD !important;
+        background-color: #4A90E2 !important;
         color: #FFFFFF !important;
     }
     /* The content inside the dropdown */
@@ -115,7 +116,7 @@ def send_lead_notification(name, email, phone):
             "Name": name,
             "Email": email,
             "Phone": phone,
-            "Action": "Clicked Proceed to Pay",
+            "Action": "Submitted Details",
             "Timestamp": str(datetime.now())
         }
         requests.post(url, data=payload, headers=headers)
@@ -249,15 +250,15 @@ with st.sidebar:
         if user_key and status != "VALID": st.error("❌ Invalid Key")
         
         st.markdown("### ⚡ Subscribe Now")
-        with st.expander("💎 Get Premium (₹99/mo)", expanded=True):
+        with st.expander("💎 Get Premium (₹59/mo)", expanded=True):
             st.markdown("Fill details to proceed:")
             
             with st.form("reg_form"):
                 name = st.text_input("Name")
                 email = st.text_input("Email")
                 phone = st.text_input("WhatsApp No.")
-                # This button triggers the email
-                submitted = st.form_submit_button("🚀 Proceed to Pay")
+                # RENAMED BUTTON: Triggers the email
+                submitted = st.form_submit_button("Submit Details")
             
             if submitted:
                 if name and email and phone:
@@ -266,15 +267,15 @@ with st.sidebar:
                     
                     st.success("Details Recorded! Click below to pay:")
                     
-                    # 2. Show Link to Topmate
+                    # 2. Show Link to Topmate (RENAMED BUTTON)
                     st.markdown(f'''
                         <a href="{TOPMATE_LINK}" target="_blank">
                             <button style="width:100%; background-color:#4A90E2; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer;">
-                                💳 Pay Now on Topmate
+                                🚀 Proceed to Pay
                             </button>
                         </a>
                     ''', unsafe_allow_html=True)
-                    st.caption("Secure payment via UPI/Cards on Topmate.")
+                    st.caption("Secure payment via UPI/Cards.")
                 else:
                     st.warning("⚠️ Please fill all details.")
 
