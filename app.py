@@ -1,60 +1,67 @@
+import streamlit as st
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from email.utils import formatdate, make_msgid # These prevent Spam
+from email.utils import formatdate, make_msgid
 
-# ... (Your inputs remain here) ...
+# --- 1. SETUP PAGE & INPUTS (Must be at the top) ---
+st.set_page_config(page_title="JEExPro Registration", page_icon="🚀")
 
+st.title("JEExPro Access")
+st.subheader("Complete your registration")
+
+# These variables MUST be defined before the button
+name = st.text_input("Full Name")
+phone = st.text_input("Phone Number")
+email = st.text_input("Email Address")
+plan = st.selectbox("Select Plan", ["Basic - ₹59", "Pro - ₹99"])
+transaction_id = st.text_input("Transaction ID (from UPI payment)")
+
+st.write("---")
+
+# --- 2. SUBMIT BUTTON & EMAIL LOGIC ---
 if st.button("Submit Details", type="primary"):
+    # Check if inputs are empty
     if not name or not email or not phone or not transaction_id:
         st.error("⚠️ Please fill in all details.")
     else:
-        # --- ROBUST EMAIL SYSTEM START ---
+        # --- EMAIL SENDING LOGIC ---
         try:
-            # 1. CREDENTIALS
+            # A. CREDENTIALS (REPLACE WITH YOURS)
             sender_email = "YOUR_EMAIL@gmail.com"  
-            sender_password = "YOUR_APP_PASSWORD" # 16-digit App Password
-            receiver_email = "swastik1@fam" # Where you want to receive it
+            sender_password = "YOUR_APP_PASSWORD" # 16-digit Google App Password
+            receiver_email = "swastik1@fam" # Your receiving email
             
-            # 2. CONSTRUCT THE "REAL" EMAIL HEADERS
-            # These headers are what stop it from going to Spam
+            # B. CONSTRUCT EMAIL (Anti-Spam Headers)
             msg = MIMEMultipart()
-            msg['From'] = f"JEExPro Admin <{sender_email}>" # Shows a professional name
+            msg['From'] = f"JEExPro System <{sender_email}>"
             msg['To'] = receiver_email
-            msg['Subject'] = f"Action Required: New User ({name})"
-            msg['Date'] = formatdate(localtime=True) # Essential for spam filters
-            msg['Message-ID'] = make_msgid() # Unique ID for every email
+            msg['Subject'] = f"New JEExPro User: {name}"
+            msg['Date'] = formatdate(localtime=True) 
+            msg['Message-ID'] = make_msgid() 
             
-            # 3. THE EMAIL BODY
             body_text = f"""
-            NEW USER REGISTRATION
-            =====================
-            
-            User Details:
-            - Name: {name}
-            - Phone: {phone}
-            - User Email: {email}
-            
-            Payment Info:
-            - Plan: {plan}
-            - Transaction ID: {transaction_id}
-            
-            ---------------------------------------
-            Sent via JEExPro Internal System
+            NEW REGISTRATION DETAILS
+            ========================
+            Name: {name}
+            Phone: {phone}
+            Email: {email}
+            Plan: {plan}
+            Transaction ID: {transaction_id}
+            ========================
             """
             msg.attach(MIMEText(body_text, 'plain'))
 
-            # 4. SENDING (Standard Secure SMTP)
+            # C. SEND
             server = smtplib.SMTP('smtp.gmail.com', 587)
             server.starttls()
             server.login(sender_email, sender_password)
-            server.send_message(msg) # prefer send_message over sendmail for better headers
+            server.send_message(msg)
             server.quit()
 
-            # 5. SUCCESS UI
-            st.success(f"✅ Request Submitted! Welcome to JEExPro, {name}.")
-            st.caption("We have received your details and will verify shortly.")
+            # D. SUCCESS
+            st.success(f"✅ Request Submitted! We will verify and email you shortly.")
+            st.balloons()
             
         except Exception as e:
-            st.error(f"System Error: {e}")
-        # --- EMAIL SYSTEM END ---
+            st.error(f"❌ System Error: {e}")
