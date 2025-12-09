@@ -26,45 +26,43 @@ if "audio_key" not in st.session_state: st.session_state.audio_key = 0
 if "payment_step" not in st.session_state: st.session_state.payment_step = 1
 if "user_details" not in st.session_state: st.session_state.user_details = {}
 
-# --- 4. PROFESSIONAL CSS (NUCLEAR DARK MODE & FIXES) ---
+# --- 4. PROFESSIONAL CSS (NUCLEAR DARK MODE FIX) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     
-    /* 1. FORCE DARK BACKGROUNDS */
+    /* 1. GLOBAL DARK THEME ENFORCEMENT */
     .stApp { background-color: #0E1117 !important; color: #E0E0E0 !important; }
     [data-testid="stSidebar"] { background-color: #161B26 !important; border-right: 1px solid #2B313E !important; }
     
-    /* 2. FORCE TEXT COLORS */
+    /* 2. TEXT VISIBILITY (Force Light Text) */
     h1, h2, h3, h4, h5, h6, p, li, div, span, label { color: #E0E0E0 !important; }
     strong { color: #FFD700 !important; font-weight: 600; }
     code { color: #FF7043 !important; background-color: #1E2330; }
 
-    /* 3. INPUT FIELDS (High Contrast Fix) */
-    div[data-baseweb="input"], .stTextInput input {
+    /* 3. INPUT FIELDS (The "White Box" Killer) */
+    /* Forces background to dark blue and text to white */
+    .stTextInput input, .stSelectbox div, .stTextArea textarea, div[data-baseweb="input"] {
         background-color: #1E2330 !important;
-        border: 1px solid #4A90E2 !important;
-        border-radius: 8px !important;
         color: #FFFFFF !important;
+        border: 1px solid #4A90E2 !important;
+        caret-color: #4A90E2 !important;
     }
+    
+    /* Placeholder Text styling */
     ::placeholder { color: #AAAAAA !important; opacity: 1; }
     
-    /* 4. DROPDOWN MENUS (Fixing the White Menu Bug) */
-    div[data-baseweb="select"] > div {
-        background-color: #1E2330 !important;
-        color: #FFFFFF !important;
-        border-color: #4A90E2 !important;
-    }
-    div[data-baseweb="popover"], ul[data-baseweb="menu"] {
-        background-color: #161B26 !important;
-        border: 1px solid #4A90E2 !important;
-    }
-    li[data-baseweb="option"] {
-        color: #FFFFFF !important;
+    /* Fix for Browser Autofill turning background white */
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover, 
+    input:-webkit-autofill:focus, 
+    input:-webkit-autofill:active {
+        -webkit-box-shadow: 0 0 0 30px #1E2330 inset !important;
+        -webkit-text-fill-color: white !important;
     }
 
-    /* 5. BUTTONS (Professional Blue) */
+    /* 4. BUTTONS (Professional Blue) */
     div.stButton > button { 
         background-color: #4A90E2 !important; 
         color: white !important; 
@@ -79,7 +77,7 @@ st.markdown("""
         box-shadow: 0px 4px 15px rgba(74, 144, 226, 0.4);
     }
 
-    /* 6. EXPANDERS */
+    /* 5. EXPANDER HEADERS (Fixing White-on-White) */
     .streamlit-expanderHeader {
         background-color: #2B313E !important;
         color: #FFFFFF !important;
@@ -89,11 +87,10 @@ st.markdown("""
     .streamlit-expanderContent {
         background-color: #161B26 !important;
         border: 1px solid #2B313E;
-        border-top: none;
         color: #E0E0E0 !important;
     }
     
-    /* 7. LAYOUT */
+    /* 6. LAYOUT & CHAT */
     .block-container { padding-top: 1rem; padding-bottom: 140px; }
     [data-testid="stFileUploader"] { padding: 0px; }
     .stAudioInput { margin-top: 5px; }
@@ -102,7 +99,7 @@ st.markdown("""
     /* Lock Input when Processing */
     .stApp[data-test-state="running"] .stChatInput { opacity: 0.5; pointer-events: none; }
     
-    /* 8. MATH SCROLLING (Mobile) */
+    /* 7. MATH SCROLLING (Mobile) */
     .katex-display { overflow-x: auto; overflow-y: hidden; padding-bottom: 5px; color: #FFD700 !important; }
 </style>
 """, unsafe_allow_html=True)
@@ -142,27 +139,31 @@ def clean_latex_for_chat(text):
     return text
 
 def translate_latex_for_pdf(text):
-    """Translates LaTeX to Readable Text for PDF (Fixes Rendering Issues)"""
+    """Translates LaTeX to Readable Text for PDF (Fixes 'Bad Escape' Error)"""
     if not text: return ""
     text = re.sub(r'【.*?†source】', '', text)
     
-    # Complex Replacements for PDF readability
-    text = re.sub(r'\\int_\{(.*?)\}\^\{(.*?)\}', r'Integral(\1 to \2)', text) # Integrals
-    text = re.sub(r'\\frac{(.*?)}{(.*?)}', r'(\1 / \2)', text) # Fractions
-    text = re.sub(r'\\left\[(.*?)\\right\]_\{(.*?)\}\^\{(.*?)\}', r'[\1] evaluated from \2 to \3', text) # Limits
+    # 1. Complex Structures (Integrals, Fractions) - Regex
+    text = re.sub(r'\\int_\{(.*?)\}\^\{(.*?)\}', r'Integral(\1 to \2)', text) 
+    text = re.sub(r'\\frac{(.*?)}{(.*?)}', r'(\1 / \2)', text) 
+    text = re.sub(r'\\left\[(.*?)\\right\]_\{(.*?)\}\^\{(.*?)\}', r'[\1] evaluated from \2 to \3', text)
     
-    # Symbol Map
-    symbols = {
-        r'\\cdot': ' * ', r'\\times': ' x ', r'\\sqrt': 'sqrt', 
-        r'\\approx': '~=', r'\\le': '<=', r'\\ge': '>=', 
-        r'\\infty': 'infinity', r'\\pi': 'pi', r'\\theta': 'theta', 
-        r'\^': '^', r'\_': '_', r'\$': '', r'\,': ' '
-    }
-    for k, v in symbols.items():
-        text = re.sub(k, v, text)
+    # 2. Simple Symbol Replacement (Using safer .replace method)
+    # This prevents the regex engine from crashing on weird backslashes
+    replacements = [
+        (r'\cdot', ' * '), (r'\times', ' x '), (r'\sqrt', 'sqrt'),
+        (r'\approx', '~='), (r'\le', '<='), (r'\ge', '>='),
+        (r'\infty', 'infinity'), (r'\pi', 'pi'), (r'\theta', 'theta'),
+        (r'\_', '_'), (r'\$', ''), (r'\,', ' ')
+    ]
+    
+    for old, new in replacements:
+        text = text.replace(old, new)
         
     # Clean up
-    text = re.sub(r'\s+', ' ', text).strip()
+    text = text.replace('^', '^') # Ensure caret is preserved
+    text = " ".join(text.split()) # Remove extra whitespace
+    
     return text.encode('latin-1', 'replace').decode('latin-1')
 
 def show_branding():
@@ -222,7 +223,7 @@ if st.session_state.get('logout', False):
     for key in list(st.session_state.keys()): del st.session_state[key]
     st.rerun()
 
-# --- 7. SIDEBAR ---
+# --- 7. SIDEBAR (SMART PAYMENT FLOW) ---
 with st.sidebar:
     st.markdown("## 🔐 Premium Access")
     
@@ -423,6 +424,7 @@ if st.session_state.processing and st.session_state.messages[-1]["role"] == "use
     client.beta.threads.messages.create(thread_id=st.session_state.thread_id, role="user", content=api_content, attachments=att if att else None)
 
     with st.chat_message("assistant", avatar=LOGO_URL):
+        # STRICT SYSTEM INSTRUCTION TO FORCE LATEX FORMATTING
         stream = client.beta.threads.runs.create(
             thread_id=st.session_state.thread_id, assistant_id=assistant_id, stream=True,
             additional_instructions="You are JEEx. Use $$...$$ for block math and $...$ for inline. Strictly LaTeX."
