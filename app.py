@@ -1,329 +1,463 @@
 import streamlit as st
-import datetime
 import time
+from openai import OpenAI
+import os
+import re
+from datetime import datetime, timedelta
+from fpdf import FPDF
+import requests
 
-# --- Page Configuration ---
-st.set_page_config(
-    page_title="JEEx - Advanced JEE Bot",
-    page_icon="⚛️",
-    layout="centered"
-)
+# --- 1. CONFIGURATION ---
+st.set_page_config(page_title="JEEx Pro", page_icon="⚛️", layout="centered", initial_sidebar_state="expanded")
 
-# --- Custom CSS (Professional Blue & Dark Theme) ---
+# --- 2. GLOBAL CONSTANTS ---
+ADMIN_WHATSAPP = "919839940400"
+ADMIN_EMAIL = "jeexaipro@gmail.com"
+LOGO_URL = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/1d6ef8ca3ac05432ed370338d4c04d6a03541f23/logo.png.png"
+
+# --- 3. SESSION STATE INITIALIZATION ---
+if "messages" not in st.session_state:
+    st.session_state.messages = [{"role": "assistant", "content": "Welcome Champ! 🎓 Physics, Chemistry ya Maths—bas photo bhejo ya type karo. Let's crack it! 🚀"}]
+if "processing" not in st.session_state: st.session_state.processing = False
+if "uploader_key" not in st.session_state: st.session_state.uploader_key = 0
+if "audio_key" not in st.session_state: st.session_state.audio_key = 0
+
+# PAYMENT STATE
+if "payment_step" not in st.session_state: st.session_state.payment_step = 1
+if "user_details" not in st.session_state: st.session_state.user_details = {}
+
+# --- 4. PROFESSIONAL CSS (VISIBILITY FIXED) ---
 st.markdown("""
-    <style>
-    /* Main Background */
-    .stApp {
-        background-color: #0E1117;
-        color: #C9D1D9;
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+    
+    /* 1. FORCE DARK BACKGROUNDS */
+    .stApp { background-color: #0E1117 !important; color: #E0E0E0 !important; }
+    [data-testid="stSidebar"] { background-color: #161B26 !important; border-right: 1px solid #2B313E !important; }
+    
+    /* 2. TEXT COLOR FORCE */
+    h1, h2, h3, h4, h5, h6, p, li, div, span, label { color: #E0E0E0 !important; }
+    strong { color: #FFD700 !important; font-weight: 600; }
+    code { color: #FF7043 !important; background-color: #1E2330; }
+
+    /* 3. INPUT FIELDS & DROPDOWNS (The "White Theme" Killer) */
+    /* Target the container of text inputs and selects */
+    div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="base-input"] {
+        background-color: #1E2330 !important;
+        border: 1px solid #4A90E2 !important;
+        border-radius: 8px !important;
     }
     
-    /* Login Screen Styling */
-    .login-container {
-        text-align: center;
-        margin-top: 50px;
-        padding: 40px;
-        background-color: #161B22;
-        border-radius: 10px;
-        border: 1px solid #30363D;
+    /* Target the actual text inside inputs */
+    input[type="text"], input[type="password"], textarea, div[data-baseweb="select"] div {
+        color: #FFFFFF !important; /* Force White */
+        background-color: transparent !important;
+        caret-color: #4A90E2 !important;
+    }
+    
+    /* Target the dropdown menu items */
+    ul[data-baseweb="menu"] {
+        background-color: #161B26 !important;
+        border: 1px solid #4A90E2 !important;
+    }
+    li[data-baseweb="option"] {
+        color: white !important;
+    }
+    
+    /* Placeholder Visibility */
+    ::placeholder { color: #AAAAAA !important; opacity: 1; }
+
+    /* 4. BUTTONS (Professional Blue - Always Visible) */
+    div.stButton > button { 
+        background-color: #4A90E2 !important; 
+        color: white !important; 
+        border: none !important; 
+        border-radius: 8px; 
+        padding: 10px 20px;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    div.stButton > button:hover { 
+        background-color: #357ABD !important; 
+        box-shadow: 0px 4px 15px rgba(74, 144, 226, 0.4);
+        color: white !important;
+    }
+    div.stButton > button:focus {
+        color: white !important;
+        border-color: white !important;
     }
 
-    /* JEEx Title Styling */
-    .jeex-title {
-        font-size: 3.5rem;
-        font-weight: 800;
-        background: -webkit-linear-gradient(45deg, #FF4B4B, #FF914D);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        text-align: center;
-        margin-bottom: 0px;
+    /* 5. EXPANDERS (Terms & Payment) */
+    .streamlit-expanderHeader {
+        background-color: #2B313E !important;
+        color: #FFFFFF !important;
+        border: 1px solid #4A90E2 !important;
+        border-radius: 8px;
+    }
+    .streamlit-expanderHeader:hover {
+        color: #4A90E2 !important;
+    }
+    .streamlit-expanderContent {
+        background-color: #161B26 !important;
+        border: 1px solid #2B313E;
+        color: #E0E0E0 !important;
     }
     
-    /* Subtitle Styling */
-    .jeex-subtitle {
-        font-size: 1.2rem;
-        color: #8B949E;
-        text-align: center;
-        margin-top: -10px;
-        margin-bottom: 30px;
-    }
-    
-    /* 'PRO' Badge - Professional Blue */
-    .pro-badge {
-        background-color: #4A90E2; 
-        color: white;
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-size: 0.8rem;
-        font-weight: bold;
-        vertical-align: super;
-    }
+    /* 6. PASSWORD EYE ICON */
+    button[aria-label="Show password"] { color: #E0E0E0 !important; }
 
-    /* Chat Message Styling */
-    .chat-message {
-        padding: 1.5rem; 
-        border-radius: 0.5rem; 
-        margin-bottom: 1rem; 
-        display: flex;
-        flex-direction: row;
-        align-items: flex-start;
-    }
-    .chat-message.user {
-        background-color: #161B22;
-        border: 1px solid #30363D;
-    }
-    .chat-message.bot {
-        background-color: #1F242C;
-        border: 1px solid #30363D;
-    }
-    .chat-message .avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        margin-right: 1rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 20px;
-        font-weight: bold;
-    }
-    .chat-message.user .avatar {
-        background-color: #238636;
-        color: white;
-    }
-    .chat-message.bot .avatar {
-        background-color: #1F6FEB;
-        color: white;
-    }
-    .chat-message .content {
-        flex-grow: 1;
-        color: #E6EDF3;
-    }
-
-    /* Form Inputs */
-    input[type=text], input[type=email], textarea, input[type=password] {
-        width: 100%;
-        padding: 12px;
-        border: 1px solid #30363D;
-        border-radius: 6px;
-        background-color: #0D1117;
-        color: white;
-        margin-top: 6px;
-        margin-bottom: 16px;
-    }
-    
-    /* Buttons */
-    button[type=submit], .stButton>button {
-        background-color: #238636;
-        color: white;
-        padding: 12px 20px;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: bold;
-        width: 100%;
-        transition: background-color 0.3s;
-    }
-    button[type=submit]:hover, .stButton>button:hover {
-        background-color: #2EA043;
-    }
-    
-    /* Pricing Tags */
-    .price-tag {
-        font-size: 1.1rem;
-        font-weight: bold;
-        color: #E6EDF3;
-    }
-    .slashed-price {
-        text-decoration: line-through;
-        color: #8B949E;
-        font-size: 0.9rem;
-        margin-right: 8px;
-    }
-    .actual-price {
-        color: #4A90E2; 
-        font-size: 1.2rem;
-    }
-    </style>
+    /* 7. LAYOUT & CHAT */
+    .block-container { padding-top: 1rem; padding-bottom: 140px; }
+    [data-testid="stFileUploader"] { padding: 0px; }
+    .stAudioInput { margin-top: 5px; }
+    .stChatMessage .st-emotion-cache-1p1m4ay { width: 45px; height: 45px; }
+    .stApp[data-test-state="running"] .stChatInput { opacity: 0.5; pointer-events: none; }
+    .katex-display { overflow-x: auto; overflow-y: hidden; padding-bottom: 5px; color: #FFD700 !important; }
+</style>
 """, unsafe_allow_html=True)
 
-# --- Authentication Logic ---
-def check_password():
-    """Returns `True` if the user had the correct password."""
+# --- 5. HELPER FUNCTIONS ---
 
-    def password_entered():
-        """Checks whether a password entered by the user is correct."""
-        entered_key = st.session_state["password"]
-        
-        # 1. Check if key is in the valid range format (JEExa0001 - JEExa9999)
-        # Length must be 9 (JEExa + 4 digits)
-        if entered_key.startswith("JEExa") and len(entered_key) == 9:
-            
-            # 2. Check if the key exists in secrets.toml (Activation Check)
-            if entered_key in st.secrets["passwords"]:
-                expiry_str = st.secrets["passwords"][entered_key]
-                expiry_date = datetime.datetime.strptime(expiry_str, "%Y-%m-%d").date()
-                
-                # 3. Check Date Validity
-                if datetime.date.today() <= expiry_date:
-                    st.session_state["password_correct"] = True
-                    # Remove password from session state for security
-                    del st.session_state["password"]
-                else:
-                    st.session_state["password_correct"] = False
-                    st.error(f"❌ Key Expired. This plan ended on {expiry_str}.")
-            else:
-                st.session_state["password_correct"] = False
-                st.error("❌ Key Not Activated. Please purchase a plan to activate this key.")
-        else:
-            st.session_state["password_correct"] = False
-            st.error("❌ Invalid Key Format. (Example: JEExa0001)")
-
-    # Initialize Session State
-    if "password_correct" not in st.session_state:
-        st.session_state["password_correct"] = False
-
-    # Show Login Input if not logged in
-    if not st.session_state["password_correct"]:
-        st.markdown('<h1 class="jeex-title">JEEx <span class="pro-badge">LOGIN</span></h1>', unsafe_allow_html=True)
-        st.write("")
-        st.text_input(
-            "Enter your JEEx Access Key", 
-            type="password", 
-            on_change=password_entered, 
-            key="password",
-            placeholder="Ex: JEExa0001"
-        )
-        st.caption("Keys are disabled by default until a plan is purchased.")
+def send_final_notification(name, email, phone, trans_id):
+    """Sends FINAL email with Transaction ID to Admin"""
+    try:
+        url = f"https://formsubmit.co/{ADMIN_EMAIL}"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
+        }
+        payload = {
+            "_subject": f"💰 PAYMENT VERIFICATION: {name}",
+            "_captcha": "false",
+            "_template": "table",
+            "Name": name,
+            "Email": email,
+            "Phone": phone,
+            "Transaction ID": trans_id,
+            "Status": "Paid - Waiting for Key",
+            "Timestamp": str(datetime.now())
+        }
+        requests.post(url, data=payload, headers=headers)
+        return True
+    except:
         return False
+
+def clean_latex_for_chat(text):
+    """Formats LaTeX for Chat Display"""
+    if not text: return ""
+    text = re.sub(r'【.*?†source】', '', text)
+    text = re.sub(r'\\\[(.*?)\\\]', r'$$\1$$', text, flags=re.DOTALL)
+    text = re.sub(r'\\\((.*?)\\\)', r'$\1$', text, flags=re.DOTALL)
+    text = re.sub(r'(?<!\\)\[\s*(.*?=.*?)\s*\]', r'$$\1$$', text, flags=re.DOTALL)
+    return text
+
+def translate_latex_for_pdf(text):
+    """Translates LaTeX to Clean Mathematical Notation for PDF"""
+    if not text: return ""
+    text = re.sub(r'【.*?†source】', '', text)
     
-    return True
-
-# --- MAIN APP EXECUTION ---
-if check_password():
+    # 1. Fractions: \frac{a}{b} -> (a/b)
+    # Removing \frac and putting logic in parens
+    text = re.sub(r'\\frac{(.*?)}{(.*?)}', r'(\1 / \2)', text)
     
-    # --- Header ---
-    st.markdown('<h1 class="jeex-title">JEEx <span class="pro-badge">PRO</span></h1>', unsafe_allow_html=True)
-    st.markdown('<p class="jeex-subtitle">Your Advanced AI Companion for JEE Prep</p>', unsafe_allow_html=True)
-
-    # --- Sidebar / Premium Section ---
-    with st.sidebar:
-        st.header("💎 Upgrade Plan")
-        st.write("Need to extend your validity or unlock new features?")
+    # 2. Integrals: \int_{a}^{b} -> int_a^b
+    text = re.sub(r'\\int_\{(.*?)\}\^\{(.*?)\}', r'int_\1^\2', text)
+    text = text.replace(r'\int', 'int')
+    
+    # 3. Limits / Brackets: Remove \left, \right, and curly braces used for grouping
+    text = text.replace(r'\left[', '[').replace(r'\right]', ']')
+    text = text.replace(r'\left(', '(').replace(r'\right)', ')')
+    text = text.replace(r'\{', '{').replace(r'\}', '}') # escaped braces
+    
+    # 4. Clean up LaTeX syntax that PDF can't read
+    # We remove the backslashes from common commands to make them look like text math
+    commands = [r'\cdot', r'\times', r'\sqrt', r'\approx', r'\le', r'\ge', r'\infty', r'\pi', r'\theta', r'\sin', r'\cos', r'\tan']
+    for cmd in commands:
+        text = text.replace(cmd, cmd.replace('\\', '')) # e.g. \sin -> sin
         
-        with st.expander("Get Premium (Select Plan)", expanded=True):
-            st.write("### Choose your Plan")
-            
-            # Plan Data Dictionary
-            plans = {
-                "Weekly": {
-                    "name": "JEEx PRO Weekly",
-                    "slashed": "₹49",
-                    "price": "₹29",
-                    "link": "https://topmate.io/jeexpro/1840366"
-                },
-                "Monthly": {
-                    "name": "JEEx PRO Monthly",
-                    "slashed": "₹99",
-                    "price": "₹59",
-                    "link": "https://topmate.io/jeexpro/1840721"
-                },
-                "3 Months": {
-                    "name": "JEEx PRO 3 Month",
-                    "slashed": "₹199",
-                    "price": "₹159",
-                    "link": "https://topmate.io/jeexpro/1840723"
-                },
-                "6 Months": {
-                    "name": "JEEx PRO 6 Month",
-                    "slashed": "₹349",
-                    "price": "₹279",
-                    "link": "https://topmate.io/jeexpro/1840732"
-                }
-            }
-            
-            # Formatting options for radio button
-            plan_options = list(plans.keys())
-            def format_plan_label(option):
-                p = plans[option]
-                return f"{option}: {p['price']} (was {p['slashed']})"
+    # 5. Remove delimiters
+    text = text.replace('$$', '').replace('$', '').replace('\\', '')
+    
+    # 6. Compress spaces
+    text = re.sub(r'\s+', ' ', text).strip()
+    
+    # Encode to Latin-1 compatible
+    return text.encode('latin-1', 'replace').decode('latin-1')
 
-            selected_option = st.radio(
-                "Select Validity:",
-                plan_options,
-                format_func=format_plan_label
-            )
-            
-            selected_plan = plans[selected_option]
-            
-            # Display Plan Details
-            st.markdown("---")
-            st.markdown(f"**Plan:** {selected_plan['name']}")
-            st.markdown(
-                f'<span class="price-tag"><span class="slashed-price">{selected_plan["slashed"]}</span> <span class="actual-price">{selected_plan["price"]}</span></span>', 
-                unsafe_allow_html=True
-            )
-            st.caption("Fill the form to proceed.")
+def show_branding():
+    c1, c2, c3 = st.columns([1, 2, 1])
+    with c2:
+        try: st.image(LOGO_URL, width=280) 
+        except: pass
+    st.markdown("""
+        <div style="text-align: center; margin-top: -15px; margin-bottom: 30px;">
+            <h1 style="margin: 0; font-size: 42px; font-weight: 700; letter-spacing: 1px;">
+                JEEx <span style="color:#4A90E2;">PRO</span>
+            </h1>
+            <p style="color: #AAAAAA; font-size: 15px; margin-top: 8px;">
+                Your 24/7 AI Rank Booster | Master JEE Mains & Advanced 🚀
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
 
-            # --- HTML FORM (Fixed Email) ---
-            contact_form = f"""
-            <form action="https://formsubmit.co/jeexaipro@gmail.com" method="POST">
-                <input type="hidden" name="_captcha" value="false">
-                <input type="hidden" name="_template" value="table">
-                <input type="hidden" name="_subject" value="New JEEx PRO Subscription Request">
-                <input type="hidden" name="_next" value="{selected_plan['link']}">
-                
-                <input type="hidden" name="Selected_Plan" value="{selected_plan['name']} - {selected_plan['price']}">
+class PDF(FPDF):
+    def header(self):
+        self.set_font('Arial', 'B', 12)
+        self.cell(0, 10, 'JEEx Pro - Study Session', 0, 1, 'C')
+        self.ln(5)
+    def chapter_title(self, label):
+        self.set_font('Arial', 'B', 12)
+        self.set_text_color(74, 144, 226)
+        self.cell(0, 10, translate_latex_for_pdf(label), 0, 1, 'L')
+        self.ln(2)
+    def chapter_body(self, body):
+        self.set_font('Arial', '', 11)
+        self.set_text_color(50, 50, 50)
+        self.multi_cell(0, 7, translate_latex_for_pdf(body))
+        self.ln()
 
-                <label for="name">Full Name</label>
-                <input type="text" name="name" placeholder="Swastik" required>
-                
-                <label for="email">Email Address</label>
-                <input type="email" name="email" placeholder="swastik@example.com" required>
-                
-                <label for="message">Specific Requirements?</label>
-                <textarea name="message" placeholder="I need help with Physics..." rows="2"></textarea>
-                
-                <button type="submit">Proceed to Pay {selected_plan['price']}</button>
-            </form>
-            """
-            st.markdown(contact_form, unsafe_allow_html=True)
-            # --- HTML FORM END ---
+def generate_pdf(messages):
+    pdf = PDF()
+    pdf.add_page()
+    for msg in messages:
+        role = "JEEx" if msg["role"] == "assistant" else "Student"
+        pdf.chapter_title(role)
+        pdf.chapter_body(msg["content"])
+    return pdf.output(dest='S').encode('latin-1', 'ignore')
 
-    # --- Chat Interface ---
-    if "messages" not in st.session_state:
-        st.session_state.messages = [
-            {"role": "assistant", "content": "Hello! I am JEEx PRO. Access granted. How can I help you crack JEE Advanced today?"}
-        ]
+# --- 6. AUTH & LOGIC ---
+def check_key_status(user_key):
+    if user_key == st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS"): return "ADMIN"
+    expiry_db = st.secrets.get("KEY_EXPIRY", {})
+    if user_key in expiry_db:
+        try:
+            exp = datetime.strptime(expiry_db[user_key], "%Y-%m-%d").date()
+            if datetime.now().date() > exp: return "EXPIRED"
+            else: return "VALID"
+        except: return "INVALID"
+    return "INVALID"
 
-    for message in st.session_state.messages:
-        role_class = "user" if message["role"] == "user" else "bot"
-        avatar_text = "S" if message["role"] == "user" else "J"
+if st.session_state.get('logout', False):
+    for key in list(st.session_state.keys()): del st.session_state[key]
+    st.rerun()
+
+# --- 7. SIDEBAR (SMART PAYMENT FLOW) ---
+with st.sidebar:
+    st.markdown("## 🔐 Premium Access")
+    
+    # Password Input
+    user_key = st.text_input("Enter Access Key:", type="password") 
+    status = check_key_status(user_key)
+    
+    # --- UNLOCKED TOOLS ---
+    if status == "VALID" or status == "ADMIN":
+        st.success(f"✅ Active")
+        st.markdown("---")
         
-        st.markdown(f"""
-            <div class="chat-message {role_class}">
-                <div class="avatar">{avatar_text}</div>
-                <div class="content">{message["content"]}</div>
-            </div>
-        """, unsafe_allow_html=True)
-
-    if prompt := st.chat_input("Ask a doubt or request a schedule..."):
-        st.session_state.messages.append({"role": "user", "content": prompt})
+        st.markdown("**📎 Attach Question**")
+        uploaded_file = st.file_uploader("Upload", type=["jpg", "png", "pdf"], key=f"uploader_{st.session_state.uploader_key}", label_visibility="collapsed")
         
-        st.markdown(f"""
-            <div class="chat-message user">
-                <div class="avatar">S</div>
-                <div class="content">{prompt}</div>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown("**🎙️ Voice Chat**")
+        audio_value = st.audio_input("Speak", key=f"audio_{st.session_state.audio_key}", label_visibility="collapsed")
+        
+        st.markdown("---")
+        if len(st.session_state.messages) > 1:
+            pdf_bytes = generate_pdf(st.session_state.messages)
+            st.download_button("📥 Download Notes", data=pdf_bytes, file_name="JEEx_Notes.pdf", mime="application/pdf")
+        
+        if st.button("End Session"): st.session_state['logout'] = True; st.rerun()
 
-        # Placeholder Response Logic
-        response_text = "Analyzing..."
-        time.sleep(1)
-        if "schedule" in prompt.lower():
-            response_text = "Let's update your schedule. Since you have the PRO plan, I can create a custom 15-day revision block for you."
-        else:
-            response_text = f"I've received your query: '{prompt}'. Let's solve this."
+    # --- LOCKED (NEW PAYMENT WORKFLOW) ---
+    else:
+        if user_key and status != "VALID": st.error("❌ Invalid Key")
+        
+        st.markdown("### ⚡ Subscribe Now")
+        with st.expander("💎 Get Premium (₹99/mo)", expanded=True):
+            
+            # STEP 1
+            if st.session_state.payment_step == 1:
+                st.markdown("Fill details to get your key:")
+                with st.form("reg_form"):
+                    name = st.text_input("Name")
+                    email = st.text_input("Email")
+                    phone = st.text_input("WhatsApp No.")
+                    sub = st.form_submit_button("🚀 Proceed to Pay")
+                
+                if sub:
+                    if name and email and phone:
+                        st.session_state.user_details = {"name": name, "email": email, "phone": phone}
+                        st.session_state.payment_step = 2
+                        st.rerun()
+                    else: st.warning("⚠️ Fill all details.")
 
-        st.session_state.messages.append({"role": "assistant", "content": response_text})
-        st.rerun()
+            # STEP 2
+            elif st.session_state.payment_step == 2:
+                st.info(f"Hi {st.session_state.user_details['name']}, scan to pay:")
+                try: st.image("upi_qr.png", caption="UPI QR", use_container_width=True)
+                except: st.info(f"Pay to: **{ADMIN_WHATSAPP}@upi**")
+                
+                st.markdown("---")
+                st.markdown("**Step 2: Enter Transaction ID**")
+                trans_id = st.text_input("UPI Transaction ID:", placeholder="e.g. T230...")
+                st.caption("ℹ️ *Found in Payment History (GPay/PhonePe/Paytm).*")
+                
+                if st.button("✅ Verify & Submit"):
+                    if len(trans_id) > 6:
+                        det = st.session_state.user_details
+                        send_final_notification(det['name'], det['email'], det['phone'], trans_id)
+                        st.session_state.user_details['trans_id'] = trans_id
+                        st.session_state.payment_step = 3
+                        st.rerun()
+                    else: st.error("Invalid ID")
+                
+                if st.button("Back"):
+                    st.session_state.payment_step = 1
+                    st.rerun()
+
+            # STEP 3
+            elif st.session_state.payment_step == 3:
+                st.success("🎉 Payment Submitted!")
+                st.markdown("Please allow few hours for verification. Once verified you will receive your access key on the provided email and Whatsapp number.")
+                
+                det = st.session_state.user_details
+                msg = f"Hello JEEx!%0A*PAID*%0AName: {det['name']}%0AID: {det['trans_id']}"
+                wa_link = f"https://wa.me/{ADMIN_WHATSAPP}?text={msg}"
+                
+                st.markdown(f'<a href="{wa_link}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; border:none; padding:12px; border-radius:5px; font-weight:bold;">👉 Chat on WhatsApp</button></a>', unsafe_allow_html=True)
+                
+                if st.button("Start Over"):
+                    st.session_state.payment_step = 1
+                    st.rerun()
+
+        st.markdown("---")
+        with st.expander("📄 Detailed Terms & Conditions"): 
+            st.markdown("""
+            **1. Service Scope:** JEEx Pro is an AI-powered educational aid for JEE preparation. It provides explanations, solves numericals, and offers strategies.
+            
+            **2. Account Usage:** - **Single User:** Keys are strictly personal.
+            - **Prohibited:** Sharing keys on public groups results in an immediate ban.
+            
+            **3. Payment Policy:** - Access Keys are digital goods. 
+            - **No Refunds** are provided once the key is issued.
+            
+            **4. AI Limitations:** - While accurate, AI can make errors. Verify critical data with NCERT.
+            """)
+
+# --- 8. ADMIN PANEL ---
+if status == "ADMIN":
+    st.sidebar.success("🔑 Admin Mode")
+    c1, c2 = st.columns(2)
+    with c1: new_id = st.text_input("Key ID")
+    with c2: days = st.number_input("Days", 30)
+    if new_id:
+        exp = (datetime.now() + timedelta(days=days)).strftime("%Y-%m-%d")
+        st.code(f'"{new_id}" = "{exp}"', language="toml")
+    st.stop()
+
+# --- 9. LANDING PAGE ---
+show_branding()
+
+if status != "VALID":
+    st.markdown("---")
+    st.markdown("""
+    <div style="background-color: #1E2330; padding: 20px; border-radius: 12px; border-left: 5px solid #4A90E2; text-align: center; margin-bottom: 30px;">
+        <p style="font-size: 18px; margin: 0; color: #E6E6E6;">👋 <strong>Welcome Student!</strong><br>Please enter your <strong>Access Key</strong> in the Sidebar to unlock.</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("### 🏆 Why Top Rankers Choose JEEx **PRO**")
+    c1, c2 = st.columns(2)
+    with c1:
+        st.info("**🧠 Advanced Problem Solving**\n\nSolves Irodov, Cengage, and PYQ level problems with step-by-step logic.")
+        st.info("**📄 Full Document Brain**\n\nUpload entire PDF assignments. Our Code Interpreter analyzes context.")
+        st.info("**🎯 Concept-First Approach**\n\nWe don't just solve; we explain the 'Why'. Learn the derivation.")
+    with c2:
+        st.info("**👁️ Vision Intelligence (OCR)**\n\nReads handwritten questions from photos instantly.")
+        st.info("**➗ Perfect Math Formatting**\n\nTextbook-quality rendering for Integrals and Organic Mechanisms.")
+        st.info("**⚡ 24/7 Strategic Mentorship**\n\nYour personal AI coach for study planning and backlog management.")
+    
+    st.stop()
+
+# --- 10. CHAT INTERFACE ---
+try:
+    client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+    assistant_id = st.secrets["ASSISTANT_ID"]
+except: st.error("🚨 Keys missing."); st.stop()
+
+if "thread_id" not in st.session_state:
+    thread = client.beta.threads.create()
+    st.session_state.thread_id = thread.id
+
+# INPUT LOGIC
+audio_prompt = None
+if 'audio_value' in locals() and audio_value:
+    if not st.session_state.processing:
+        with st.spinner("🎧 Listening..."):
+            try:
+                transcription = client.audio.transcriptions.create(model="whisper-1", file=audio_value, language="en")
+                audio_prompt = transcription.text
+            except: pass
+
+text_prompt = st.chat_input("Ask a doubt...", disabled=st.session_state.processing)
+prompt = audio_prompt if audio_prompt else text_prompt
+
+if prompt:
+    st.session_state.processing = True
+    msg_data = {"role": "user", "content": prompt}
+    if uploaded_file:
+        msg_data.update({"file_data": uploaded_file.getvalue(), "file_name": uploaded_file.name, "file_type": uploaded_file.type})
+    st.session_state.messages.append(msg_data)
+    st.rerun()
+
+# DISPLAY
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"], avatar=LOGO_URL if msg["role"]=="assistant" else "🧑‍🎓"):
+        if "file_data" in msg:
+            if msg["file_type"].startswith("image"): st.image(msg["file_data"], width=200)
+            else: st.markdown(f"📄 *{msg['file_name']}*")
+        st.markdown(clean_latex_for_chat(msg["content"]))
+
+# PROCESS RESPONSE
+if st.session_state.processing and st.session_state.messages[-1]["role"] == "user":
+    msg_text = st.session_state.messages[-1]["content"]
+    api_content = [{"type": "text", "text": msg_text}]
+    att = []
+    
+    if uploaded_file:
+        try:
+            tfile = f"temp_{uploaded_file.name}"
+            with open(tfile, "wb") as f: f.write(uploaded_file.getbuffer())
+            fres = client.files.create(file=open(tfile, "rb"), purpose="assistants")
+            
+            if uploaded_file.type == "application/pdf":
+                att.append({"file_id": fres.id, "tools": [{"type": "code_interpreter"}]})
+            else:
+                api_content.append({"type": "image_file", "image_file": {"file_id": fres.id}})
+            
+            os.remove(tfile)
+        except: st.error("Upload failed.")
+
+    client.beta.threads.messages.create(thread_id=st.session_state.thread_id, role="user", content=api_content, attachments=att if att else None)
+
+    with st.chat_message("assistant", avatar=LOGO_URL):
+        stream = client.beta.threads.runs.create(
+            thread_id=st.session_state.thread_id, assistant_id=assistant_id, stream=True,
+            additional_instructions="You are JEEx. Use $$...$$ for block math and $...$ for inline. Strictly LaTeX."
+        )
+        resp = st.empty()
+        full_text = ""
+        for event in stream:
+            if event.event == "thread.message.delta":
+                for c in event.data.delta.content:
+                    if c.type == "text":
+                        full_text += c.text.value
+                        resp.markdown(clean_latex_for_chat(full_text) + "▌")
+            elif event.event == "thread.run.completed": break
+        
+        resp.markdown(clean_latex_for_chat(full_text))
+        st.session_state.messages.append({"role": "assistant", "content": full_text})
+
+    st.session_state.uploader_key += 1
+    if 'audio_value' in locals() and audio_value: st.session_state.audio_key += 1
+    st.session_state.processing = False
+    st.rerun()
