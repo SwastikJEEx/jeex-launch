@@ -26,51 +26,45 @@ if "audio_key" not in st.session_state: st.session_state.audio_key = 0
 if "payment_step" not in st.session_state: st.session_state.payment_step = 1
 if "user_details" not in st.session_state: st.session_state.user_details = {}
 
-# --- 4. PROFESSIONAL CSS (NUCLEAR DARK MODE) ---
+# --- 4. PROFESSIONAL CSS (Responsive Math & Universal Dark) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     
-    /* 1. FORCE MAIN DARK BACKGROUNDS */
+    /* 1. FORCE DARK BACKGROUNDS */
     .stApp { background-color: #0E1117 !important; color: #E0E0E0 !important; }
     [data-testid="stSidebar"] { background-color: #161B26 !important; border-right: 1px solid #2B313E !important; }
     
-    /* 2. FORCE TEXT COLORS */
+    /* 2. RESPONSIVE MATH FIX (Mobile Scrolling) */
+    .katex-display {
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 5px;
+    }
+    .katex { font-size: 1.1em; color: #FFD700 !important; } /* Gold Math Color */
+
+    /* 3. UNIVERSAL TEXT VISIBILITY */
     h1, h2, h3, h4, h5, h6, p, li, div, span, label { color: #E0E0E0 !important; }
     strong { color: #FFD700 !important; font-weight: 600; }
-    code { color: #FF7043 !important; }
+    code { color: #FF7043 !important; background-color: #1E2330; padding: 2px 5px; border-radius: 4px; }
 
-    /* 3. INPUT FIELDS & DROPDOWNS (The "White Theme" Killer) */
-    div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="base-input"] {
+    /* 4. INPUT FIELDS (High Contrast) */
+    div[data-baseweb="input"], .stTextInput input {
         background-color: #1E2330 !important;
-        border: 1px solid #4A90E2 !important;
+        border: 1px solid #4A90E2 !important; /* Blue Border */
         border-radius: 8px !important;
+        color: #FFFFFF !important; /* Force White Text */
+        -webkit-text-fill-color: #FFFFFF !important;
     }
-    input, textarea, .stSelectbox div {
-        color: #FFFFFF !important;
-        background-color: transparent !important;
-    }
-    /* Placeholder Text */
     ::placeholder { color: #AAAAAA !important; opacity: 1; }
     
-    /* 4. EXPANDERS (Terms & Payment Box) */
-    .streamlit-expanderHeader {
-        background-color: #2B313E !important;
-        color: #FFFFFF !important;
-        border: 1px solid #4A90E2 !important;
-        border-radius: 8px;
-    }
-    .streamlit-expanderContent {
-        background-color: #161B26 !important;
-        color: #E0E0E0 !important;
-        border: 1px solid #2B313E;
-        border-top: none;
-    }
+    /* Fix "Show Password" Eye Icon Visibility */
+    button[aria-label="Show password"] { color: #E0E0E0 !important; }
 
     /* 5. BUTTONS (Professional Blue) */
     div.stButton > button { 
-        background-color: #4A90E2 !important; 
+        background-color: #4A90E2 !important; /* JEEx Blue */
         color: white !important; 
         border: none !important; 
         border-radius: 8px; 
@@ -79,20 +73,26 @@ st.markdown("""
         transition: all 0.3s;
     }
     div.stButton > button:hover { 
-        background-color: #357ABD !important; 
+        background-color: #357ABD !important; /* Darker Blue Hover */
         box-shadow: 0px 4px 15px rgba(74, 144, 226, 0.4);
     }
-    
-    /* 6. PASSWORD EYE ICON FIX */
-    button[aria-label="Show password"] { color: #E0E0E0 !important; }
 
+    /* 6. EXPANDER / DROPDOWN HEADERS */
+    .streamlit-expanderHeader {
+        background-color: #2B313E !important;
+        color: #FFFFFF !important;
+        border-radius: 8px;
+        border: 1px solid #4A90E2 !important;
+    }
+    .streamlit-expanderHeader p { color: #FFFFFF !important; font-weight: 600; }
+    
     /* 7. LAYOUT FIXES */
     .block-container { padding-top: 1rem; padding-bottom: 140px; }
     [data-testid="stFileUploader"] { padding: 0px; }
     .stAudioInput { margin-top: 5px; }
     .stChatMessage .st-emotion-cache-1p1m4ay { width: 45px; height: 45px; }
     
-    /* 8. LOCK UI WHEN THINKING */
+    /* Lock Input when Processing */
     .stApp[data-test-state="running"] .stChatInput { opacity: 0.5; pointer-events: none; }
 </style>
 """, unsafe_allow_html=True)
@@ -104,10 +104,11 @@ def send_final_notification(name, email, phone, trans_id):
     try:
         url = f"https://formsubmit.co/{ADMIN_EMAIL}"
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            "Referer": "https://jeex-pro.streamlit.app/"
         }
         payload = {
-            "_subject": f"💰 NEW PAYMENT: {name}",
+            "_subject": f"💰 PAYMENT VERIFICATION: {name}",
             "_captcha": "false",
             "_template": "table",
             "Name": name,
@@ -123,19 +124,27 @@ def send_final_notification(name, email, phone, trans_id):
         return False
 
 def clean_latex(text):
+    """Advanced LaTeX Cleaner for Perfect Rendering"""
     if not text: return ""
+    # Remove OpenAI source citations
     text = re.sub(r'【.*?†source】', '', text)
+    
+    # 1. Normalize Block Math: \[ ... \] -> $$ ... $$
     text = re.sub(r'\\\[(.*?)\\\]', r'$$\1$$', text, flags=re.DOTALL)
+    
+    # 2. Normalize Inline Math: \( ... \) -> $ ... $
     text = re.sub(r'\\\((.*?)\\\)', r'$\1$', text, flags=re.DOTALL)
+    
+    # 3. Fix Bracketed Math that sometimes appears as [ x^2 ]
     text = re.sub(r'(?<!\\)\[\s*(.*?=.*?)\s*\]', r'$$\1$$', text, flags=re.DOTALL)
-    return text.replace('$$$', '$')
+    
+    return text
 
 def sanitize_text_for_pdf(text):
     text = text.replace('•', '-').replace('—', '-').replace('’', "'")
     return text.encode('latin-1', 'ignore').decode('latin-1')
 
 def show_branding():
-    # Centering Logic using Columns
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
         try: st.image(LOGO_URL, width=280) 
@@ -173,7 +182,7 @@ def generate_pdf(messages):
     pdf.add_page()
     for msg in messages:
         role = "JEEx" if msg["role"] == "assistant" else "Student"
-        content = clean_latex(msg["content"]).replace('*', '')
+        content = clean_latex(msg["content"]).replace('*', '').replace('$', '') # remove latex delimiters for PDF
         pdf.chapter_title(role)
         pdf.chapter_body(content)
     return pdf.output(dest='S').encode('latin-1', 'ignore')
@@ -198,7 +207,6 @@ if st.session_state.get('logout', False):
 with st.sidebar:
     st.markdown("## 🔐 Premium Access")
     
-    # Password Box (Dark Mode Forced)
     user_key = st.text_input("Enter Access Key:", type="password") 
     status = check_key_status(user_key)
     
@@ -357,8 +365,10 @@ prompt = audio_prompt if audio_prompt else text_prompt
 if prompt:
     st.session_state.processing = True
     msg_data = {"role": "user", "content": prompt}
+    
     if uploaded_file:
         msg_data.update({"file_data": uploaded_file.getvalue(), "file_name": uploaded_file.name, "file_type": uploaded_file.type})
+    
     st.session_state.messages.append(msg_data)
     st.rerun()
 
@@ -393,9 +403,10 @@ if st.session_state.processing and st.session_state.messages[-1]["role"] == "use
     client.beta.threads.messages.create(thread_id=st.session_state.thread_id, role="user", content=api_content, attachments=att if att else None)
 
     with st.chat_message("assistant", avatar=LOGO_URL):
+        # UPDATED INSTRUCTIONS: Strict Math Wrapping
         stream = client.beta.threads.runs.create(
             thread_id=st.session_state.thread_id, assistant_id=assistant_id, stream=True,
-            additional_instructions="You are JEEx. Use LaTeX for math."
+            additional_instructions="You are JEEx. CRITICAL: WRAP ALL MATH EQUATIONS IN '$$' (double dollar signs) for blocks or '$' (single dollar) for inline. Never use \[ ... \] or \( ... \). Example: $$x^2$$. Use LaTeX."
         )
         resp = st.empty()
         full_text = ""
@@ -414,4 +425,3 @@ if st.session_state.processing and st.session_state.messages[-1]["role"] == "use
     if 'audio_value' in locals() and audio_value: st.session_state.audio_key += 1
     st.session_state.processing = False
     st.rerun()
-
