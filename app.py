@@ -13,6 +13,7 @@ st.set_page_config(page_title="JEEx Pro", page_icon="⚛️", layout="centered",
 # --- 2. GLOBAL CONSTANTS ---
 ADMIN_WHATSAPP = "919839940400"
 ADMIN_EMAIL = "jeexaipro@gmail.com"
+TOPMATE_LINK = "https://topmate.io/jeexpro/1840366"
 LOGO_URL = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/1d6ef8ca3ac05432ed370338d4c04d6a03541f23/logo.png.png"
 
 # --- 3. SESSION STATE INITIALIZATION ---
@@ -22,11 +23,7 @@ if "processing" not in st.session_state: st.session_state.processing = False
 if "uploader_key" not in st.session_state: st.session_state.uploader_key = 0
 if "audio_key" not in st.session_state: st.session_state.audio_key = 0
 
-# PAYMENT STATE
-if "payment_step" not in st.session_state: st.session_state.payment_step = 1
-if "user_details" not in st.session_state: st.session_state.user_details = {}
-
-# --- 4. PROFESSIONAL CSS (VISIBILITY FIXED) ---
+# --- 4. PROFESSIONAL CSS (BLUE THEME & VISIBILITY FIXED) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
@@ -41,34 +38,20 @@ st.markdown("""
     strong { color: #FFD700 !important; font-weight: 600; }
     code { color: #FF7043 !important; background-color: #1E2330; }
 
-    /* 3. INPUT FIELDS & DROPDOWNS (The "White Theme" Killer) */
-    /* Target the container of text inputs and selects */
+    /* 3. INPUT FIELDS (High Contrast) */
     div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="base-input"] {
         background-color: #1E2330 !important;
         border: 1px solid #4A90E2 !important;
         border-radius: 8px !important;
     }
-    
-    /* Target the actual text inside inputs */
     input[type="text"], input[type="password"], textarea, div[data-baseweb="select"] div {
-        color: #FFFFFF !important; /* Force White */
+        color: #FFFFFF !important;
         background-color: transparent !important;
         caret-color: #4A90E2 !important;
     }
-    
-    /* Target the dropdown menu items */
-    ul[data-baseweb="menu"] {
-        background-color: #161B26 !important;
-        border: 1px solid #4A90E2 !important;
-    }
-    li[data-baseweb="option"] {
-        color: white !important;
-    }
-    
-    /* Placeholder Visibility */
     ::placeholder { color: #AAAAAA !important; opacity: 1; }
 
-    /* 4. BUTTONS (Professional Blue - Always Visible) */
+    /* 4. BUTTONS (Professional Blue) */
     div.stButton > button { 
         background-color: #4A90E2 !important; 
         color: white !important; 
@@ -83,31 +66,30 @@ st.markdown("""
         box-shadow: 0px 4px 15px rgba(74, 144, 226, 0.4);
         color: white !important;
     }
-    div.stButton > button:focus {
-        color: white !important;
-        border-color: white !important;
-    }
 
-    /* 5. EXPANDERS (Terms & Payment) */
+    /* 5. EXPANDERS & DROPDOWNS (Professional Blue Heading) */
     .streamlit-expanderHeader {
-        background-color: #2B313E !important;
-        color: #FFFFFF !important;
-        border: 1px solid #4A90E2 !important;
+        background-color: #4A90E2 !important; /* Professional Blue Background */
+        color: #FFFFFF !important; /* White Text */
         border-radius: 8px;
+        border: 1px solid #357ABD !important;
     }
     .streamlit-expanderHeader:hover {
-        color: #4A90E2 !important;
+        background-color: #357ABD !important;
+        color: #FFFFFF !important;
     }
+    /* The content inside the dropdown */
     .streamlit-expanderContent {
         background-color: #161B26 !important;
-        border: 1px solid #2B313E;
+        border: 1px solid #4A90E2;
+        border-top: none;
         color: #E0E0E0 !important;
     }
     
     /* 6. PASSWORD EYE ICON */
     button[aria-label="Show password"] { color: #E0E0E0 !important; }
 
-    /* 7. LAYOUT & CHAT */
+    /* 7. LAYOUT */
     .block-container { padding-top: 1rem; padding-bottom: 140px; }
     [data-testid="stFileUploader"] { padding: 0px; }
     .stAudioInput { margin-top: 5px; }
@@ -119,22 +101,21 @@ st.markdown("""
 
 # --- 5. HELPER FUNCTIONS ---
 
-def send_final_notification(name, email, phone, trans_id):
-    """Sends FINAL email with Transaction ID to Admin"""
+def send_lead_notification(name, email, phone):
+    """Sends Lead Details to Admin Email"""
     try:
         url = f"https://formsubmit.co/{ADMIN_EMAIL}"
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
         }
         payload = {
-            "_subject": f"💰 PAYMENT VERIFICATION: {name}",
+            "_subject": f"🚀 NEW LEAD: {name}",
             "_captcha": "false",
             "_template": "table",
             "Name": name,
             "Email": email,
             "Phone": phone,
-            "Transaction ID": trans_id,
-            "Status": "Paid - Waiting for Key",
+            "Action": "Clicked Proceed to Pay",
             "Timestamp": str(datetime.now())
         }
         requests.post(url, data=payload, headers=headers)
@@ -157,23 +138,21 @@ def translate_latex_for_pdf(text):
     text = re.sub(r'【.*?†source】', '', text)
     
     # 1. Fractions: \frac{a}{b} -> (a/b)
-    # Removing \frac and putting logic in parens
     text = re.sub(r'\\frac{(.*?)}{(.*?)}', r'(\1 / \2)', text)
     
     # 2. Integrals: \int_{a}^{b} -> int_a^b
     text = re.sub(r'\\int_\{(.*?)\}\^\{(.*?)\}', r'int_\1^\2', text)
     text = text.replace(r'\int', 'int')
     
-    # 3. Limits / Brackets: Remove \left, \right, and curly braces used for grouping
+    # 3. Limits / Brackets
     text = text.replace(r'\left[', '[').replace(r'\right]', ']')
     text = text.replace(r'\left(', '(').replace(r'\right)', ')')
-    text = text.replace(r'\{', '{').replace(r'\}', '}') # escaped braces
+    text = text.replace(r'\{', '{').replace(r'\}', '}')
     
-    # 4. Clean up LaTeX syntax that PDF can't read
-    # We remove the backslashes from common commands to make them look like text math
+    # 4. Clean up LaTeX syntax
     commands = [r'\cdot', r'\times', r'\sqrt', r'\approx', r'\le', r'\ge', r'\infty', r'\pi', r'\theta', r'\sin', r'\cos', r'\tan']
     for cmd in commands:
-        text = text.replace(cmd, cmd.replace('\\', '')) # e.g. \sin -> sin
+        text = text.replace(cmd, cmd.replace('\\', ''))
         
     # 5. Remove delimiters
     text = text.replace('$$', '').replace('$', '').replace('\\', '')
@@ -181,7 +160,6 @@ def translate_latex_for_pdf(text):
     # 6. Compress spaces
     text = re.sub(r'\s+', ' ', text).strip()
     
-    # Encode to Latin-1 compatible
     return text.encode('latin-1', 'replace').decode('latin-1')
 
 def show_branding():
@@ -241,11 +219,10 @@ if st.session_state.get('logout', False):
     for key in list(st.session_state.keys()): del st.session_state[key]
     st.rerun()
 
-# --- 7. SIDEBAR (SMART PAYMENT FLOW) ---
+# --- 7. SIDEBAR (TOPMATE FLOW) ---
 with st.sidebar:
     st.markdown("## 🔐 Premium Access")
     
-    # Password Input
     user_key = st.text_input("Enter Access Key:", type="password") 
     status = check_key_status(user_key)
     
@@ -267,67 +244,39 @@ with st.sidebar:
         
         if st.button("End Session"): st.session_state['logout'] = True; st.rerun()
 
-    # --- LOCKED (NEW PAYMENT WORKFLOW) ---
+    # --- LOCKED (TOPMATE INTEGRATION) ---
     else:
         if user_key and status != "VALID": st.error("❌ Invalid Key")
         
         st.markdown("### ⚡ Subscribe Now")
         with st.expander("💎 Get Premium (₹99/mo)", expanded=True):
+            st.markdown("Fill details to proceed:")
             
-            # STEP 1
-            if st.session_state.payment_step == 1:
-                st.markdown("Fill details to get your key:")
-                with st.form("reg_form"):
-                    name = st.text_input("Name")
-                    email = st.text_input("Email")
-                    phone = st.text_input("WhatsApp No.")
-                    sub = st.form_submit_button("🚀 Proceed to Pay")
-                
-                if sub:
-                    if name and email and phone:
-                        st.session_state.user_details = {"name": name, "email": email, "phone": phone}
-                        st.session_state.payment_step = 2
-                        st.rerun()
-                    else: st.warning("⚠️ Fill all details.")
-
-            # STEP 2
-            elif st.session_state.payment_step == 2:
-                st.info(f"Hi {st.session_state.user_details['name']}, scan to pay:")
-                try: st.image("upi_qr.png", caption="UPI QR", use_container_width=True)
-                except: st.info(f"Pay to: **{ADMIN_WHATSAPP}@upi**")
-                
-                st.markdown("---")
-                st.markdown("**Step 2: Enter Transaction ID**")
-                trans_id = st.text_input("UPI Transaction ID:", placeholder="e.g. T230...")
-                st.caption("ℹ️ *Found in Payment History (GPay/PhonePe/Paytm).*")
-                
-                if st.button("✅ Verify & Submit"):
-                    if len(trans_id) > 6:
-                        det = st.session_state.user_details
-                        send_final_notification(det['name'], det['email'], det['phone'], trans_id)
-                        st.session_state.user_details['trans_id'] = trans_id
-                        st.session_state.payment_step = 3
-                        st.rerun()
-                    else: st.error("Invalid ID")
-                
-                if st.button("Back"):
-                    st.session_state.payment_step = 1
-                    st.rerun()
-
-            # STEP 3
-            elif st.session_state.payment_step == 3:
-                st.success("🎉 Payment Submitted!")
-                st.markdown("Please allow few hours for verification. Once verified you will receive your access key on the provided email and Whatsapp number.")
-                
-                det = st.session_state.user_details
-                msg = f"Hello JEEx!%0A*PAID*%0AName: {det['name']}%0AID: {det['trans_id']}"
-                wa_link = f"https://wa.me/{ADMIN_WHATSAPP}?text={msg}"
-                
-                st.markdown(f'<a href="{wa_link}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; border:none; padding:12px; border-radius:5px; font-weight:bold;">👉 Chat on WhatsApp</button></a>', unsafe_allow_html=True)
-                
-                if st.button("Start Over"):
-                    st.session_state.payment_step = 1
-                    st.rerun()
+            with st.form("reg_form"):
+                name = st.text_input("Name")
+                email = st.text_input("Email")
+                phone = st.text_input("WhatsApp No.")
+                # This button triggers the email
+                submitted = st.form_submit_button("🚀 Proceed to Pay")
+            
+            if submitted:
+                if name and email and phone:
+                    # 1. Send Data to You
+                    send_lead_notification(name, email, phone)
+                    
+                    st.success("Details Recorded! Click below to pay:")
+                    
+                    # 2. Show Link to Topmate
+                    st.markdown(f'''
+                        <a href="{TOPMATE_LINK}" target="_blank">
+                            <button style="width:100%; background-color:#4A90E2; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer;">
+                                💳 Pay Now on Topmate
+                            </button>
+                        </a>
+                    ''', unsafe_allow_html=True)
+                    st.caption("Secure payment via UPI/Cards on Topmate.")
+                else:
+                    st.warning("⚠️ Please fill all details.")
 
         st.markdown("---")
         with st.expander("📄 Detailed Terms & Conditions"): 
@@ -404,8 +353,10 @@ prompt = audio_prompt if audio_prompt else text_prompt
 if prompt:
     st.session_state.processing = True
     msg_data = {"role": "user", "content": prompt}
+    
     if uploaded_file:
         msg_data.update({"file_data": uploaded_file.getvalue(), "file_name": uploaded_file.name, "file_type": uploaded_file.type})
+    
     st.session_state.messages.append(msg_data)
     st.rerun()
 
