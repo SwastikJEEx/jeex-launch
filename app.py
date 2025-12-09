@@ -26,43 +26,49 @@ if "audio_key" not in st.session_state: st.session_state.audio_key = 0
 if "payment_step" not in st.session_state: st.session_state.payment_step = 1
 if "user_details" not in st.session_state: st.session_state.user_details = {}
 
-# --- 4. PROFESSIONAL CSS (NUCLEAR DARK MODE FIX) ---
+# --- 4. PROFESSIONAL CSS (VISIBILITY FIXED) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     
-    /* 1. GLOBAL DARK THEME ENFORCEMENT */
+    /* 1. FORCE DARK BACKGROUNDS */
     .stApp { background-color: #0E1117 !important; color: #E0E0E0 !important; }
     [data-testid="stSidebar"] { background-color: #161B26 !important; border-right: 1px solid #2B313E !important; }
     
-    /* 2. TEXT VISIBILITY (Force Light Text) */
+    /* 2. TEXT COLOR FORCE */
     h1, h2, h3, h4, h5, h6, p, li, div, span, label { color: #E0E0E0 !important; }
     strong { color: #FFD700 !important; font-weight: 600; }
     code { color: #FF7043 !important; background-color: #1E2330; }
 
-    /* 3. INPUT FIELDS (The "White Box" Killer) */
-    /* Forces background to dark blue and text to white */
-    .stTextInput input, .stSelectbox div, .stTextArea textarea, div[data-baseweb="input"] {
+    /* 3. INPUT FIELDS & DROPDOWNS (The "White Theme" Killer) */
+    /* Target the container of text inputs and selects */
+    div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="base-input"] {
         background-color: #1E2330 !important;
-        color: #FFFFFF !important;
         border: 1px solid #4A90E2 !important;
+        border-radius: 8px !important;
+    }
+    
+    /* Target the actual text inside inputs */
+    input[type="text"], input[type="password"], textarea, div[data-baseweb="select"] div {
+        color: #FFFFFF !important; /* Force White */
+        background-color: transparent !important;
         caret-color: #4A90E2 !important;
     }
     
-    /* Placeholder Text styling */
-    ::placeholder { color: #AAAAAA !important; opacity: 1; }
-    
-    /* Fix for Browser Autofill turning background white */
-    input:-webkit-autofill,
-    input:-webkit-autofill:hover, 
-    input:-webkit-autofill:focus, 
-    input:-webkit-autofill:active {
-        -webkit-box-shadow: 0 0 0 30px #1E2330 inset !important;
-        -webkit-text-fill-color: white !important;
+    /* Target the dropdown menu items */
+    ul[data-baseweb="menu"] {
+        background-color: #161B26 !important;
+        border: 1px solid #4A90E2 !important;
     }
+    li[data-baseweb="option"] {
+        color: white !important;
+    }
+    
+    /* Placeholder Visibility */
+    ::placeholder { color: #AAAAAA !important; opacity: 1; }
 
-    /* 4. BUTTONS (Professional Blue) */
+    /* 4. BUTTONS (Professional Blue - Always Visible) */
     div.stButton > button { 
         background-color: #4A90E2 !important; 
         color: white !important; 
@@ -75,14 +81,22 @@ st.markdown("""
     div.stButton > button:hover { 
         background-color: #357ABD !important; 
         box-shadow: 0px 4px 15px rgba(74, 144, 226, 0.4);
+        color: white !important;
+    }
+    div.stButton > button:focus {
+        color: white !important;
+        border-color: white !important;
     }
 
-    /* 5. EXPANDER HEADERS (Fixing White-on-White) */
+    /* 5. EXPANDERS (Terms & Payment) */
     .streamlit-expanderHeader {
         background-color: #2B313E !important;
         color: #FFFFFF !important;
         border: 1px solid #4A90E2 !important;
         border-radius: 8px;
+    }
+    .streamlit-expanderHeader:hover {
+        color: #4A90E2 !important;
     }
     .streamlit-expanderContent {
         background-color: #161B26 !important;
@@ -90,16 +104,15 @@ st.markdown("""
         color: #E0E0E0 !important;
     }
     
-    /* 6. LAYOUT & CHAT */
+    /* 6. PASSWORD EYE ICON */
+    button[aria-label="Show password"] { color: #E0E0E0 !important; }
+
+    /* 7. LAYOUT & CHAT */
     .block-container { padding-top: 1rem; padding-bottom: 140px; }
     [data-testid="stFileUploader"] { padding: 0px; }
     .stAudioInput { margin-top: 5px; }
     .stChatMessage .st-emotion-cache-1p1m4ay { width: 45px; height: 45px; }
-    
-    /* Lock Input when Processing */
     .stApp[data-test-state="running"] .stChatInput { opacity: 0.5; pointer-events: none; }
-    
-    /* 7. MATH SCROLLING (Mobile) */
     .katex-display { overflow-x: auto; overflow-y: hidden; padding-bottom: 5px; color: #FFD700 !important; }
 </style>
 """, unsafe_allow_html=True)
@@ -139,31 +152,36 @@ def clean_latex_for_chat(text):
     return text
 
 def translate_latex_for_pdf(text):
-    """Translates LaTeX to Readable Text for PDF (Fixes 'Bad Escape' Error)"""
+    """Translates LaTeX to Clean Mathematical Notation for PDF"""
     if not text: return ""
     text = re.sub(r'【.*?†source】', '', text)
     
-    # 1. Complex Structures (Integrals, Fractions) - Regex
-    text = re.sub(r'\\int_\{(.*?)\}\^\{(.*?)\}', r'Integral(\1 to \2)', text) 
-    text = re.sub(r'\\frac{(.*?)}{(.*?)}', r'(\1 / \2)', text) 
-    text = re.sub(r'\\left\[(.*?)\\right\]_\{(.*?)\}\^\{(.*?)\}', r'[\1] evaluated from \2 to \3', text)
+    # 1. Fractions: \frac{a}{b} -> (a/b)
+    # Removing \frac and putting logic in parens
+    text = re.sub(r'\\frac{(.*?)}{(.*?)}', r'(\1 / \2)', text)
     
-    # 2. Simple Symbol Replacement (Using safer .replace method)
-    # This prevents the regex engine from crashing on weird backslashes
-    replacements = [
-        (r'\cdot', ' * '), (r'\times', ' x '), (r'\sqrt', 'sqrt'),
-        (r'\approx', '~='), (r'\le', '<='), (r'\ge', '>='),
-        (r'\infty', 'infinity'), (r'\pi', 'pi'), (r'\theta', 'theta'),
-        (r'\_', '_'), (r'\$', ''), (r'\,', ' ')
-    ]
+    # 2. Integrals: \int_{a}^{b} -> int_a^b
+    text = re.sub(r'\\int_\{(.*?)\}\^\{(.*?)\}', r'int_\1^\2', text)
+    text = text.replace(r'\int', 'int')
     
-    for old, new in replacements:
-        text = text.replace(old, new)
+    # 3. Limits / Brackets: Remove \left, \right, and curly braces used for grouping
+    text = text.replace(r'\left[', '[').replace(r'\right]', ']')
+    text = text.replace(r'\left(', '(').replace(r'\right)', ')')
+    text = text.replace(r'\{', '{').replace(r'\}', '}') # escaped braces
+    
+    # 4. Clean up LaTeX syntax that PDF can't read
+    # We remove the backslashes from common commands to make them look like text math
+    commands = [r'\cdot', r'\times', r'\sqrt', r'\approx', r'\le', r'\ge', r'\infty', r'\pi', r'\theta', r'\sin', r'\cos', r'\tan']
+    for cmd in commands:
+        text = text.replace(cmd, cmd.replace('\\', '')) # e.g. \sin -> sin
         
-    # Clean up
-    text = text.replace('^', '^') # Ensure caret is preserved
-    text = " ".join(text.split()) # Remove extra whitespace
+    # 5. Remove delimiters
+    text = text.replace('$$', '').replace('$', '').replace('\\', '')
     
+    # 6. Compress spaces
+    text = re.sub(r'\s+', ' ', text).strip()
+    
+    # Encode to Latin-1 compatible
     return text.encode('latin-1', 'replace').decode('latin-1')
 
 def show_branding():
@@ -386,10 +404,8 @@ prompt = audio_prompt if audio_prompt else text_prompt
 if prompt:
     st.session_state.processing = True
     msg_data = {"role": "user", "content": prompt}
-    
     if uploaded_file:
         msg_data.update({"file_data": uploaded_file.getvalue(), "file_name": uploaded_file.name, "file_type": uploaded_file.type})
-    
     st.session_state.messages.append(msg_data)
     st.rerun()
 
@@ -424,7 +440,6 @@ if st.session_state.processing and st.session_state.messages[-1]["role"] == "use
     client.beta.threads.messages.create(thread_id=st.session_state.thread_id, role="user", content=api_content, attachments=att if att else None)
 
     with st.chat_message("assistant", avatar=LOGO_URL):
-        # STRICT SYSTEM INSTRUCTION TO FORCE LATEX FORMATTING
         stream = client.beta.threads.runs.create(
             thread_id=st.session_state.thread_id, assistant_id=assistant_id, stream=True,
             additional_instructions="You are JEEx. Use $$...$$ for block math and $...$ for inline. Strictly LaTeX."
