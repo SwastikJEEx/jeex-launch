@@ -41,22 +41,34 @@ st.markdown("""
     strong { color: #FFD700 !important; font-weight: 600; }
     code { color: #FF7043 !important; background-color: #1E2330; }
 
-    /* 3. INPUT FIELDS & DROPDOWNS */
+    /* 3. INPUT FIELDS & DROPDOWNS (The "White Theme" Killer) */
+    /* Target the container of text inputs and selects */
     div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="base-input"] {
         background-color: #1E2330 !important;
         border: 1px solid #4A90E2 !important;
         border-radius: 8px !important;
     }
+    
+    /* Target the actual text inside inputs */
     input[type="text"], input[type="password"], textarea, div[data-baseweb="select"] div {
-        color: #FFFFFF !important;
+        color: #FFFFFF !important; /* Force White */
         background-color: transparent !important;
         caret-color: #4A90E2 !important;
     }
-    ul[data-baseweb="menu"] { background-color: #161B26 !important; border: 1px solid #4A90E2 !important; }
-    li[data-baseweb="option"] { color: white !important; }
+    
+    /* Target the dropdown menu items */
+    ul[data-baseweb="menu"] {
+        background-color: #161B26 !important;
+        border: 1px solid #4A90E2 !important;
+    }
+    li[data-baseweb="option"] {
+        color: white !important;
+    }
+    
+    /* Placeholder Visibility */
     ::placeholder { color: #AAAAAA !important; opacity: 1; }
 
-    /* 4. BUTTONS (Professional Blue) */
+    /* 4. BUTTONS (Professional Blue - Always Visible) */
     div.stButton > button { 
         background-color: #4A90E2 !important; 
         color: white !important; 
@@ -71,62 +83,58 @@ st.markdown("""
         box-shadow: 0px 4px 15px rgba(74, 144, 226, 0.4);
         color: white !important;
     }
-
-    /* 5. CUSTOM PAY BUTTONS (HTML) */
-    .pay-btn-link {
-        display: block;
-        width: 100%;
-        background-color: #4A90E2;
+    div.stButton > button:focus {
         color: white !important;
-        text-align: center;
-        padding: 12px;
-        margin-bottom: 12px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-weight: 600;
-        border: 1px solid #4A90E2;
-        transition: all 0.3s ease;
-    }
-    .pay-btn-link:hover {
-        background-color: #357ABD;
-        box-shadow: 0px 4px 15px rgba(74, 144, 226, 0.4);
-        border-color: #357ABD;
-    }
-    .slashed {
-        text-decoration: line-through;
-        opacity: 0.7;
-        margin-right: 5px;
-        font-size: 0.9em;
+        border-color: white !important;
     }
 
-    /* 6. EXPANDERS & OTHERS */
-    .streamlit-expanderHeader { background-color: #2B313E !important; color: #FFFFFF !important; border: 1px solid #4A90E2 !important; border-radius: 8px; }
-    .streamlit-expanderContent { background-color: #161B26 !important; border: 1px solid #2B313E; color: #E0E0E0 !important; }
+    /* 5. EXPANDERS (Terms & Payment) */
+    .streamlit-expanderHeader {
+        background-color: #2B313E !important;
+        color: #FFFFFF !important;
+        border: 1px solid #4A90E2 !important;
+        border-radius: 8px;
+    }
+    .streamlit-expanderHeader:hover {
+        color: #4A90E2 !important;
+    }
+    .streamlit-expanderContent {
+        background-color: #161B26 !important;
+        border: 1px solid #2B313E;
+        color: #E0E0E0 !important;
+    }
+    
+    /* 6. PASSWORD EYE ICON */
     button[aria-label="Show password"] { color: #E0E0E0 !important; }
+
+    /* 7. LAYOUT & CHAT */
     .block-container { padding-top: 1rem; padding-bottom: 140px; }
     [data-testid="stFileUploader"] { padding: 0px; }
     .stAudioInput { margin-top: 5px; }
+    .stChatMessage .st-emotion-cache-1p1m4ay { width: 45px; height: 45px; }
+    .stApp[data-test-state="running"] .stChatInput { opacity: 0.5; pointer-events: none; }
     .katex-display { overflow-x: auto; overflow-y: hidden; padding-bottom: 5px; color: #FFD700 !important; }
 </style>
 """, unsafe_allow_html=True)
 
 # --- 5. HELPER FUNCTIONS ---
 
-def send_lead_notification(name, email, phone):
-    """Sends Lead Generation email to Admin immediately after form submit"""
+def send_final_notification(name, email, phone, trans_id):
+    """Sends FINAL email with Transaction ID to Admin"""
     try:
         url = f"https://formsubmit.co/{ADMIN_EMAIL}"
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
         }
         payload = {
-            "_subject": f"🔥 NEW JEEx LEAD: {name}",
+            "_subject": f"💰 PAYMENT VERIFICATION: {name}",
             "_captcha": "false",
             "_template": "table",
             "Name": name,
             "Email": email,
             "Phone": phone,
-            "Status": "Details Submitted - Viewing Payment Plans",
+            "Transaction ID": trans_id,
+            "Status": "Paid - Waiting for Key",
             "Timestamp": str(datetime.now())
         }
         requests.post(url, data=payload, headers=headers)
@@ -135,6 +143,7 @@ def send_lead_notification(name, email, phone):
         return False
 
 def clean_latex_for_chat(text):
+    """Formats LaTeX for Chat Display"""
     if not text: return ""
     text = re.sub(r'【.*?†source】', '', text)
     text = re.sub(r'\\\[(.*?)\\\]', r'$$\1$$', text, flags=re.DOTALL)
@@ -143,19 +152,36 @@ def clean_latex_for_chat(text):
     return text
 
 def translate_latex_for_pdf(text):
+    """Translates LaTeX to Clean Mathematical Notation for PDF"""
     if not text: return ""
     text = re.sub(r'【.*?†source】', '', text)
+    
+    # 1. Fractions: \frac{a}{b} -> (a/b)
+    # Removing \frac and putting logic in parens
     text = re.sub(r'\\frac{(.*?)}{(.*?)}', r'(\1 / \2)', text)
+    
+    # 2. Integrals: \int_{a}^{b} -> int_a^b
     text = re.sub(r'\\int_\{(.*?)\}\^\{(.*?)\}', r'int_\1^\2', text)
     text = text.replace(r'\int', 'int')
+    
+    # 3. Limits / Brackets: Remove \left, \right, and curly braces used for grouping
     text = text.replace(r'\left[', '[').replace(r'\right]', ']')
     text = text.replace(r'\left(', '(').replace(r'\right)', ')')
-    text = text.replace(r'\{', '{').replace(r'\}', '}')
+    text = text.replace(r'\{', '{').replace(r'\}', '}') # escaped braces
+    
+    # 4. Clean up LaTeX syntax that PDF can't read
+    # We remove the backslashes from common commands to make them look like text math
     commands = [r'\cdot', r'\times', r'\sqrt', r'\approx', r'\le', r'\ge', r'\infty', r'\pi', r'\theta', r'\sin', r'\cos', r'\tan']
     for cmd in commands:
-        text = text.replace(cmd, cmd.replace('\\', ''))
+        text = text.replace(cmd, cmd.replace('\\', '')) # e.g. \sin -> sin
+        
+    # 5. Remove delimiters
     text = text.replace('$$', '').replace('$', '').replace('\\', '')
+    
+    # 6. Compress spaces
     text = re.sub(r'\s+', ' ', text).strip()
+    
+    # Encode to Latin-1 compatible
     return text.encode('latin-1', 'replace').decode('latin-1')
 
 def show_branding():
@@ -199,45 +225,28 @@ def generate_pdf(messages):
         pdf.chapter_body(msg["content"])
     return pdf.output(dest='S').encode('latin-1', 'ignore')
 
-# --- 6. AUTH & LOGIC (UPDATED FOR JEExa0001-9999) ---
+# --- 6. AUTH & LOGIC ---
 def check_key_status(user_key):
-    # 1. Admin Master Key
-    if user_key == st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS"): 
-        return "ADMIN"
-    
-    # 2. Check Key Format (JEExa0001 to JEExa9999)
-    # Must be exactly "JEExa" followed by 4 digits
-    if not re.match(r"^JEExa\d{4}$", user_key):
-        return "INVALID"
-
-    # 3. Check Secrets.toml for Activation & Expiry
-    # If key is NOT in secrets, it is effectively disabled.
+    if user_key == st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS"): return "ADMIN"
     expiry_db = st.secrets.get("KEY_EXPIRY", {})
-    
     if user_key in expiry_db:
         try:
-            exp_str = expiry_db[user_key]
-            exp_date = datetime.strptime(exp_str, "%Y-%m-%d").date()
-            if datetime.now().date() <= exp_date:
-                return "VALID"
-            else:
-                return "EXPIRED"
-        except:
-            return "INVALID"
-    
-    # If key format is correct but not in DB, it's disabled.
+            exp = datetime.strptime(expiry_db[user_key], "%Y-%m-%d").date()
+            if datetime.now().date() > exp: return "EXPIRED"
+            else: return "VALID"
+        except: return "INVALID"
     return "INVALID"
 
 if st.session_state.get('logout', False):
     for key in list(st.session_state.keys()): del st.session_state[key]
     st.rerun()
 
-# --- 7. SIDEBAR (NEW PAYMENT FLOW) ---
+# --- 7. SIDEBAR (SMART PAYMENT FLOW) ---
 with st.sidebar:
     st.markdown("## 🔐 Premium Access")
     
     # Password Input
-    user_key = st.text_input("Enter Access Key:", type="password", placeholder="Ex: JEExa0001") 
+    user_key = st.text_input("Enter Access Key:", type="password") 
     status = check_key_status(user_key)
     
     # --- UNLOCKED TOOLS ---
@@ -260,82 +269,85 @@ with st.sidebar:
 
     # --- LOCKED (NEW PAYMENT WORKFLOW) ---
     else:
-        if user_key and status == "EXPIRED": st.error("❌ Key Expired")
-        elif user_key and status == "INVALID": st.error("❌ Invalid or Inactive Key")
+        if user_key and status != "VALID": st.error("❌ Invalid Key")
         
         st.markdown("### ⚡ Subscribe Now")
-        with st.expander("💎 Get Premium Plans", expanded=True):
+        with st.expander("💎 Get Premium (₹99/mo)", expanded=True):
             
-            # STEP 1: CAPTURE DETAILS
+            # STEP 1
             if st.session_state.payment_step == 1:
-                st.markdown("Fill details to unlock plan options:")
+                st.markdown("Fill details to get your key:")
                 with st.form("reg_form"):
                     name = st.text_input("Name")
                     email = st.text_input("Email")
                     phone = st.text_input("WhatsApp No.")
-                    sub = st.form_submit_button("🚀 Submit Details")
+                    sub = st.form_submit_button("🚀 Proceed to Pay")
                 
                 if sub:
                     if name and email and phone:
                         st.session_state.user_details = {"name": name, "email": email, "phone": phone}
-                        # Send email instantly
-                        send_lead_notification(name, email, phone)
                         st.session_state.payment_step = 2
                         st.rerun()
                     else: st.warning("⚠️ Fill all details.")
 
-            # STEP 2: SHOW PLAN BUTTONS
+            # STEP 2
             elif st.session_state.payment_step == 2:
-                st.info(f"Hi {st.session_state.user_details['name']}, choose your rank booster:")
+                st.info(f"Hi {st.session_state.user_details['name']}, scan to pay:")
+                try: st.image("upi_qr.png", caption="UPI QR", use_container_width=True)
+                except: st.info(f"Pay to: **{ADMIN_WHATSAPP}@upi**")
                 
-                # PLAN 1: Weekly
-                st.markdown("""
-                <a href="https://topmate.io/jeexpro/1840366" target="_blank" class="pay-btn-link">
-                    Buy Weekly Plan &nbsp; <span class="slashed">₹49</span> ₹29
-                </a>
-                """, unsafe_allow_html=True)
-
-                # PLAN 2: Monthly
-                st.markdown("""
-                <a href="https://topmate.io/jeexpro/1840721" target="_blank" class="pay-btn-link">
-                    Buy Monthly Plan &nbsp; <span class="slashed">₹99</span> ₹59
-                </a>
-                """, unsafe_allow_html=True)
-
-                # PLAN 3: 3 Months
-                st.markdown("""
-                <a href="https://topmate.io/jeexpro/1840723" target="_blank" class="pay-btn-link">
-                    Buy 3 Month Plan &nbsp; <span class="slashed">₹199</span> ₹159
-                </a>
-                """, unsafe_allow_html=True)
-
-                # PLAN 4: 6 Months
-                st.markdown("""
-                <a href="https://topmate.io/jeexpro/1840732" target="_blank" class="pay-btn-link">
-                    Buy 6 Month Plan &nbsp; <span class="slashed">₹349</span> ₹279
-                </a>
-                """, unsafe_allow_html=True)
+                st.markdown("---")
+                st.markdown("**Step 2: Enter Transaction ID**")
+                trans_id = st.text_input("UPI Transaction ID:", placeholder="e.g. T230...")
+                st.caption("ℹ️ *Found in Payment History (GPay/PhonePe/Paytm).*")
                 
-                st.caption("ℹ️ *After payment, you will receive your valid JEExa Key via Email/WhatsApp.*")
-
+                if st.button("✅ Verify & Submit"):
+                    if len(trans_id) > 6:
+                        det = st.session_state.user_details
+                        send_final_notification(det['name'], det['email'], det['phone'], trans_id)
+                        st.session_state.user_details['trans_id'] = trans_id
+                        st.session_state.payment_step = 3
+                        st.rerun()
+                    else: st.error("Invalid ID")
+                
                 if st.button("Back"):
+                    st.session_state.payment_step = 1
+                    st.rerun()
+
+            # STEP 3
+            elif st.session_state.payment_step == 3:
+                st.success("🎉 Payment Submitted!")
+                st.markdown("Please allow few hours for verification. Once verified you will receive your access key on the provided email and Whatsapp number.")
+                
+                det = st.session_state.user_details
+                msg = f"Hello JEEx!%0A*PAID*%0AName: {det['name']}%0AID: {det['trans_id']}"
+                wa_link = f"https://wa.me/{ADMIN_WHATSAPP}?text={msg}"
+                
+                st.markdown(f'<a href="{wa_link}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; border:none; padding:12px; border-radius:5px; font-weight:bold;">👉 Chat on WhatsApp</button></a>', unsafe_allow_html=True)
+                
+                if st.button("Start Over"):
                     st.session_state.payment_step = 1
                     st.rerun()
 
         st.markdown("---")
         with st.expander("📄 Detailed Terms & Conditions"): 
             st.markdown("""
-            **1. Service Scope:** JEEx Pro is an AI-powered educational aid for JEE preparation.
-            **2. Account Usage:** Single User. Keys are strictly personal.
-            **3. Payment Policy:** No Refunds once the key is issued.
-            **4. Key Activation:** Keys are activated manually after payment verification.
+            **1. Service Scope:** JEEx Pro is an AI-powered educational aid for JEE preparation. It provides explanations, solves numericals, and offers strategies.
+            
+            **2. Account Usage:** - **Single User:** Keys are strictly personal.
+            - **Prohibited:** Sharing keys on public groups results in an immediate ban.
+            
+            **3. Payment Policy:** - Access Keys are digital goods. 
+            - **No Refunds** are provided once the key is issued.
+            
+            **4. AI Limitations:** - While accurate, AI can make errors. Verify critical data with NCERT.
             """)
 
 # --- 8. ADMIN PANEL ---
 if status == "ADMIN":
     st.sidebar.success("🔑 Admin Mode")
     c1, c2 = st.columns(2)
-    with c1: new_id = st.text_input("Key ID (e.g. JEExa0001)")
+    with c1: new_id = st.text_input("Key ID")
     with c2: days = st.number_input("Days", 30)
     if new_id:
         exp = (datetime.now() + timedelta(days=days)).strftime("%Y-%m-%d")
