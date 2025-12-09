@@ -113,25 +113,31 @@ st.markdown("""
 # --- 5. HELPER FUNCTIONS ---
 
 def send_lead_notification(name, email, phone):
-    """Sends Lead Generation email to Admin immediately after form submit"""
+    """Sends Lead Generation email to Admin immediately using Requests"""
+    # URL for FormSubmit
+    url = f"https://formsubmit.co/{ADMIN_EMAIL}"
+    
+    # Data Payload
+    payload = {
+        "_subject": f"🔥 NEW JEEx LEAD: {name}",
+        "_captcha": "false",  # Disable captcha
+        "_template": "table", # Clean table format
+        "Name": name,
+        "Email": email,
+        "Phone": phone,
+        "Status": "Details Submitted - Viewing Payment Plans",
+        "Timestamp": str(datetime.now())
+    }
+    
     try:
-        url = f"https://formsubmit.co/{ADMIN_EMAIL}"
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
-        }
-        payload = {
-            "_subject": f"🔥 NEW JEEx LEAD: {name}",
-            "_captcha": "false",
-            "_template": "table",
-            "Name": name,
-            "Email": email,
-            "Phone": phone,
-            "Status": "Details Submitted - Viewing Payment Plans",
-            "Timestamp": str(datetime.now())
-        }
-        requests.post(url, data=payload, headers=headers)
-        return True
-    except:
+        # We use a standard POST request
+        response = requests.post(url, data=payload)
+        # Check if the request was successful (Status Code 200)
+        if response.status_code == 200:
+            return True
+        else:
+            return False
+    except Exception as e:
         return False
 
 def clean_latex_for_chat(text):
@@ -206,12 +212,10 @@ def check_key_status(user_key):
         return "ADMIN"
     
     # 2. Check Key Format (JEExa0001 to JEExa9999)
-    # Must be exactly "JEExa" followed by 4 digits
     if not re.match(r"^JEExa\d{4}$", user_key):
         return "INVALID"
 
     # 3. Check Secrets.toml for Activation & Expiry
-    # If key is NOT in secrets, it is effectively disabled.
     expiry_db = st.secrets.get("KEY_EXPIRY", {})
     
     if user_key in expiry_db:
@@ -225,7 +229,6 @@ def check_key_status(user_key):
         except:
             return "INVALID"
     
-    # If key format is correct but not in DB, it's disabled.
     return "INVALID"
 
 if st.session_state.get('logout', False):
@@ -236,8 +239,8 @@ if st.session_state.get('logout', False):
 with st.sidebar:
     st.markdown("## 🔐 Premium Access")
     
-    # Password Input
-    user_key = st.text_input("Enter Access Key:", type="password", placeholder="Ex: JEExa0001") 
+    # Password Input (FIXED: REMOVED EXAMPLE TEXT)
+    user_key = st.text_input("Enter Access Key:", type="password", placeholder="Enter key here...") 
     status = check_key_status(user_key)
     
     # --- UNLOCKED TOOLS ---
@@ -278,8 +281,16 @@ with st.sidebar:
                 if sub:
                     if name and email and phone:
                         st.session_state.user_details = {"name": name, "email": email, "phone": phone}
-                        # Send email instantly
-                        send_lead_notification(name, email, phone)
+                        
+                        # --- EMAIL SENDING ---
+                        with st.spinner("Submitting details..."):
+                            success = send_lead_notification(name, email, phone)
+                        
+                        if success:
+                            st.toast("✅ Details Sent! Choose a plan below.")
+                        else:
+                            st.toast("⚠️ Connection issue, but you can still proceed.")
+                        
                         st.session_state.payment_step = 2
                         st.rerun()
                     else: st.warning("⚠️ Fill all details.")
