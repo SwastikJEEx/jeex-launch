@@ -26,20 +26,22 @@ if "audio_key" not in st.session_state: st.session_state.audio_key = 0
 if "payment_step" not in st.session_state: st.session_state.payment_step = 1
 if "user_details" not in st.session_state: st.session_state.user_details = {}
 
-# --- 4. PROFESSIONAL CSS (VISIBILITY FIXED) ---
+# --- 4. PROFESSIONAL CSS (VISIBILITY FIXED / DROPDOWNS & SIDEBAR BLOCKS) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
-    
-    /* 1. FORCE DARK BACKGROUNDS */
+
+    /* 1. FORCE DARK BACKGROUNDS (app + sidebar) */
     .stApp { background-color: #0E1117 !important; color: #E0E0E0 !important; }
     [data-testid="stSidebar"] { background-color: #161B26 !important; border-right: 1px solid #2B313E !important; }
-    
-    /* 2. TEXT COLOR FORCE */
-    h1, h2, h3, h4, h5, h6, p, li, div, span, label { color: #E0E0E0 !important; }
+
+    /* 2. GLOBAL TEXT COLOR FORCE */
+    h1, h2, h3, h4, h5, h6, p, li, div, span, label, a, small, strong, code {
+        color: #E0E0E0 !important;
+    }
     strong { color: #FFD700 !important; font-weight: 600; }
-    code { color: #FF7043 !important; background-color: #1E2330; }
+    code { color: #FF7043 !important; background-color: #1E2330 !important; padding: 2px 4px; border-radius: 4px; }
 
     /* 3. INPUT FIELDS & DROPDOWNS */
     div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="base-input"] {
@@ -52,13 +54,10 @@ st.markdown("""
         background-color: transparent !important;
         caret-color: #4A90E2 !important;
     }
-    ul[data-baseweb="menu"] { background-color: #161B26 !important; border: 1px solid #4A90E2 !important; }
-    li[data-baseweb="option"] { color: white !important; }
     ::placeholder { color: #AAAAAA !important; opacity: 1; }
 
-    /* 4. BUTTONS (Professional Blue) */
-    /* Force consistent button appearance across dark & light browser themes */
-    button, input[type="submit"], input[type="button"], .stButton>button, .stDownloadButton {
+    /* 4. BUTTONS (force consistent appearance across dark & light) */
+    button, input[type="submit"], input[type="button"], .stButton>button, .stDownloadButton, .st-bk {
         background-color: #4A90E2 !important;
         color: #FFFFFF !important;
         border: none !important;
@@ -68,20 +67,19 @@ st.markdown("""
         transition: all 0.3s !important;
         box-shadow: none !important;
     }
-    /* Hover state */
     button:hover, input[type="submit"]:hover, input[type="button"]:hover, .stButton>button:hover, .stDownloadButton:hover {
         background-color: #357ABD !important;
         box-shadow: 0px 4px 15px rgba(74, 144, 226, 0.4) !important;
         color: #FFFFFF !important;
     }
 
-    /* Specific fix for Streamlit download button variants and anchor-styled buttons */
+    /* 5. SPECIFIC DOWNLOAD / STREAMLIT VARIANTS */
     button[title="Download"], button[aria-label="Download"], .stDownloadButton button, .st-download-button button {
         background-color: #4A90E2 !important;
         color: #FFFFFF !important;
     }
 
-    /* 5. CUSTOM PAY BUTTONS (HTML) */
+    /* 6. CUSTOM PAY BUTTONS (HTML anchors) */
     .pay-btn-link {
         display: block;
         width: 100%;
@@ -101,21 +99,89 @@ st.markdown("""
         box-shadow: 0px 4px 15px rgba(74, 144, 226, 0.4);
         border-color: #357ABD;
     }
-    .slashed {
-        text-decoration: line-through;
-        opacity: 0.7;
-        margin-right: 5px;
-        font-size: 0.9em;
+    .slashed { text-decoration: line-through; opacity: 0.7; margin-right: 5px; font-size: 0.9em; }
+
+    /* 7. EXPANDERS & CONTENT AREAS */
+    .streamlit-expanderHeader { background-color: #2B313E !important; color: #FFFFFF !important; border: 1px solid #4A90E2 !important; border-radius: 8px; }
+    .streamlit-expanderContent { background-color: #161B26 !important; border: 1px solid #2B313E !important; color: #E0E0E0 !important; }
+
+    /* 8. KAteX / math block styling */
+    .katex-display { overflow-x: auto; overflow-y: hidden; padding-bottom: 5px; color: #FFD700 !important; }
+
+    /* 9. FILE UPLOADER + ATTACHMENT BLOCK (force readable background & controls) */
+    [data-testid="stFileUploader"], .stFileUploader, .stFileUploader * {
+        background-color: #14181C !important;
+        color: #E0E0E0 !important;
+        border: 1px solid #2B313E !important;
+        border-radius: 8px !important;
+    }
+    [data-testid="stFileUploader"] .css-1f0tk5o, [data-testid="stFileUploader"] .css-1v0mbdj {
+        color: #E0E0E0 !important;
+    }
+    /* placeholder text inside uploader */
+    [data-testid="stFileUploader"] input::placeholder { color: #AAAAAA !important; opacity: 1 !important; }
+
+    /* 10. VOICE / AUDIO INPUT BLOCK (fix error message readability + background) */
+    .stAudioInput, .stAudioInput *, .st-audio-player, audio, .stAudioInput .css-1offfwp {
+        background-color: #14181C !important;
+        color: #E0E0E0 !important;
+        border: 1px solid #2B313E !important;
+        border-radius: 8px !important;
+    }
+    /* messages / status text that appear inside audio widget (errors, transcribe status) */
+    .stAudioInput [role="status"], .stAudioInput .stText, .stAudioInput .stMarkdown, .stAudioInput .css-1bga2a5 {
+        color: #E0E0E0 !important;
+        background: transparent !important;
     }
 
-    /* 6. EXPANDERS & OTHERS */
-    .streamlit-expanderHeader { background-color: #2B313E !important; color: #FFFFFF !important; border: 1px solid #4A90E2 !important; border-radius: 8px; }
-    .streamlit-expanderContent { background-color: #161B26 !important; border: 1px solid #2B313E; color: #E0E0E0 !important; }
-    button[aria-label="Show password"] { color: #E0E0E0 !important; }
+    /* 11. FORCE DROPDOWN / SELECT MENU VISIBILITY (covers baseweb popovers & listboxes) */
+    ul[data-baseweb="menu"], div[role="listbox"], .baseweb-popover, .baseweb-menu, .rc-virtual-list {
+        background-color: #161B26 !important;
+        color: #E0E0E0 !important;
+        border: 1px solid #2B313E !important;
+    }
+    li[data-baseweb="option"], ul[data-baseweb="menu"] li, .baseweb-menu li, .rc-virtual-list .list-item {
+        color: #E0E0E0 !important;
+        background-color: transparent !important;
+    }
+    .baseweb-popover * { color: #E0E0E0 !important; }
+
+    /* 12. SELECT / DROPDOWN LABELS & HEADINGS inside open menu */
+    .css-1r6slb0, .css-1d391kg, .stSelectbox, div[role="option"], div[role="menuitem"] {
+        color: #E0E0E0 !important;
+    }
+
+    /* 13. SIDEBAR LABELS (Attach Question / Voice Chat headings) */
+    [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, [data-testid="stSidebar"] label {
+        color: #FFD700 !important;
+    }
+    [data-testid="stSidebar"] .stText, [data-testid="stSidebar"] p, [data-testid="stSidebar"] small {
+        color: #E0E0E0 !important;
+    }
+
+    /* 14. CHAT INPUT bar (keep visible on white theme) */
+    .stChatInput, .stChatInput * {
+        background-color: transparent !important;
+        color: #E0E0E0 !important;
+    }
+
+    /* 15. make sure icons/buttons inside sidebar remain visible */
+    [data-testid="stSidebar"] button, [data-testid="stSidebar"] a, [data-testid="stSidebar"] .stButton>button {
+        background-color: #4A90E2 !important;
+        color: #FFFFFF !important;
+        border-radius: 8px !important;
+    }
+
+    /* 16. reduce unnatural white borders added by some host themes */
+    .css-1v3fvcr, .css-1y8i9bb {
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    /* 17. small spacing tweaks */
     .block-container { padding-top: 1rem; padding-bottom: 140px; }
-    [data-testid="stFileUploader"] { padding: 0px; }
-    .stAudioInput { margin-top: 5px; }
-    .katex-display { overflow-x: auto; overflow-y: hidden; padding-bottom: 5px; color: #FFD700 !important; }
+    [data-testid="stFileUploader"] { padding: 8px !important; }
+    .stAudioInput { margin-top: 5px; padding: 6px !important; }
 </style>
 """, unsafe_allow_html=True)
 
