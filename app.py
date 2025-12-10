@@ -57,19 +57,28 @@ st.markdown("""
     ::placeholder { color: #AAAAAA !important; opacity: 1; }
 
     /* 4. BUTTONS (Professional Blue) */
-    div.stButton > button { 
-        background-color: #4A90E2 !important; 
-        color: white !important; 
-        border: none !important; 
-        border-radius: 8px; 
-        padding: 10px 20px;
-        font-weight: 600;
-        transition: all 0.3s;
+    /* Force consistent button appearance across dark & light browser themes */
+    button, input[type="submit"], input[type="button"], .stButton>button, .stDownloadButton {
+        background-color: #4A90E2 !important;
+        color: #FFFFFF !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 10px 20px !important;
+        font-weight: 600 !important;
+        transition: all 0.3s !important;
+        box-shadow: none !important;
     }
-    div.stButton > button:hover { 
-        background-color: #357ABD !important; 
-        box-shadow: 0px 4px 15px rgba(74, 144, 226, 0.4);
-        color: white !important;
+    /* Hover state */
+    button:hover, input[type="submit"]:hover, input[type="button"]:hover, .stButton>button:hover, .stDownloadButton:hover {
+        background-color: #357ABD !important;
+        box-shadow: 0px 4px 15px rgba(74, 144, 226, 0.4) !important;
+        color: #FFFFFF !important;
+    }
+
+    /* Specific fix for Streamlit download button variants and anchor-styled buttons */
+    button[title="Download"], button[aria-label="Download"], .stDownloadButton button, .st-download-button button {
+        background-color: #4A90E2 !important;
+        color: #FFFFFF !important;
     }
 
     /* 5. CUSTOM PAY BUTTONS (HTML) */
@@ -460,4 +469,3 @@ if st.session_state.processing and st.session_state.messages[-1]["role"] == "use
     if 'audio_value' in locals() and audio_value: st.session_state.audio_key += 1
     st.session_state.processing = False
     st.rerun()
-
