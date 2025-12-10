@@ -301,28 +301,28 @@ with st.sidebar:
                 
                 # PLAN 1: Weekly
                 st.markdown("""
-                <a href="https://topmate.io/jeexpro/1840366" target="_blank" class="pay-btn-link">
+                <a href="https://superprofile.bio/vp/BfdrAn72" target="_blank" class="pay-btn-link">
                     Buy Weekly Plan &nbsp; <span class="slashed">₹49</span> ₹29
                 </a>
                 """, unsafe_allow_html=True)
 
                 # PLAN 2: Monthly
                 st.markdown("""
-                <a href="https://topmate.io/jeexpro/1840721" target="_blank" class="pay-btn-link">
+                <a href="https://superprofile.bio/vp/JEExPRO" target="_blank" class="pay-btn-link">
                     Buy Monthly Plan &nbsp; <span class="slashed">₹99</span> ₹59
                 </a>
                 """, unsafe_allow_html=True)
 
                 # PLAN 3: 3 Months
                 st.markdown("""
-                <a href="https://topmate.io/jeexpro/1840723" target="_blank" class="pay-btn-link">
+                <a href="https://superprofile.bio/vp/1sXJLqv3" target="_blank" class="pay-btn-link">
                     Buy 3 Month Plan &nbsp; <span class="slashed">₹199</span> ₹159
                 </a>
                 """, unsafe_allow_html=True)
 
                 # PLAN 4: 6 Months
                 st.markdown("""
-                <a href="https://topmate.io/jeexpro/1840732" target="_blank" class="pay-btn-link">
+                <a href="https://superprofile.bio/vp/EbjbO_0N" target="_blank" class="pay-btn-link">
                     Buy 6 Month Plan &nbsp; <span class="slashed">₹349</span> ₹279
                 </a>
                 """, unsafe_allow_html=True)
@@ -460,3 +460,4 @@ if st.session_state.processing and st.session_state.messages[-1]["role"] == "use
     if 'audio_value' in locals() and audio_value: st.session_state.audio_key += 1
     st.session_state.processing = False
     st.rerun()
+
