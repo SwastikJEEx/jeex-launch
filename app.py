@@ -17,6 +17,11 @@ ADMIN_WHATSAPP = "919839940400"
 ADMIN_EMAIL = "jeexaipro@gmail.com"
 LOGO_URL = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/1d6ef8ca3ac05432ed370338d4c04d6a03541f23/logo.png.png"
 
+# --- FREE TRIAL FLAG ---
+# Set to True to temporarily disable access-key gating and make the app free for all users.
+# Keep this True for the current promotion; set to False when you want to restore normal paid access behavior.
+FREE_TRIAL = True
+
 # --- 3. SESSION STATE INITIALIZATION ---
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "assistant", "content": "Welcome Champ! 🎓 Physics, Chemistry ya Maths—bas photo bhejo ya type karo. Let's crack it! 🚀"}]
@@ -301,6 +306,11 @@ with st.sidebar:
     
     user_key = st.text_input("Enter Access Key:", type="password", placeholder="Enter key here...") 
     status = check_key_status(user_key)
+
+    # --- FREE TRIAL OVERRIDE ---
+    # If FREE_TRIAL is True we unlock the app for everyone (but retain ADMIN when MASTER_KEY is provided)
+    if FREE_TRIAL and status != "ADMIN":
+        status = "VALID"
     
     # --- UNLOCKED TOOLS ---
     if status == "VALID" or status == "ADMIN":
