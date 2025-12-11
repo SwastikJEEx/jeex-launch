@@ -6,6 +6,8 @@ import re
 from datetime import datetime, timedelta
 from fpdf import FPDF
 import requests
+import traceback
+import logging
 
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="JEEx Pro", page_icon="⚛️", layout="centered", initial_sidebar_state="expanded")
@@ -21,29 +23,38 @@ if "messages" not in st.session_state:
 if "processing" not in st.session_state: st.session_state.processing = False
 if "uploader_key" not in st.session_state: st.session_state.uploader_key = 0
 if "audio_key" not in st.session_state: st.session_state.audio_key = 0
+# Persist currently attached file (to avoid removal mid-response)
+if "current_uploaded_file" not in st.session_state: st.session_state.current_uploaded_file = None
 
 # PAYMENT STATE
 if "payment_step" not in st.session_state: st.session_state.payment_step = 1
 if "user_details" not in st.session_state: st.session_state.user_details = {}
 
-# --- 4. PROFESSIONAL CSS (VISIBILITY FIXED / DROPDOWNS & SIDEBAR BLOCKS) ---
+# Simple logger
+logger = logging.getLogger("jeex")
+logger.setLevel(logging.INFO)
+
+# --- 4. PROFESSIONAL CSS (VISIBILITY & LAYOUT FIXES) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
-    /* 1. FORCE DARK BACKGROUNDS (app + sidebar) */
+    /* App + Sidebar base */
     .stApp { background-color: #0E1117 !important; color: #E0E0E0 !important; }
     [data-testid="stSidebar"] { background-color: #161B26 !important; border-right: 1px solid #2B313E !important; }
 
-    /* 2. GLOBAL TEXT COLOR FORCE */
+    /* Header / top bar (some hosts add white header) */
+    header, header * { background-color: #0E1117 !important; color: #E0E0E0 !important; border: none !important; box-shadow: none !important; }
+
+    /* Global text */
     h1, h2, h3, h4, h5, h6, p, li, div, span, label, a, small, strong, code {
         color: #E0E0E0 !important;
     }
     strong { color: #FFD700 !important; font-weight: 600; }
     code { color: #FF7043 !important; background-color: #1E2330 !important; padding: 2px 4px; border-radius: 4px; }
 
-    /* 3. INPUT FIELDS & DROPDOWNS */
+    /* Inputs & selects */
     div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="base-input"] {
         background-color: #1E2330 !important;
         border: 1px solid #4A90E2 !important;
@@ -56,7 +67,7 @@ st.markdown("""
     }
     ::placeholder { color: #AAAAAA !important; opacity: 1; }
 
-    /* 4. BUTTONS (force consistent appearance across dark & light) */
+    /* Buttons (force consistent appearance) */
     button, input[type="submit"], input[type="button"], .stButton>button, .stDownloadButton, .st-bk {
         background-color: #4A90E2 !important;
         color: #FFFFFF !important;
@@ -70,16 +81,15 @@ st.markdown("""
     button:hover, input[type="submit"]:hover, input[type="button"]:hover, .stButton>button:hover, .stDownloadButton:hover {
         background-color: #357ABD !important;
         box-shadow: 0px 4px 15px rgba(74, 144, 226, 0.4) !important;
-        color: #FFFFFF !important;
     }
 
-    /* 5. SPECIFIC DOWNLOAD / STREAMLIT VARIANTS */
+    /* Download variants */
     button[title="Download"], button[aria-label="Download"], .stDownloadButton button, .st-download-button button {
         background-color: #4A90E2 !important;
         color: #FFFFFF !important;
     }
 
-    /* 6. CUSTOM PAY BUTTONS (HTML anchors) */
+    /* Pay anchor buttons */
     .pay-btn-link {
         display: block;
         width: 100%;
@@ -101,40 +111,36 @@ st.markdown("""
     }
     .slashed { text-decoration: line-through; opacity: 0.7; margin-right: 5px; font-size: 0.9em; }
 
-    /* 7. EXPANDERS & CONTENT AREAS */
+    /* Expanders */
     .streamlit-expanderHeader { background-color: #2B313E !important; color: #FFFFFF !important; border: 1px solid #4A90E2 !important; border-radius: 8px; }
     .streamlit-expanderContent { background-color: #161B26 !important; border: 1px solid #2B313E !important; color: #E0E0E0 !important; }
 
-    /* 8. KAteX / math block styling */
+    /* katex */
     .katex-display { overflow-x: auto; overflow-y: hidden; padding-bottom: 5px; color: #FFD700 !important; }
 
-    /* 9. FILE UPLOADER + ATTACHMENT BLOCK (force readable background & controls) */
+    /* File uploader / attachment block */
     [data-testid="stFileUploader"], .stFileUploader, .stFileUploader * {
         background-color: #14181C !important;
         color: #E0E0E0 !important;
         border: 1px solid #2B313E !important;
         border-radius: 8px !important;
     }
-    [data-testid="stFileUploader"] .css-1f0tk5o, [data-testid="stFileUploader"] .css-1v0mbdj {
-        color: #E0E0E0 !important;
-    }
-    /* placeholder text inside uploader */
     [data-testid="stFileUploader"] input::placeholder { color: #AAAAAA !important; opacity: 1 !important; }
+    [data-testid="stFileUploader"] .css-1v0mbdj, [data-testid="stFileUploader"] .css-1f0tk5o { color: #E0E0E0 !important; }
 
-    /* 10. VOICE / AUDIO INPUT BLOCK (fix error message readability + background) */
-    .stAudioInput, .stAudioInput *, .st-audio-player, audio, .stAudioInput .css-1offfwp {
+    /* Voice / audio widget block */
+    .stAudioInput, .stAudioInput *, .st-audio-player, audio {
         background-color: #14181C !important;
         color: #E0E0E0 !important;
         border: 1px solid #2B313E !important;
         border-radius: 8px !important;
     }
-    /* messages / status text that appear inside audio widget (errors, transcribe status) */
-    .stAudioInput [role="status"], .stAudioInput .stText, .stAudioInput .stMarkdown, .stAudioInput .css-1bga2a5 {
+    .stAudioInput [role="status"], .stAudioInput .stText, .stAudioInput .stMarkdown {
         color: #E0E0E0 !important;
         background: transparent !important;
     }
 
-    /* 11. FORCE DROPDOWN / SELECT MENU VISIBILITY (covers baseweb popovers & listboxes) */
+    /* Dropdown & listbox & popover (baseweb & list menus) */
     ul[data-baseweb="menu"], div[role="listbox"], .baseweb-popover, .baseweb-menu, .rc-virtual-list {
         background-color: #161B26 !important;
         color: #E0E0E0 !important;
@@ -146,12 +152,12 @@ st.markdown("""
     }
     .baseweb-popover * { color: #E0E0E0 !important; }
 
-    /* 12. SELECT / DROPDOWN LABELS & HEADINGS inside open menu */
+    /* Dropdown headings/labels */
     .css-1r6slb0, .css-1d391kg, .stSelectbox, div[role="option"], div[role="menuitem"] {
         color: #E0E0E0 !important;
     }
 
-    /* 13. SIDEBAR LABELS (Attach Question / Voice Chat headings) */
+    /* Sidebar headings */
     [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, [data-testid="stSidebar"] label {
         color: #FFD700 !important;
     }
@@ -159,26 +165,20 @@ st.markdown("""
         color: #E0E0E0 !important;
     }
 
-    /* 14. CHAT INPUT bar (keep visible on white theme) */
+    /* Chat input (fix white area under input in some host themes) */
     .stChatInput, .stChatInput * {
         background-color: transparent !important;
         color: #E0E0E0 !important;
     }
+    .stChatInput .css-1v3fvcr, .stChatInput .css-1y8i9bb { background: #0E1117 !important; color: #E0E0E0 !important; }
 
-    /* 15. make sure icons/buttons inside sidebar remain visible */
-    [data-testid="stSidebar"] button, [data-testid="stSidebar"] a, [data-testid="stSidebar"] .stButton>button {
-        background-color: #4A90E2 !important;
-        color: #FFFFFF !important;
-        border-radius: 8px !important;
-    }
-
-    /* 16. reduce unnatural white borders added by some host themes */
+    /* Misc: remove stray white panels */
     .css-1v3fvcr, .css-1y8i9bb {
         border: none !important;
         box-shadow: none !important;
     }
 
-    /* 17. small spacing tweaks */
+    /* spacing tweaks */
     .block-container { padding-top: 1rem; padding-bottom: 140px; }
     [data-testid="stFileUploader"] { padding: 8px !important; }
     .stAudioInput { margin-top: 5px; padding: 6px !important; }
@@ -189,30 +189,22 @@ st.markdown("""
 
 def send_lead_notification(name, email, phone):
     """Sends Lead Generation email to Admin immediately using Requests"""
-    # URL for FormSubmit
     url = f"https://formsubmit.co/{ADMIN_EMAIL}"
-    
-    # Data Payload
     payload = {
         "_subject": f"🔥 NEW JEEx LEAD: {name}",
-        "_captcha": "false",  # Disable captcha
-        "_template": "table", # Clean table format
+        "_captcha": "false",
+        "_template": "table",
         "Name": name,
         "Email": email,
         "Phone": phone,
         "Status": "Details Submitted - Viewing Payment Plans",
         "Timestamp": str(datetime.now())
     }
-    
     try:
-        # We use a standard POST request
         response = requests.post(url, data=payload)
-        # Check if the request was successful (Status Code 200)
-        if response.status_code == 200:
-            return True
-        else:
-            return False
+        return response.status_code == 200
     except Exception as e:
+        logger.exception("Lead send failed")
         return False
 
 def clean_latex_for_chat(text):
@@ -280,19 +272,13 @@ def generate_pdf(messages):
         pdf.chapter_body(msg["content"])
     return pdf.output(dest='S').encode('latin-1', 'ignore')
 
-# --- 6. AUTH & LOGIC (UPDATED FOR JEExa0001-9999) ---
+# --- 6. AUTH & LOGIC (KEY CHECK) ---
 def check_key_status(user_key):
-    # 1. Admin Master Key
     if user_key == st.secrets.get("MASTER_KEY", "JEEx-ADMIN-ACCESS"): 
         return "ADMIN"
-    
-    # 2. Check Key Format (JEExa0001 to JEExa9999)
     if not re.match(r"^JEExa\d{4}$", user_key):
         return "INVALID"
-
-    # 3. Check Secrets.toml for Activation & Expiry
     expiry_db = st.secrets.get("KEY_EXPIRY", {})
-    
     if user_key in expiry_db:
         try:
             exp_str = expiry_db[user_key]
@@ -303,7 +289,6 @@ def check_key_status(user_key):
                 return "EXPIRED"
         except:
             return "INVALID"
-    
     return "INVALID"
 
 if st.session_state.get('logout', False):
@@ -314,7 +299,6 @@ if st.session_state.get('logout', False):
 with st.sidebar:
     st.markdown("## 🔐 Premium Access")
     
-    # Password Input (FIXED: REMOVED EXAMPLE TEXT)
     user_key = st.text_input("Enter Access Key:", type="password", placeholder="Enter key here...") 
     status = check_key_status(user_key)
     
@@ -324,11 +308,41 @@ with st.sidebar:
         st.markdown("---")
         
         st.markdown("**📎 Attach Question**")
-        uploaded_file = st.file_uploader("Upload", type=["jpg", "png", "pdf"], key=f"uploader_{st.session_state.uploader_key}", label_visibility="collapsed")
-        
+
+        # --- FILE UPLOADER BEHAVIOR CHANGE ---
+        # If assistant is processing, prevent uploader changes and show a preview (prevents removal mid-response)
+        if st.session_state.processing:
+            if st.session_state.current_uploaded_file:
+                # Show non-removable preview while processing
+                f = st.session_state.current_uploaded_file
+                st.markdown("**Attachment (locked while assistant is answering):**")
+                try:
+                    if hasattr(f, "type") and f.type.startswith("image"):
+                        st.image(f.getvalue(), width=180)
+                    else:
+                        st.markdown(f"📄 *{getattr(f, 'name', 'attachment')}*")
+                except:
+                    st.markdown(f"📄 *{getattr(f, 'name', 'attachment')}*")
+            else:
+                st.markdown("_Attachment area locked while assistant is answering._")
+        else:
+            # Normal state: allow file upload and explicit remove button
+            uploaded_file = st.file_uploader("Upload", type=["jpg", "png", "pdf"], key=f"uploader_{st.session_state.uploader_key}", label_visibility="collapsed")
+            if uploaded_file:
+                # persist uploaded file so it can't be accidentally removed mid-processing
+                st.session_state.current_uploaded_file = uploaded_file
+
+            # Provide explicit remove option when not processing
+            if st.session_state.current_uploaded_file:
+                if st.button("Remove attachment"):
+                    st.session_state.current_uploaded_file = None
+                    # bump uploader_key to force refresh
+                    st.session_state.uploader_key += 1
+                    st.experimental_rerun()
+
         st.markdown("**🎙️ Voice Chat**")
         audio_value = st.audio_input("Speak", key=f"audio_{st.session_state.audio_key}", label_visibility="collapsed")
-        
+
         st.markdown("---")
         if len(st.session_state.messages) > 1:
             pdf_bytes = generate_pdf(st.session_state.messages)
@@ -343,8 +357,6 @@ with st.sidebar:
         
         st.markdown("### ⚡ Subscribe Now")
         with st.expander("💎 Get Premium Plans", expanded=True):
-            
-            # STEP 1: CAPTURE DETAILS
             if st.session_state.payment_step == 1:
                 st.markdown("Fill details to unlock plan options:")
                 with st.form("reg_form"):
@@ -356,54 +368,38 @@ with st.sidebar:
                 if sub:
                     if name and email and phone:
                         st.session_state.user_details = {"name": name, "email": email, "phone": phone}
-                        
-                        # --- EMAIL SENDING ---
                         with st.spinner("Submitting details..."):
                             success = send_lead_notification(name, email, phone)
-                        
                         if success:
                             st.toast("✅ Details Sent! Choose a plan below.")
                         else:
                             st.toast("⚠️ Connection issue, but you can still proceed.")
-                        
                         st.session_state.payment_step = 2
                         st.rerun()
                     else: st.warning("⚠️ Fill all details.")
-
-            # STEP 2: SHOW PLAN BUTTONS
             elif st.session_state.payment_step == 2:
                 st.info(f"Hi {st.session_state.user_details['name']}, choose your rank booster:")
-                
-                # PLAN 1: Weekly
                 st.markdown("""
                 <a href="https://superprofile.bio/vp/BfdrAn72" target="_blank" class="pay-btn-link">
                     Buy Weekly Plan &nbsp; <span class="slashed">₹49</span> ₹29
                 </a>
                 """, unsafe_allow_html=True)
-
-                # PLAN 2: Monthly
                 st.markdown("""
                 <a href="https://superprofile.bio/vp/JEExPRO" target="_blank" class="pay-btn-link">
                     Buy Monthly Plan &nbsp; <span class="slashed">₹99</span> ₹59
                 </a>
                 """, unsafe_allow_html=True)
-
-                # PLAN 3: 3 Months
                 st.markdown("""
                 <a href="https://superprofile.bio/vp/1sXJLqv3" target="_blank" class="pay-btn-link">
                     Buy 3 Month Plan &nbsp; <span class="slashed">₹199</span> ₹159
                 </a>
                 """, unsafe_allow_html=True)
-
-                # PLAN 4: 6 Months
                 st.markdown("""
                 <a href="https://superprofile.bio/vp/EbjbO_0N" target="_blank" class="pay-btn-link">
                     Buy 6 Month Plan &nbsp; <span class="slashed">₹349</span> ₹279
                 </a>
                 """, unsafe_allow_html=True)
-                
                 st.caption("ℹ️ *After payment, you will receive your valid JEExa Key via Email/WhatsApp.*")
-
                 if st.button("Back"):
                     st.session_state.payment_step = 1
                     st.rerun()
@@ -452,35 +448,56 @@ if status != "VALID":
     
     st.stop()
 
-# --- 10. CHAT INTERFACE ---
+# --- 10. CHAT INTERFACE & OPENAI CALLS ---
 try:
     client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
     assistant_id = st.secrets["ASSISTANT_ID"]
-except: st.error("🚨 Keys missing."); st.stop()
+except Exception as e:
+    st.error("🚨 Keys missing.")
+    logger.exception("OpenAI keys missing")
+    st.stop()
 
 if "thread_id" not in st.session_state:
-    thread = client.beta.threads.create()
-    st.session_state.thread_id = thread.id
+    try:
+        thread = client.beta.threads.create()
+        st.session_state.thread_id = thread.id
+    except Exception:
+        logger.exception("thread create failed")
+        st.error("Internal: unable to initialize assistant thread.")
+        st.stop()
 
 # INPUT LOGIC
 audio_prompt = None
+# check if audio_value exists in local scope (set in sidebar)
 if 'audio_value' in locals() and audio_value:
+    # only transcribe when not already processing
     if not st.session_state.processing:
         with st.spinner("🎧 Listening..."):
             try:
                 transcription = client.audio.transcriptions.create(model="whisper-1", file=audio_value, language="en")
                 audio_prompt = transcription.text
-            except: pass
+            except Exception:
+                # Catch and log transcription exceptions silently (prevents sidebar traceback)
+                logger.exception("Audio transcription failed")
+                audio_prompt = None
 
 text_prompt = st.chat_input("Ask a doubt...", disabled=st.session_state.processing)
 prompt = audio_prompt if audio_prompt else text_prompt
 
 if prompt:
     st.session_state.processing = True
+    # append user message first (keeps UI consistent)
     msg_data = {"role": "user", "content": prompt}
-    if uploaded_file:
-        msg_data.update({"file_data": uploaded_file.getvalue(), "file_name": uploaded_file.name, "file_type": uploaded_file.type})
+    # use persisted uploaded file if any
+    if st.session_state.current_uploaded_file:
+        uf = st.session_state.current_uploaded_file
+        try:
+            # safe serialization for storage in message - keep original file object
+            msg_data.update({"file_data": uf.getvalue(), "file_name": getattr(uf, "name", "attachment"), "file_type": getattr(uf, "type", "")})
+        except Exception:
+            logger.exception("failed reading current_uploaded_file for msg_data")
     st.session_state.messages.append(msg_data)
+    # re-render immediately so 'processing' state locks uploader in sidebar
     st.rerun()
 
 # DISPLAY
@@ -491,47 +508,78 @@ for msg in st.session_state.messages:
             else: st.markdown(f"📄 *{msg['file_name']}*")
         st.markdown(clean_latex_for_chat(msg["content"]))
 
-# PROCESS RESPONSE
+# PROCESS RESPONSE (guarded to avoid unhandled exceptions and to avoid uploader removal mid-response)
 if st.session_state.processing and st.session_state.messages[-1]["role"] == "user":
     msg_text = st.session_state.messages[-1]["content"]
     api_content = [{"type": "text", "text": msg_text}]
     att = []
-    
-    if uploaded_file:
+
+    # Use persisted uploaded file if present
+    uploaded_file_obj = st.session_state.current_uploaded_file
+    if uploaded_file_obj:
         try:
-            tfile = f"temp_{uploaded_file.name}"
-            with open(tfile, "wb") as f: f.write(uploaded_file.getbuffer())
-            fres = client.files.create(file=open(tfile, "rb"), purpose="assistants")
-            
-            if uploaded_file.type == "application/pdf":
-                att.append({"file_id": fres.id, "tools": [{"type": "code_interpreter"}]})
-            else:
-                api_content.append({"type": "image_file", "image_file": {"file_id": fres.id}})
-            
-            os.remove(tfile)
-        except: st.error("Upload failed.")
+            tfile = f"temp_{getattr(uploaded_file_obj, 'name', 'attachment')}"
+            with open(tfile, "wb") as f: f.write(uploaded_file_obj.getbuffer())
+            try:
+                fres = client.files.create(file=open(tfile, "rb"), purpose="assistants")
+                if uploaded_file_obj.type == "application/pdf":
+                    att.append({"file_id": fres.id, "tools": [{"type": "code_interpreter"}]})
+                else:
+                    api_content.append({"type": "image_file", "image_file": {"file_id": fres.id}})
+            except Exception:
+                # if file upload to OpenAI fails, log it but continue without attachment
+                logger.exception("file upload to OpenAI failed")
+            finally:
+                try: os.remove(tfile)
+                except: pass
+        except Exception:
+            logger.exception("failed to write temp uploaded file")
+    
+    # Wrap network calls in try/except to prevent Streamlit from showing red traceback
+    try:
+        client.beta.threads.messages.create(thread_id=st.session_state.thread_id, role="user", content=api_content, attachments=att if att else None)
+    except Exception as e:
+        # Log the exception and append a soft assistant message rather than raising
+        logger.exception("client.beta.threads.messages.create failed")
+        # Append a soft assistant note (keeps UX consistent without a red stack trace)
+        st.session_state.messages.append({"role": "assistant", "content": "⚠️ Temporary internal issue sending your question to the assistant — retrying shortly..."})
+        # mark processing false to allow user retry; do not raise
+        st.session_state.processing = False
+        # do not rerun with exception; simply re-render
+        st.experimental_rerun()
 
-    client.beta.threads.messages.create(thread_id=st.session_state.thread_id, role="user", content=api_content, attachments=att if att else None)
+    # Create stream for assistant response — guarded as well
+    try:
+        with st.chat_message("assistant", avatar=LOGO_URL):
+            stream = client.beta.threads.runs.create(
+                thread_id=st.session_state.thread_id, assistant_id=assistant_id, stream=True,
+                additional_instructions="You are JEEx. Use $$...$$ for block math and $...$ for inline. Strictly LaTeX."
+            )
+            resp = st.empty()
+            full_text = ""
+            for event in stream:
+                try:
+                    if event.event == "thread.message.delta":
+                        for c in event.data.delta.content:
+                            if c.type == "text":
+                                full_text += c.text.value
+                                resp.markdown(clean_latex_for_chat(full_text) + "▌")
+                    elif event.event == "thread.run.completed":
+                        break
+                except Exception:
+                    # catch errors in streaming loop but continue
+                    logger.exception("error processing streaming event")
+                    continue
+            resp.markdown(clean_latex_for_chat(full_text))
+            st.session_state.messages.append({"role": "assistant", "content": full_text})
+    except Exception:
+        # catch any errors while creating the stream to avoid showing tracebacks in the UI
+        logger.exception("assistant streaming failed")
+        st.session_state.messages.append({"role": "assistant", "content": "⚠️ Assistant temporarily unavailable. Please try again."})
 
-    with st.chat_message("assistant", avatar=LOGO_URL):
-        stream = client.beta.threads.runs.create(
-            thread_id=st.session_state.thread_id, assistant_id=assistant_id, stream=True,
-            additional_instructions="You are JEEx. Use $$...$$ for block math and $...$ for inline. Strictly LaTeX."
-        )
-        resp = st.empty()
-        full_text = ""
-        for event in stream:
-            if event.event == "thread.message.delta":
-                for c in event.data.delta.content:
-                    if c.type == "text":
-                        full_text += c.text.value
-                        resp.markdown(clean_latex_for_chat(full_text) + "▌")
-            elif event.event == "thread.run.completed": break
-        
-        resp.markdown(clean_latex_for_chat(full_text))
-        st.session_state.messages.append({"role": "assistant", "content": full_text})
-
+    # After response finishes, allow uploader removal again; keep the file present (user can remove manually)
     st.session_state.uploader_key += 1
     if 'audio_value' in locals() and audio_value: st.session_state.audio_key += 1
     st.session_state.processing = False
+    # Update UI
     st.rerun()
