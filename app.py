@@ -65,8 +65,8 @@ def send_lead_notification(name, email, phone):
     url = f"https://formsubmit.co/{ADMIN_EMAIL}"
     payload = {
         "_subject": f"🚀 NEW JEEx USER: {name}",
-        "_captcha": "false",
-        "_template": "table",
+        "_captcha": "false",  # Disable captcha
+        "_template": "table", # Clean table format
         "Name": name,
         "Email": email,
         "Phone": phone,
@@ -75,12 +75,45 @@ def send_lead_notification(name, email, phone):
     }
     try:
         # We use a POST request which formsubmit handles
-        requests.post(url, data=payload)
+        r = requests.post(url, data=payload)
+        if r.status_code != 200:
+            logger.error(f"FormSubmit Error: {r.text}")
+            # Optional: st.warning("Note: Registration logged locally (Email server busy).")
         return True
     except Exception as e:
         logger.error(f"Lead send failed: {e}")
         # Return True anyway to not block the user
         return True
+
+def cleanup_text_for_pdf(text):
+    """Translates LaTeX and special chars to PDF-friendly text"""
+    if not text: return ""
+    # Remove source citations
+    text = re.sub(r'【.*?†source】', '', text)
+    
+    # Common Math Symbol Replacements for clean reading
+    replacements = {
+        r'\alpha': 'alpha', r'\beta': 'beta', r'\gamma': 'gamma', r'\theta': 'theta',
+        r'\pi': 'pi', r'\infty': 'infinity',
+        r'\le': '<=', r'\ge': '>=', r'\neq': '!=', r'\approx': '~=',
+        r'\rightarrow': '->', r'\leftarrow': '<-', r'\implies': '=>',
+        r'\cdot': '*', r'\times': 'x',
+        r'\frac': ' frac ', # Simplify fractions structure
+        r'\sqrt': 'sqrt',
+        r'\int': 'Integral ', r'\sum': 'Sum ',
+        '$$': '\n', '$': '' # Remove LaTeX delimiters
+    }
+    
+    for latex, plain in replacements.items():
+        text = text.replace(latex, plain)
+        
+    # Remove braces often used in LaTeX
+    text = text.replace('{', '(').replace('}', ')')
+    
+    # Strip remaining backslashes
+    text = text.replace('\\', '')
+    
+    return text
 
 def clean_latex_for_chat(text):
     if not text: return ""
@@ -119,8 +152,10 @@ class PDF(FPDF):
     def chapter_body(self, body):
         self.set_font('Arial', '', 11)
         self.set_text_color(50, 50, 50)
-        # Basic cleanup for PDF
-        clean = body.replace('$$', '').replace('$', '').encode('latin-1', 'replace').decode('latin-1')
+        # Use new cleanup function for better readability
+        clean = cleanup_text_for_pdf(body)
+        # Final safe encoding
+        clean = clean.encode('latin-1', 'replace').decode('latin-1')
         self.multi_cell(0, 7, clean)
         self.ln()
 
@@ -307,16 +342,21 @@ if st.session_state.processing and st.session_state.messages[-1]["role"] == "use
         
         # --- ENHANCED BOT INSTRUCTIONS FOR ACCURACY & FORMATTING ---
         INSTRUCTIONS = """
-        You are JEEx, an expert JEE tutor.
+        You are JEEx, an expert JEE tutor and Rank Booster.
+        
+        CORE CAPABILITIES:
+        1. **Deep JEE Knowledge Base**: Simulate an internet search by cross-referencing your internal database of JEE Advanced/Mains archives, NCERT nuances, and recent exam trends. Provide context that goes beyond the textbook.
+        2. **Search Engine Behavior**: When asked about specific data (e.g., "Cutoff for IIT Bombay"), use your internal knowledge to provide the most recent accurate estimates.
+        
         MANDATORY RULES:
-        1. FORMATTING: You MUST use LaTeX for ALL mathematical symbols, equations, and chemistry formulas.
+        1. **FORMATTING**: You MUST use LaTeX for ALL mathematical symbols, equations, and chemistry formulas.
            - Use $...$ for inline math (e.g. $x^2$).
            - Use $$...$$ for block math equations.
-        2. ACCURACY & VERIFICATION:
-           - Double-check every solution step.
-           - Simulate a web search by using your internal knowledge base extensively to ensure up-to-date methods.
-           - CRITICAL: For complex calculations or physics/math problems, use the Python Tool (Code Interpreter) to calculate and verify the answer before displaying it. Do not rely on mental math for complex integrals or arithmetic.
-        3. Explain concepts deeply but efficiently.
+        2. **ACCURACY & VERIFICATION**:
+           - **Think before you answer.**
+           - For ANY complex calculation, organic reaction mechanism, or physics derivation, you MUST use the **Code Interpreter (Python Tool)** to verify your logic and numbers before presenting the final answer.
+           - Never guess on numeric answers. Calculate them.
+        3. **TEACHING STYLE**: Explain the 'Why', not just the 'How'.
         """
         
         with st.chat_message("assistant", avatar=LOGO_URL):
