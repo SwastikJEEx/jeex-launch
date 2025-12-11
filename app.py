@@ -16,10 +16,10 @@ from email.utils import formatdate, make_msgid
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="JEEx Pro", page_icon="⚛️", layout="centered", initial_sidebar_state="expanded")
 
-# *** EMAIL SETTINGS (MUST FILL THIS FOR EMAILS TO WORK) ***
+# *** EMAIL SETTINGS ***
 SENDER_EMAIL = "jeexaipro@gmail.com"  
-SENDER_PASSWORD = "Bsnl@123" # NOTE: If using Gmail, you may need an App Password if this fails.
-RECEIVER_EMAIL = "jeexaipro@gmail.com" # Where you want to receive the leads
+SENDER_PASSWORD = "JEExPROAI1109" # Updated Password
+RECEIVER_EMAIL = "jeexaipro@gmail.com"
 
 # --- 2. GLOBAL CONSTANTS ---
 LOGO_URL = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/1d6ef8ca3ac05432ed370338d4c04d6a03541f23/logo.png.png"
@@ -66,7 +66,7 @@ st.markdown("""
 # --- 5. HELPER FUNCTIONS ---
 
 def send_smtp_email(name, email, phone):
-    """Sends Lead Email using Robust SMTP (Fixes email issues)"""
+    """Sends Lead Email using Robust SMTP"""
     try:
         # 1. SETUP HEADERS (Anti-Spam)
         msg = MIMEMultipart()
@@ -97,13 +97,15 @@ def send_smtp_email(name, email, phone):
         server.quit()
         return True
     except Exception as e:
-        logger.error(f"Email failed: {e}")
-        # We return True anyway so the user can still use the app even if email fails
+        # PRINT ERROR TO UI SO USER CAN SEE WHY IT FAILED
+        st.error(f"⚠️ Email Delivery Failed: {e}") 
+        # We still return True to allow the user to enter the app
         return True 
 
 def clean_latex_for_chat(text):
     if not text: return ""
     text = re.sub(r'【.*?†source】', '', text)
+    # Ensure standard dollar signs for math are preserved/fixed if needed
     text = re.sub(r'\\\[(.*?)\\\]', r'$$\1$$', text, flags=re.DOTALL)
     text = re.sub(r'\\\((.*?)\\\)', r'$\1$', text, flags=re.DOTALL)
     return text
@@ -171,10 +173,10 @@ with st.sidebar:
         if submit_reg:
             if name and email and phone:
                 with st.spinner("Setting up your account..."):
-                    # Send Email (Robust SMTP)
+                    # Send Email
                     sent = send_smtp_email(name, email, phone)
                     
-                    # Grant Access Regardless of email success (to avoid blocking user)
+                    # Grant Access
                     st.session_state.user_details = {"name": name, "email": email}
                     st.session_state.is_verified = True
                     st.success("✅ Success! Welcome aboard.")
@@ -309,8 +311,10 @@ if st.session_state.processing and st.session_state.messages[-1]["role"] == "use
             fres = client.files.create(file=open(tfile, "rb"), purpose="assistants")
             
             if uploaded_file_obj.type == "application/pdf":
+                # For PDFs, use code interpreter to read them
                 att.append({"file_id": fres.id, "tools": [{"type": "code_interpreter"}]})
             else:
+                # For images
                 api_content.append({"type": "image_file", "image_file": {"file_id": fres.id}})
             
             try: os.remove(tfile)
@@ -321,10 +325,26 @@ if st.session_state.processing and st.session_state.messages[-1]["role"] == "use
     try:
         client.beta.threads.messages.create(thread_id=st.session_state.thread_id, role="user", content=api_content, attachments=att if att else None)
         
+        # --- ENHANCED BOT INSTRUCTIONS FOR ACCURACY & FORMATTING ---
+        INSTRUCTIONS = """
+        You are JEEx, an expert JEE tutor.
+        MANDATORY RULES:
+        1. FORMATTING: You MUST use LaTeX for ALL mathematical symbols, equations, and chemistry formulas.
+           - Use $...$ for inline math (e.g. $x^2$).
+           - Use $$...$$ for block math equations.
+        2. ACCURACY & VERIFICATION:
+           - Double-check every solution step.
+           - Simulate a web search by using your internal knowledge base extensively to ensure up-to-date methods.
+           - CRITICAL: For complex calculations or physics/math problems, use the Python Tool (Code Interpreter) to calculate and verify the answer before displaying it. Do not rely on mental math for complex integrals or arithmetic.
+        3. Explain concepts deeply but efficiently.
+        """
+        
         with st.chat_message("assistant", avatar=LOGO_URL):
             stream = client.beta.threads.runs.create(
                 thread_id=st.session_state.thread_id, assistant_id=assistant_id, stream=True,
-                additional_instructions="You are JEEx. Use $$...$$ for block math. Strictly LaTeX."
+                additional_instructions=INSTRUCTIONS,
+                # Force enabling code interpreter for double-checking if not already enabled on assistant
+                tools=[{"type": "code_interpreter"}]
             )
             resp = st.empty()
             full_text = ""
