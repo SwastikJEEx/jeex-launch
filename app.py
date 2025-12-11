@@ -8,18 +8,13 @@ from fpdf import FPDF
 import requests
 import traceback
 import logging
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.utils import formatdate, make_msgid
 
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="JEEx Pro", page_icon="⚛️", layout="centered", initial_sidebar_state="expanded")
 
 # *** EMAIL SETTINGS ***
-SENDER_EMAIL = "jeexaipro@gmail.com"  
-SENDER_PASSWORD = "JEExPROAI1109" # Updated Password
-RECEIVER_EMAIL = "jeexaipro@gmail.com"
+# using FormSubmit, emails will be sent TO this address
+ADMIN_EMAIL = "jeexaipro@gmail.com"  
 
 # --- 2. GLOBAL CONSTANTS ---
 LOGO_URL = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/1d6ef8ca3ac05432ed370338d4c04d6a03541f23/logo.png.png"
@@ -65,42 +60,27 @@ st.markdown("""
 
 # --- 5. HELPER FUNCTIONS ---
 
-def send_smtp_email(name, email, phone):
-    """Sends Lead Email using Robust SMTP"""
+def send_lead_notification(name, email, phone):
+    """Sends Lead Generation email via FormSubmit (Reliable, no SMTP errors)"""
+    url = f"https://formsubmit.co/{ADMIN_EMAIL}"
+    payload = {
+        "_subject": f"🚀 NEW JEEx USER: {name}",
+        "_captcha": "false",
+        "_template": "table",
+        "Name": name,
+        "Email": email,
+        "Phone": phone,
+        "Status": "Free Trial Activated",
+        "Timestamp": str(datetime.now())
+    }
     try:
-        # 1. SETUP HEADERS (Anti-Spam)
-        msg = MIMEMultipart()
-        msg['From'] = f"JEEx System <{SENDER_EMAIL}>"
-        msg['To'] = RECEIVER_EMAIL
-        msg['Subject'] = f"🚀 NEW USER: {name}"
-        msg['Date'] = formatdate(localtime=True)
-        msg['Message-ID'] = make_msgid()
-
-        # 2. BODY
-        body = f"""
-        NEW USER REGISTRATION (FREE TRIAL)
-        ==================================
-        Name: {name}
-        Email: {email}
-        Phone: {phone}
-        Timestamp: {datetime.now()}
-        ==================================
-        User has been granted access.
-        """
-        msg.attach(MIMEText(body, 'plain'))
-
-        # 3. SEND
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
-        server.login(SENDER_EMAIL, SENDER_PASSWORD)
-        server.send_message(msg)
-        server.quit()
+        # We use a POST request which formsubmit handles
+        requests.post(url, data=payload)
         return True
     except Exception as e:
-        # PRINT ERROR TO UI SO USER CAN SEE WHY IT FAILED
-        st.error(f"⚠️ Email Delivery Failed: {e}") 
-        # We still return True to allow the user to enter the app
-        return True 
+        logger.error(f"Lead send failed: {e}")
+        # Return True anyway to not block the user
+        return True
 
 def clean_latex_for_chat(text):
     if not text: return ""
@@ -173,8 +153,8 @@ with st.sidebar:
         if submit_reg:
             if name and email and phone:
                 with st.spinner("Setting up your account..."):
-                    # Send Email
-                    sent = send_smtp_email(name, email, phone)
+                    # Send Email (Using FormSubmit)
+                    send_lead_notification(name, email, phone)
                     
                     # Grant Access
                     st.session_state.user_details = {"name": name, "email": email}
@@ -361,7 +341,10 @@ if st.session_state.processing and st.session_state.messages[-1]["role"] == "use
             
     except Exception as e:
         st.session_state.messages.append({"role": "assistant", "content": "⚠️ Network issue. Please try again."})
-        
+    
+    # --- AUTO-REMOVE ATTACHMENT AFTER ANSWERING ---
+    st.session_state.current_uploaded_file = None
+    
     st.session_state.uploader_key += 1
     if 'audio_value' in locals() and audio_value: st.session_state.audio_key += 1
     st.session_state.processing = False
