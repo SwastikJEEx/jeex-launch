@@ -238,6 +238,12 @@ with st.sidebar:
             st.session_state['logout'] = True
             st.rerun()
 
+    # --- CONTACT US DROPDOWN (NEW) ---
+    st.markdown("---")
+    with st.expander("📞 Contact Us"):
+        st.write("**Email:** jeexaipro@gmail.com")
+        st.write("**WhatsApp:** +91 9839940400")
+
 # --- 7. MAIN INTERFACE ---
 show_branding()
 
@@ -254,11 +260,16 @@ if not st.session_state.is_verified:
     </div>
     """, unsafe_allow_html=True)
     
+    # --- UPDATED DESCRIPTION (6 POINTS) ---
     c1, c2 = st.columns(2)
     with c1:
-        st.info("**🧠 Advanced Problem Solving**\n\nSolves Irodov & Cengage level problems.")
+        st.info("**🧠 Advanced Problem Solving**\n\nSolves Irodov & Cengage level problems with step-by-step logic.")
+        st.info("**📄 Full Document Brain**\n\nUpload entire PDF assignments. Our Code Interpreter analyzes context.")
+        st.info("**🎯 Concept-First Approach**\n\nWe don't just solve; we explain the 'Why'. Learn the derivation.")
     with c2:
-        st.info("**👁️ Vision Intelligence**\n\nReads handwritten questions instantly.")
+        st.info("**👁️ Vision Intelligence**\n\nReads handwritten questions from photos instantly.")
+        st.info("**➗ Perfect Math Formatting**\n\nTextbook-quality LaTeX rendering for Integrals and Organic Mechanisms.")
+        st.info("**⚡ 24/7 Strategic Mentorship**\n\nYour personal AI coach for study planning and backlog management.")
     st.stop()
 
 # --- 8. CHAT LOGIC ---
