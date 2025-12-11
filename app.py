@@ -35,97 +35,99 @@ if "user_details" not in st.session_state: st.session_state.user_details = {}
 logger = logging.getLogger("jeex")
 logger.setLevel(logging.INFO)
 
-# --- 4. PROFESSIONAL CSS ---
+# --- 4. PROFESSIONAL CSS (NEON BLUE THEME) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     
-    /* App + Sidebar base */
-    .stApp { background-color: #0E1117 !important; color: #E0E0E0 !important; }
-    [data-testid="stSidebar"] { background-color: #161B26 !important; border-right: 1px solid #2B313E !important; }
+    /* Main Background - Pure Black to merge with Logo */
+    .stApp { background-color: #000000 !important; color: #E0E0E0 !important; }
     
-    /* Header / top bar (some hosts add white header) */
-    header, header * { background-color: #0E1117 !important; color: #E0E0E0 !important; border: none !important; box-shadow: none !important; }
+    /* Sidebar - Very Dark Blue/Black */
+    [data-testid="stSidebar"] { background-color: #050810 !important; border-right: 1px solid #0D1B2E !important; }
+    
+    /* Header / top bar */
+    header, header * { background-color: #000000 !important; color: #E0E0E0 !important; border: none !important; box-shadow: none !important; }
     
     /* Global text */
     h1, h2, h3, h4, h5, h6, p, li, div, span, label, a, small, strong, code {
         color: #E0E0E0 !important;
     }
-    /* UPDATED: Changed from Yellow (#FFD700) to JEEx Blue (#4A90E2) */
-    strong { color: #4A90E2 !important; font-weight: 600; }
-    code { color: #FF7043 !important; background-color: #1E2330 !important; padding: 2px 4px; border-radius: 4px; }
     
-    /* Inputs & selects */
-    /* FIXED: Matched NEETx style by including base-input to fix visual glitch */
+    /* NEON BLUE ACCENTS */
+    strong { color: #00A6FF !important; font-weight: 600; }
+    code { color: #00A6FF !important; background-color: #0D1B2E !important; padding: 2px 4px; border-radius: 4px; }
+    
+    /* Inputs & selects - EXACT COPY OF NEETx LOGIC but Blue */
     div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="base-input"] {
-        background-color: #1E2330 !important;
-        border: 1px solid #4A90E2 !important;
+        background-color: #050810 !important;
+        border: 1px solid #00A6FF !important;
         border-radius: 8px !important;
     }
     input[type="text"], input[type="password"], textarea, div[data-baseweb="select"] div {
         color: #FFFFFF !important;
         background-color: transparent !important;
-        caret-color: #4A90E2 !important;
+        caret-color: #00A6FF !important;
     }
     ::placeholder { color: #AAAAAA !important; opacity: 1; }
     
-    /* Buttons (force consistent appearance) */
+    /* Buttons - Neon Blue Theme */
     button, input[type="submit"], input[type="button"], .stButton>button, .stDownloadButton, .st-bk {
-        background-color: #4A90E2 !important;
-        color: #FFFFFF !important;
+        background-color: #00A6FF !important;
+        color: #000000 !important; /* Black text for contrast */
         border: none !important;
         border-radius: 8px !important;
         padding: 10px 20px !important;
-        font-weight: 600 !important;
+        font-weight: 700 !important;
         transition: all 0.3s !important;
         box-shadow: none !important;
     }
     button:hover, input[type="submit"]:hover, input[type="button"]:hover, .stButton>button:hover, .stDownloadButton:hover {
-        background-color: #357ABD !important;
-        box-shadow: 0px 4px 15px rgba(74, 144, 226, 0.4) !important;
+        background-color: #008ECC !important;
+        box-shadow: 0px 0px 10px rgba(0, 166, 255, 0.4) !important;
     }
     
     /* Download variants */
     button[title="Download"], button[aria-label="Download"], .stDownloadButton button, .st-download-button button {
-        background-color: #4A90E2 !important;
-        color: #FFFFFF !important;
+        background-color: #00A6FF !important;
+        color: #000000 !important;
     }
 
     /* Pay anchor buttons */
     .pay-btn-link {
         display: block;
         width: 100%;
-        background-color: #4A90E2;
-        color: white !important;
+        background-color: #00A6FF;
+        color: #000000 !important;
         text-align: center;
         padding: 12px;
         margin-bottom: 12px;
         border-radius: 8px;
         text-decoration: none;
-        font-weight: 600;
-        border: 1px solid #4A90E2;
+        font-weight: 700;
+        border: 1px solid #00A6FF;
         transition: all 0.3s ease;
     }
     .pay-btn-link:hover {
-        background-color: #357ABD;
-        box-shadow: 0px 4px 15px rgba(74, 144, 226, 0.4);
-        border-color: #357ABD;
+        background-color: #008ECC;
+        box-shadow: 0px 0px 10px rgba(0, 166, 255, 0.4);
+        border-color: #008ECC;
     }
     .slashed { text-decoration: line-through; opacity: 0.7; margin-right: 5px; font-size: 0.9em; }
 
     /* Expanders */
-    .streamlit-expanderHeader { background-color: #2B313E !important; color: #FFFFFF !important; border: 1px solid #4A90E2 !important; border-radius: 8px; }
-    .streamlit-expanderContent { background-color: #161B26 !important; border: 1px solid #2B313E !important; color: #E0E0E0 !important; }
+    .streamlit-expanderHeader { background-color: #0D1B2E !important; color: #FFFFFF !important; border: 1px solid #00A6FF !important; border-radius: 8px; }
+    .streamlit-expanderContent { background-color: #050810 !important; border: 1px solid #0D1B2E !important; color: #E0E0E0 !important; }
 
-    /* katex - UPDATED to Blue */
-    .katex-display { overflow-x: auto; overflow-y: hidden; padding-bottom: 5px; color: #4A90E2 !important; }
+    /* katex - Neon Blue */
+    .katex-display { overflow-x: auto; overflow-y: hidden; padding-bottom: 5px; color: #00A6FF !important; }
 
-    /* File uploader / attachment block */
+    /* File uploader */
     [data-testid="stFileUploader"], .stFileUploader, .stFileUploader * {
-        background-color: #14181C !important;
+        background-color: #050810 !important;
         color: #E0E0E0 !important;
-        border: 1px solid #2B313E !important;
+        border: 1px solid #0D1B2E !important;
         border-radius: 8px !important;
     }
     [data-testid="stFileUploader"] input::placeholder { color: #AAAAAA !important; opacity: 1 !important; }
@@ -133,9 +135,9 @@ st.markdown("""
     
     /* Voice / audio widget block */
     .stAudioInput, .stAudioInput *, .st-audio-player, audio {
-        background-color: #14181C !important;
+        background-color: #050810 !important;
         color: #E0E0E0 !important;
-        border: 1px solid #2B313E !important;
+        border: 1px solid #0D1B2E !important;
         border-radius: 8px !important;
     }
     .stAudioInput [role="status"], .stAudioInput .stText, .stAudioInput .stMarkdown {
@@ -143,11 +145,11 @@ st.markdown("""
         background: transparent !important;
     }
 
-    /* Dropdown & listbox & popover (baseweb & list menus) */
+    /* Dropdown & listbox */
     ul[data-baseweb="menu"], div[role="listbox"], .baseweb-popover, .baseweb-menu, .rc-virtual-list {
-        background-color: #161B26 !important;
+        background-color: #050810 !important;
         color: #E0E0E0 !important;
-        border: 1px solid #2B313E !important;
+        border: 1px solid #0D1B2E !important;
     }
     li[data-baseweb="option"], ul[data-baseweb="menu"] li, .baseweb-menu li, .rc-virtual-list .list-item {
         color: #E0E0E0 !important;
@@ -160,27 +162,27 @@ st.markdown("""
         color: #E0E0E0 !important;
     }
     
-    /* Sidebar headings - UPDATED to Blue */
+    /* Sidebar headings - Neon Blue */
     [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, [data-testid="stSidebar"] label {
-        color: #4A90E2 !important;
+        color: #00A6FF !important;
     }
     [data-testid="stSidebar"] .stText, [data-testid="stSidebar"] p, [data-testid="stSidebar"] small {
         color: #E0E0E0 !important;
     }
 
-    /* Chat input (fix white area under input in some host themes) */
+    /* Chat input */
     .stChatInput, .stChatInput * {
         background-color: transparent !important;
         color: #E0E0E0 !important;
     }
-    .stChatInput .css-1v3fvcr, .stChatInput .css-1y8i9bb { background: #0E1117 !important; color: #E0E0E0 !important; }
+    .stChatInput .css-1v3fvcr, .stChatInput .css-1y8i9bb { background: #000000 !important; color: #E0E0E0 !important; }
+    .stChatInput { border-color: #00A6FF !important; }
     
-    /* Misc: remove stray white panels */
-    .css-1v3fvcr, .css-1y8i9bb {
-        border: none !important;
-        box-shadow: none !important;
-    }
-    /* spacing tweaks */
+    /* Spinner */
+    .stSpinner > div > div { border-top-color: #00A6FF !important; }
+
+    /* Misc */
+    .css-1v3fvcr, .css-1y8i9bb { border: none !important; box-shadow: none !important; }
     .block-container { padding-top: 1rem; padding-bottom: 140px; }
     [data-testid="stFileUploader"] { padding: 8px !important; }
     .stAudioInput { margin-top: 5px; padding: 6px !important; }
@@ -250,7 +252,7 @@ def show_branding():
     st.markdown("""
         <div style="text-align: center; margin-top: -15px; margin-bottom: 30px;">
             <h1 style="margin: 0; font-size: 42px; font-weight: 700; letter-spacing: 1px;">
-                JEEx <span style="color:#4A90E2;">PRO</span>
+                JEEx <span style="color:#00A6FF;">PRO</span>
             </h1>
             <p style="color: #AAAAAA; font-size: 15px; margin-top: 8px;">
                 Your 24/7 AI Rank Booster | Master JEE Mains & Advanced 🚀
@@ -265,7 +267,7 @@ class PDF(FPDF):
         self.ln(5)
     def chapter_title(self, label):
         self.set_font('Arial', 'B', 12)
-        self.set_text_color(74, 144, 226)
+        self.set_text_color(0, 166, 255) # Neon Blue for PDF
         self.cell(0, 10, str(label), 0, 1, 'L')
         self.ln(2)
     def chapter_body(self, body):
@@ -391,7 +393,7 @@ show_branding()
 if not st.session_state.is_verified:
     st.markdown("---")
     st.markdown("""
-    <div style="background-color: #1E2330; padding: 25px; border-radius: 12px; border-left: 5px solid #4A90E2; text-align: center; margin-bottom: 30px;">
+    <div style="background-color: #050810; padding: 25px; border-radius: 12px; border-left: 5px solid #00A6FF; text-align: center; margin-bottom: 30px;">
         <h3 style="color: #FFFFFF; margin:0;">👋 Welcome to JEEx PRO</h3>
         <p style="color: #AAAAAA; margin-top: 10px;">
             The ultimate AI tool for JEE Mains & Advanced.<br>
