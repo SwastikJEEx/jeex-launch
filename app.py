@@ -57,7 +57,8 @@ st.markdown("""
     code { color: #FF7043 !important; background-color: #1E2330 !important; padding: 2px 4px; border-radius: 4px; }
     
     /* Inputs & selects */
-    div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="base-input"] {
+    /* FIXED: Removed div[data-baseweb="base-input"] to prevent "box within a box" issue */
+    div[data-baseweb="input"], div[data-baseweb="select"] {
         background-color: #1E2330 !important;
         border: 1px solid #4A90E2 !important;
         border-radius: 8px !important;
