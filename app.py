@@ -40,21 +40,149 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+    
+    /* App + Sidebar base */
     .stApp { background-color: #0E1117 !important; color: #E0E0E0 !important; }
     [data-testid="stSidebar"] { background-color: #161B26 !important; border-right: 1px solid #2B313E !important; }
-    header, header * { background-color: #0E1117 !important; color: #E0E0E0 !important; }
-    h1, h2, h3, h4, h5, h6, p, li, div, span, label, a, small, strong, code { color: #E0E0E0 !important; }
-    strong { color: #FFD700 !important; font-weight: 600; }
+    
+    /* Header / top bar (some hosts add white header) */
+    header, header * { background-color: #0E1117 !important; color: #E0E0E0 !important; border: none !important; box-shadow: none !important; }
+    
+    /* Global text */
+    h1, h2, h3, h4, h5, h6, p, li, div, span, label, a, small, strong, code {
+        color: #E0E0E0 !important;
+    }
+    /* UPDATED: Changed from Yellow (#FFD700) to JEEx Blue (#4A90E2) */
+    strong { color: #4A90E2 !important; font-weight: 600; }
+    code { color: #FF7043 !important; background-color: #1E2330 !important; padding: 2px 4px; border-radius: 4px; }
+    
+    /* Inputs & selects */
     div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="base-input"] {
-        background-color: #1E2330 !important; border: 1px solid #4A90E2 !important; border-radius: 8px !important;
+        background-color: #1E2330 !important;
+        border: 1px solid #4A90E2 !important;
+        border-radius: 8px !important;
     }
-    input[type="text"], input[type="password"], textarea { color: #FFFFFF !important; }
-    button, .stButton>button {
-        background-color: #4A90E2 !important; color: #FFFFFF !important; border-radius: 8px !important; font-weight: 600 !important;
+    input[type="text"], input[type="password"], textarea, div[data-baseweb="select"] div {
+        color: #FFFFFF !important;
+        background-color: transparent !important;
+        caret-color: #4A90E2 !important;
     }
-    button:hover { background-color: #357ABD !important; }
-    [data-testid="stFileUploader"] { background-color: #14181C !important; border: 1px solid #2B313E !important; border-radius: 8px !important; }
+    ::placeholder { color: #AAAAAA !important; opacity: 1; }
+    
+    /* Buttons (force consistent appearance) */
+    button, input[type="submit"], input[type="button"], .stButton>button, .stDownloadButton, .st-bk {
+        background-color: #4A90E2 !important;
+        color: #FFFFFF !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 10px 20px !important;
+        font-weight: 600 !important;
+        transition: all 0.3s !important;
+        box-shadow: none !important;
+    }
+    button:hover, input[type="submit"]:hover, input[type="button"]:hover, .stButton>button:hover, .stDownloadButton:hover {
+        background-color: #357ABD !important;
+        box-shadow: 0px 4px 15px rgba(74, 144, 226, 0.4) !important;
+    }
+    
+    /* Download variants */
+    button[title="Download"], button[aria-label="Download"], .stDownloadButton button, .st-download-button button {
+        background-color: #4A90E2 !important;
+        color: #FFFFFF !important;
+    }
+
+    /* Pay anchor buttons */
+    .pay-btn-link {
+        display: block;
+        width: 100%;
+        background-color: #4A90E2;
+        color: white !important;
+        text-align: center;
+        padding: 12px;
+        margin-bottom: 12px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        border: 1px solid #4A90E2;
+        transition: all 0.3s ease;
+    }
+    .pay-btn-link:hover {
+        background-color: #357ABD;
+        box-shadow: 0px 4px 15px rgba(74, 144, 226, 0.4);
+        border-color: #357ABD;
+    }
+    .slashed { text-decoration: line-through; opacity: 0.7; margin-right: 5px; font-size: 0.9em; }
+
+    /* Expanders */
+    .streamlit-expanderHeader { background-color: #2B313E !important; color: #FFFFFF !important; border: 1px solid #4A90E2 !important; border-radius: 8px; }
+    .streamlit-expanderContent { background-color: #161B26 !important; border: 1px solid #2B313E !important; color: #E0E0E0 !important; }
+
+    /* katex - UPDATED to Blue */
+    .katex-display { overflow-x: auto; overflow-y: hidden; padding-bottom: 5px; color: #4A90E2 !important; }
+
+    /* File uploader / attachment block */
+    [data-testid="stFileUploader"], .stFileUploader, .stFileUploader * {
+        background-color: #14181C !important;
+        color: #E0E0E0 !important;
+        border: 1px solid #2B313E !important;
+        border-radius: 8px !important;
+    }
+    [data-testid="stFileUploader"] input::placeholder { color: #AAAAAA !important; opacity: 1 !important; }
+    [data-testid="stFileUploader"] .css-1v0mbdj, [data-testid="stFileUploader"] .css-1f0tk5o { color: #E0E0E0 !important; }
+    
+    /* Voice / audio widget block */
+    .stAudioInput, .stAudioInput *, .st-audio-player, audio {
+        background-color: #14181C !important;
+        color: #E0E0E0 !important;
+        border: 1px solid #2B313E !important;
+        border-radius: 8px !important;
+    }
+    .stAudioInput [role="status"], .stAudioInput .stText, .stAudioInput .stMarkdown {
+        color: #E0E0E0 !important;
+        background: transparent !important;
+    }
+
+    /* Dropdown & listbox & popover (baseweb & list menus) */
+    ul[data-baseweb="menu"], div[role="listbox"], .baseweb-popover, .baseweb-menu, .rc-virtual-list {
+        background-color: #161B26 !important;
+        color: #E0E0E0 !important;
+        border: 1px solid #2B313E !important;
+    }
+    li[data-baseweb="option"], ul[data-baseweb="menu"] li, .baseweb-menu li, .rc-virtual-list .list-item {
+        color: #E0E0E0 !important;
+        background-color: transparent !important;
+    }
+    .baseweb-popover * { color: #E0E0E0 !important; }
+    
+    /* Dropdown headings/labels */
+    .css-1r6slb0, .css-1d391kg, .stSelectbox, div[role="option"], div[role="menuitem"] {
+        color: #E0E0E0 !important;
+    }
+    
+    /* Sidebar headings - UPDATED to Blue */
+    [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, [data-testid="stSidebar"] label {
+        color: #4A90E2 !important;
+    }
+    [data-testid="stSidebar"] .stText, [data-testid="stSidebar"] p, [data-testid="stSidebar"] small {
+        color: #E0E0E0 !important;
+    }
+
+    /* Chat input (fix white area under input in some host themes) */
+    .stChatInput, .stChatInput * {
+        background-color: transparent !important;
+        color: #E0E0E0 !important;
+    }
+    .stChatInput .css-1v3fvcr, .stChatInput .css-1y8i9bb { background: #0E1117 !important; color: #E0E0E0 !important; }
+    
+    /* Misc: remove stray white panels */
+    .css-1v3fvcr, .css-1y8i9bb {
+        border: none !important;
+        box-shadow: none !important;
+    }
+    /* spacing tweaks */
     .block-container { padding-top: 1rem; padding-bottom: 140px; }
+    [data-testid="stFileUploader"] { padding: 8px !important; }
+    .stAudioInput { margin-top: 5px; padding: 6px !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -65,8 +193,8 @@ def send_lead_notification(name, email, phone):
     url = f"https://formsubmit.co/{ADMIN_EMAIL}"
     payload = {
         "_subject": f"🚀 NEW JEEx USER: {name}",
-        "_captcha": "false",  # Disable captcha
-        "_template": "table", # Clean table format
+        "_captcha": "false", 
+        "_template": "table",
         "Name": name,
         "Email": email,
         "Phone": phone,
@@ -74,43 +202,33 @@ def send_lead_notification(name, email, phone):
         "Timestamp": str(datetime.now())
     }
     try:
-        # We use a POST request which formsubmit handles
-        r = requests.post(url, data=payload)
-        if r.status_code != 200:
-            logger.error(f"FormSubmit Error: {r.text}")
-            # Optional: st.warning("Note: Registration logged locally (Email server busy).")
+        requests.post(url, data=payload)
         return True
     except Exception as e:
         logger.error(f"Lead send failed: {e}")
-        # Return True anyway to not block the user
         return True
 
 def cleanup_text_for_pdf(text):
     """Translates LaTeX and special chars to PDF-friendly text"""
     if not text: return ""
-    # Remove source citations
     text = re.sub(r'【.*?†source】', '', text)
     
-    # Common Math Symbol Replacements for clean reading
     replacements = {
         r'\alpha': 'alpha', r'\beta': 'beta', r'\gamma': 'gamma', r'\theta': 'theta',
         r'\pi': 'pi', r'\infty': 'infinity',
         r'\le': '<=', r'\ge': '>=', r'\neq': '!=', r'\approx': '~=',
         r'\rightarrow': '->', r'\leftarrow': '<-', r'\implies': '=>',
         r'\cdot': '*', r'\times': 'x',
-        r'\frac': ' frac ', # Simplify fractions structure
+        r'\frac': ' frac ', 
         r'\sqrt': 'sqrt',
         r'\int': 'Integral ', r'\sum': 'Sum ',
-        '$$': '\n', '$': '' # Remove LaTeX delimiters
+        '$$': '\n', '$': '' 
     }
     
     for latex, plain in replacements.items():
         text = text.replace(latex, plain)
         
-    # Remove braces often used in LaTeX
     text = text.replace('{', '(').replace('}', ')')
-    
-    # Strip remaining backslashes
     text = text.replace('\\', '')
     
     return text
@@ -118,7 +236,6 @@ def cleanup_text_for_pdf(text):
 def clean_latex_for_chat(text):
     if not text: return ""
     text = re.sub(r'【.*?†source】', '', text)
-    # Ensure standard dollar signs for math are preserved/fixed if needed
     text = re.sub(r'\\\[(.*?)\\\]', r'$$\1$$', text, flags=re.DOTALL)
     text = re.sub(r'\\\((.*?)\\\)', r'$\1$', text, flags=re.DOTALL)
     return text
@@ -152,9 +269,7 @@ class PDF(FPDF):
     def chapter_body(self, body):
         self.set_font('Arial', '', 11)
         self.set_text_color(50, 50, 50)
-        # Use new cleanup function for better readability
         clean = cleanup_text_for_pdf(body)
-        # Final safe encoding
         clean = clean.encode('latin-1', 'replace').decode('latin-1')
         self.multi_cell(0, 7, clean)
         self.ln()
@@ -188,10 +303,7 @@ with st.sidebar:
         if submit_reg:
             if name and email and phone:
                 with st.spinner("Setting up your account..."):
-                    # Send Email (Using FormSubmit)
                     send_lead_notification(name, email, phone)
-                    
-                    # Grant Access
                     st.session_state.user_details = {"name": name, "email": email}
                     st.session_state.is_verified = True
                     st.success("✅ Success! Welcome aboard.")
