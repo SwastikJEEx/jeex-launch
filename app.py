@@ -57,8 +57,8 @@ st.markdown("""
     code { color: #FF7043 !important; background-color: #1E2330 !important; padding: 2px 4px; border-radius: 4px; }
     
     /* Inputs & selects */
-    /* FIXED: Removed div[data-baseweb="base-input"] to prevent "box within a box" issue */
-    div[data-baseweb="input"], div[data-baseweb="select"] {
+    /* FIXED: Matched NEETx style by including base-input to fix visual glitch */
+    div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="base-input"] {
         background-color: #1E2330 !important;
         border: 1px solid #4A90E2 !important;
         border-radius: 8px !important;
@@ -237,6 +237,7 @@ def cleanup_text_for_pdf(text):
 def clean_latex_for_chat(text):
     if not text: return ""
     text = re.sub(r'【.*?†source】', '', text)
+    # Ensure standard dollar signs for math are preserved/fixed if needed
     text = re.sub(r'\\\[(.*?)\\\]', r'$$\1$$', text, flags=re.DOTALL)
     text = re.sub(r'\\\((.*?)\\\)', r'$\1$', text, flags=re.DOTALL)
     return text
