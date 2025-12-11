@@ -238,11 +238,37 @@ with st.sidebar:
             st.session_state['logout'] = True
             st.rerun()
 
-    # --- CONTACT US DROPDOWN (NEW) ---
+    # --- CONTACT US DROPDOWN ---
     st.markdown("---")
     with st.expander("📞 Contact Us"):
         st.write("**Email:** jeexaipro@gmail.com")
         st.write("**WhatsApp:** +91 9839940400")
+    
+    # --- TERMS & CONDITIONS DROPDOWN (NEW) ---
+    with st.expander("📄 Terms & Conditions"):
+        st.markdown("""
+        **1. Acceptance of Terms**
+        By using JEEx Pro, you agree to these terms. This tool is an AI-powered educational aid designed to assist with JEE preparation.
+
+        **2. AI Limitations**
+        While we strive for high accuracy, JEEx is an AI system and may occasionally provide incorrect or incomplete information. Users should verify critical calculations and concepts with standard textbooks.
+
+        **3. User Conduct**
+        - You agree to use this service for personal educational purposes only.
+        - Do not upload content that violates copyright or is illegal.
+        - Do not share your account details with others.
+
+        **4. Privacy & Data**
+        - Questions and uploaded files are processed by third-party AI providers (OpenAI) to generate answers.
+        - We do not sell your personal data.
+        - We may contact you regarding product updates.
+
+        **5. Limitation of Liability**
+        JEEx Pro is not responsible for any exam results or academic outcomes. Success depends on your own study efforts and exam performance.
+
+        **6. Updates**
+        We reserve the right to modify these terms at any time. Continued use of the service constitutes acceptance of modified terms.
+        """, unsafe_allow_html=True)
 
 # --- 7. MAIN INTERFACE ---
 show_branding()
