@@ -296,7 +296,7 @@ with st.sidebar:
     # A. IF NOT VERIFIED -> SHOW REGISTRATION FORM
     if not st.session_state.is_verified:
         st.markdown("## 🔓 Get Free Access")
-        st.info("Register now to unlock the AI Rank Booster instantly.")
+        st.info("Unlock your AI Rank Booster instantly.")
         
         with st.form("signup_form"):
             name = st.text_input("Full Name")
@@ -306,11 +306,11 @@ with st.sidebar:
         
         if submit_reg:
             if name and email and phone:
-                with st.spinner("Setting up your account..."):
+                with st.spinner("Activating JEEx engine"):
                     send_lead_notification(name, email, phone)
                     st.session_state.user_details = {"name": name, "email": email}
                     st.session_state.is_verified = True
-                    st.success("✅ Success! Welcome aboard.")
+                    st.success("✅ Success! Welcome to JEEx PRO.")
                     time.sleep(1)
                     st.rerun()
             else:
@@ -319,7 +319,7 @@ with st.sidebar:
     # B. IF VERIFIED -> SHOW TOOLS
     else:
         st.markdown(f"👤 **{st.session_state.user_details.get('name', 'Student')}**")
-        st.success("✅ Pro Plan Active (Free)")
+        st.success("✅ JEEx Pro Active")
         st.markdown("---")
         
         st.markdown("**📎 Attach Question**")
@@ -542,3 +542,4 @@ if st.session_state.processing and st.session_state.messages[-1]["role"] == "use
     if 'audio_value' in locals() and audio_value: st.session_state.audio_key += 1
     st.session_state.processing = False
     st.rerun()
+
