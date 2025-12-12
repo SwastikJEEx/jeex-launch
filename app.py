@@ -33,6 +33,7 @@ if "is_verified" not in st.session_state: st.session_state.is_verified = False
 if "user_details" not in st.session_state: st.session_state.user_details = {}
 
 # MODE STATES
+# We initialize this key in session state for the toggle to bind to it
 if "ultimate_mode" not in st.session_state: st.session_state.ultimate_mode = False
 
 # Simple logger
@@ -343,8 +344,8 @@ with st.sidebar:
         st.markdown("### ⚡ Power Tools")
         
         # 1. JEEx Ultimate Toggle
-        # Using a toggle to switch modes
-        st.session_state.ultimate_mode = st.toggle("🔥 JEEx Ultimate", value=st.session_state.ultimate_mode, help="Unlock advanced problem solving and deep conceptual analysis.")
+        # FIXED: Using key='ultimate_mode' automatically syncs with session_state, fixing the 2-click bug.
+        st.toggle("🔥 JEEx Ultimate", key="ultimate_mode", help="Unlock advanced problem solving and deep conceptual analysis.")
         
         if st.session_state.ultimate_mode:
             st.caption("🚀 Advanced Mode: ON")
@@ -361,6 +362,12 @@ with st.sidebar:
                 st.toast("Mock Test Initialized...", icon="⏳")
                 st.session_state.messages.append({"role": "assistant", "content": "Let's test your prep! 🎯 Topic batao, I'll generate a **Mini Mock Test** with 5 tough questions."})
                 st.rerun()
+        
+        # 3. Deep Research Button (Full width below others)
+        if st.button("🔬 Deep Research", use_container_width=True):
+            st.toast("Deep Research Mode: Enabled", icon="🧐")
+            st.session_state.messages.append({"role": "assistant", "content": "Let's dive deep into the theory! 🌊 I can explain concepts from first principles (Calculus/Molecular Orbital Theory). Which topic is confusing you?"})
+            st.rerun()
 
         st.markdown("---")
 
