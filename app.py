@@ -10,7 +10,8 @@ import traceback
 import logging
 
 # --- 1. CONFIGURATION ---
-st.set_page_config(page_title="JEEx Pro", page_icon="⚛️", layout="centered", initial_sidebar_state="expanded")
+# CHANGED: layout="wide" for wider chat area
+st.set_page_config(page_title="JEEx Pro", page_icon="⚛️", layout="wide", initial_sidebar_state="expanded")
 
 # *** EMAIL SETTINGS ***
 # using FormSubmit, emails will be sent TO this address
@@ -30,6 +31,9 @@ if "current_uploaded_file" not in st.session_state: st.session_state.current_upl
 # AUTH & REGISTRATION STATE
 if "is_verified" not in st.session_state: st.session_state.is_verified = False
 if "user_details" not in st.session_state: st.session_state.user_details = {}
+
+# MODE STATES
+if "ultimate_mode" not in st.session_state: st.session_state.ultimate_mode = False
 
 # Simple logger
 logger = logging.getLogger("jeex")
@@ -53,6 +57,12 @@ st.markdown("""
     /* Global text */
     h1, h2, h3, h4, h5, h6, p, li, div, span, label, a, small, strong, code {
         color: #E0E0E0 !important;
+    }
+
+    /* BIGGER CHAT TEXT FOR READABILITY */
+    .stChatMessage p, .stChatMessage li, .stChatMessage div {
+        font-size: 1.15rem !important;
+        line-height: 1.6 !important;
     }
     
     /* NEON BLUE ACCENTS */
@@ -183,7 +193,7 @@ st.markdown("""
 
     /* Misc */
     .css-1v3fvcr, .css-1y8i9bb { border: none !important; box-shadow: none !important; }
-    .block-container { padding-top: 1rem; padding-bottom: 140px; }
+    .block-container { padding-top: 1rem; padding-bottom: 140px; max-width: 1200px; margin: 0 auto; }
     [data-testid="stFileUploader"] { padding: 8px !important; }
     .stAudioInput { margin-top: 5px; padding: 6px !important; }
 </style>
@@ -250,16 +260,17 @@ def clean_latex_for_chat(text):
     return text
 
 def show_branding():
-    c1, c2, c3 = st.columns([1, 2, 1])
+    # Adjusted columns for wide layout to keep logo centered
+    c1, c2, c3 = st.columns([2, 2, 2])
     with c2:
-        try: st.image(LOGO_URL, width=280) 
+        try: st.image(LOGO_URL, use_container_width=True) 
         except: pass
     st.markdown("""
         <div style="text-align: center; margin-top: -15px; margin-bottom: 30px;">
-            <h1 style="margin: 0; font-size: 42px; font-weight: 700; letter-spacing: 1px;">
+            <h1 style="margin: 0; font-size: 52px; font-weight: 700; letter-spacing: 1px;">
                 JEEx <span style="color:#00A6FF;">PRO</span>
             </h1>
-            <p style="color: #AAAAAA; font-size: 15px; margin-top: 8px;">
+            <p style="color: #AAAAAA; font-size: 18px; margin-top: 8px;">
                 Your 24/7 AI Rank Booster | Master JEE Mains & Advanced 🚀
             </p>
         </div>
@@ -328,9 +339,33 @@ with st.sidebar:
         st.success("✅ JEEx Pro Active")
         st.markdown("---")
         
-        # --- NEW FEATURE: NEW SESSION BUTTON ---
-        # Allows clearing chat without full logout
-        if st.button("✨ New Session"):
+        # --- NEW FEATURES: JEEX ULTIMATE & TOOLS ---
+        st.markdown("### ⚡ Power Tools")
+        
+        # 1. JEEx Ultimate Toggle
+        # Using a toggle to switch modes
+        st.session_state.ultimate_mode = st.toggle("🔥 JEEx Ultimate", value=st.session_state.ultimate_mode, help="Unlock advanced problem solving and deep conceptual analysis.")
+        
+        if st.session_state.ultimate_mode:
+            st.caption("🚀 Advanced Mode: ON")
+        
+        # 2. Tools Buttons (Layout in columns)
+        col_t1, col_t2 = st.columns(2)
+        with col_t1:
+            if st.button("📚 Formulas", use_container_width=True):
+                 st.toast("Formula Sheet Mode: Ask for any chapter!", icon="📐")
+                 st.session_state.messages.append({"role": "assistant", "content": "I'm ready! Which chapter's **Formula Sheet** do you need? (e.g., Electrostatics, Thermodynamics)"})
+                 st.rerun()
+        with col_t2:
+            if st.button("📝 Mock Test", use_container_width=True):
+                st.toast("Mock Test Initialized...", icon="⏳")
+                st.session_state.messages.append({"role": "assistant", "content": "Let's test your prep! 🎯 Topic batao, I'll generate a **Mini Mock Test** with 5 tough questions."})
+                st.rerun()
+
+        st.markdown("---")
+
+        # --- SESSION CONTROLS ---
+        if st.button("✨ New Session", use_container_width=True):
             st.session_state.messages = [{"role": "assistant", "content": "Fresh start! 🌟 What topic shall we tackle now?"}]
             # Reset thread ID to force a new context (if you want fresh context)
             if "thread_id" in st.session_state:
@@ -364,9 +399,9 @@ with st.sidebar:
         
         if len(st.session_state.messages) > 1:
             pdf_bytes = generate_pdf(st.session_state.messages)
-            st.download_button("📥 Download Notes", data=pdf_bytes, file_name="JEEx_Notes.pdf", mime="application/pdf")
+            st.download_button("📥 Download Notes", data=pdf_bytes, file_name="JEEx_Notes.pdf", mime="application/pdf", use_container_width=True)
         
-        if st.button("Logout"): 
+        if st.button("Logout", use_container_width=True): 
             st.session_state['logout'] = True
             st.rerun()
 
@@ -510,7 +545,7 @@ if st.session_state.processing and st.session_state.messages[-1]["role"] == "use
         client.beta.threads.messages.create(thread_id=st.session_state.thread_id, role="user", content=api_content, attachments=att if att else None)
         
         # --- ENHANCED BOT INSTRUCTIONS FOR ACCURACY, SCOPE, & FORMATTING ---
-        INSTRUCTIONS = """
+        base_instructions = """
         You are JEEx, an expert JEE (Joint Entrance Examination) tutor and Rank Booster.
         
         ERROR_HANDLING_AND_SCOPE:
@@ -535,11 +570,22 @@ if st.session_state.processing and st.session_state.messages[-1]["role"] == "use
            - Never guess on numeric answers. Calculate them.
         3. **TEACHING STYLE**: Explain the 'Why', not just the 'How'.
         """
-        
+
+        # JEEx ULTIMATE INJECTION
+        if st.session_state.ultimate_mode:
+            base_instructions += """
+            \n\n*** ULTRA MODE ACTIVATED ***
+            The user has enabled 'JEEx Ultimate'. 
+            1. INCREASE COMPLEXITY: Assume the user is aiming for Top 100 Rank in JEE Advanced.
+            2. DERIVE EVERYTHING: Don't just give formulas. Derive them from first principles (Calculus).
+            3. MULTI-CONCEPT: Actively look for ways to combine multiple chapters (e.g., Electrostatics + Rotation).
+            4. TONE: Highly academic, rigorous, and demanding.
+            """
+
         with st.chat_message("assistant", avatar=LOGO_URL):
             stream = client.beta.threads.runs.create(
                 thread_id=st.session_state.thread_id, assistant_id=assistant_id, stream=True,
-                additional_instructions=INSTRUCTIONS,
+                additional_instructions=base_instructions,
                 # Force enabling code interpreter for double-checking if not already enabled on assistant
                 tools=[{"type": "code_interpreter"}]
             )
