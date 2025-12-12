@@ -35,6 +35,7 @@ if "user_details" not in st.session_state: st.session_state.user_details = {}
 # MODE STATES
 # We initialize this key in session state for the toggle to bind to it
 if "ultimate_mode" not in st.session_state: st.session_state.ultimate_mode = False
+if "deep_research_mode" not in st.session_state: st.session_state.deep_research_mode = False
 
 # Simple logger
 logger = logging.getLogger("jeex")
@@ -363,11 +364,11 @@ with st.sidebar:
                 st.session_state.messages.append({"role": "assistant", "content": "Let's test your prep! 🎯 Topic batao, I'll generate a **Mini Mock Test** with 5 tough questions."})
                 st.rerun()
         
-        # 3. Deep Research Button (Full width below others)
-        if st.button("🔬 Deep Research", use_container_width=True):
-            st.toast("Deep Research Mode: Enabled", icon="🧐")
-            st.session_state.messages.append({"role": "assistant", "content": "Let's dive deep into the theory! 🌊 I can explain concepts from first principles (Calculus/Molecular Orbital Theory). Which topic is confusing you?"})
-            st.rerun()
+        # 3. Deep Research Toggle (Full width below others)
+        st.toggle("🔬 Deep Research", key="deep_research_mode", help="Enable deep theoretical explanations and first-principles derivations.")
+        
+        if st.session_state.deep_research_mode:
+            st.caption("🧐 Research Mode: ON")
 
         st.markdown("---")
 
@@ -587,6 +588,15 @@ if st.session_state.processing and st.session_state.messages[-1]["role"] == "use
             2. DERIVE EVERYTHING: Don't just give formulas. Derive them from first principles (Calculus).
             3. MULTI-CONCEPT: Actively look for ways to combine multiple chapters (e.g., Electrostatics + Rotation).
             4. TONE: Highly academic, rigorous, and demanding.
+            """
+
+        # DEEP RESEARCH INJECTION
+        if st.session_state.deep_research_mode:
+            base_instructions += """
+            \n\n*** DEEP RESEARCH MODE ACTIVATED ***
+            1. EXPLAIN LIKE A SCIENTIST: The user wants deep theoretical understanding.
+            2. FIRST PRINCIPLES: Derive formulas rather than stating them. Start from fundamental laws (Newton's Laws, Maxwell's Equations).
+            3. DEPTH OVER BREADTH: Go deep into the 'why' and 'how'.
             """
 
         with st.chat_message("assistant", avatar=LOGO_URL):
