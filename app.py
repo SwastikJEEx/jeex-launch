@@ -237,11 +237,16 @@ def cleanup_text_for_pdf(text):
     return text
 
 def clean_latex_for_chat(text):
+    """Refined LaTeX cleaning for better display"""
     if not text: return ""
     text = re.sub(r'【.*?†source】', '', text)
-    # Ensure standard dollar signs for math are preserved/fixed if needed
+    # Ensure standard dollar signs for math are preserved/fixed
+    # Convert \[ \] to $$ $$
     text = re.sub(r'\\\[(.*?)\\\]', r'$$\1$$', text, flags=re.DOTALL)
+    # Convert \( \) to $ $
     text = re.sub(r'\\\((.*?)\\\)', r'$\1$', text, flags=re.DOTALL)
+    # Fix double backslashes which sometimes break Streamlit markdown
+    text = text.replace('\\\\', '\\')
     return text
 
 def show_branding():
@@ -273,8 +278,8 @@ class PDF(FPDF):
     def chapter_body(self, body):
         self.set_font('Arial', '', 11)
         self.set_text_color(50, 50, 50)
-        clean = cleanup_text_for_pdf(body)
-        clean = clean.encode('latin-1', 'replace').decode('latin-1')
+        self.clean = cleanup_text_for_pdf(body)
+        clean = self.clean.encode('latin-1', 'replace').decode('latin-1')
         self.multi_cell(0, 7, clean)
         self.ln()
 
@@ -287,6 +292,7 @@ def generate_pdf(messages):
         pdf.chapter_body(msg["content"])
     return pdf.output(dest='S').encode('latin-1', 'ignore')
 
+# Handle logout properly
 if st.session_state.get('logout', False):
     st.session_state.clear()
     st.rerun()
@@ -310,7 +316,7 @@ with st.sidebar:
                     send_lead_notification(name, email, phone)
                     st.session_state.user_details = {"name": name, "email": email}
                     st.session_state.is_verified = True
-                    st.success("✅ Success! Welcome to JEEx PRO.")
+                    st.toast(f"Welcome, {name}! Let's study.", icon="🚀")
                     time.sleep(1)
                     st.rerun()
             else:
@@ -321,6 +327,16 @@ with st.sidebar:
         st.markdown(f"👤 **{st.session_state.user_details.get('name', 'Student')}**")
         st.success("✅ JEEx Pro Active")
         st.markdown("---")
+        
+        # --- NEW FEATURE: NEW SESSION BUTTON ---
+        # Allows clearing chat without full logout
+        if st.button("✨ New Session"):
+            st.session_state.messages = [{"role": "assistant", "content": "Fresh start! 🌟 What topic shall we tackle now?"}]
+            # Reset thread ID to force a new context (if you want fresh context)
+            if "thread_id" in st.session_state:
+                del st.session_state.thread_id
+            st.toast("Chat history cleared!", icon="🧹")
+            st.rerun()
         
         st.markdown("**📎 Attach Question**")
         
@@ -493,12 +509,20 @@ if st.session_state.processing and st.session_state.messages[-1]["role"] == "use
     try:
         client.beta.threads.messages.create(thread_id=st.session_state.thread_id, role="user", content=api_content, attachments=att if att else None)
         
-        # --- ENHANCED BOT INSTRUCTIONS FOR ACCURACY & FORMATTING ---
+        # --- ENHANCED BOT INSTRUCTIONS FOR ACCURACY, SCOPE, & FORMATTING ---
         INSTRUCTIONS = """
-        You are JEEx, an expert JEE tutor and Rank Booster.
+        You are JEEx, an expert JEE (Joint Entrance Examination) tutor and Rank Booster.
+        
+        ERROR_HANDLING_AND_SCOPE:
+        1. **STRICT DOMAIN BOUNDARY**: Your knowledge is strictly limited to Physics, Chemistry, and Mathematics relevant to JEE Mains and Advanced.
+        2. **IRRELEVANT TOPICS**: If the user asks about topics NOT related to JEE (e.g., general coding, politics, movies, cooking, dating, sports, general news):
+           - **Action**: Provide a VERY BRIEF (maximum 1 sentence) factual definition of the topic to be polite.
+           - **Pivot**: Immediately state that this is outside the scope of JEE preparation.
+           - **Redirect**: Ask a relevant question to bring them back.
+           - **Example**: User: "Who won the cricket match?" -> Bot: "India won the match. However, to win at JEE, we need to focus on your syllabus. Let's solve a Rotational Mechanics problem instead?"
         
         CORE CAPABILITIES:
-        1. **Deep JEE Knowledge Base**: Simulate an internet search by cross-referencing your internal database of JEE Advanced/Mains archives, NCERT nuances, and recent exam trends. Provide context that goes beyond the textbook.
+        1. **Deep JEE Knowledge Base**: Simulate an internet search by cross-referencing your internal database of JEE Advanced/Mains archives, NCERT nuances, and recent exam trends.
         2. **Search Engine Behavior**: When asked about specific data (e.g., "Cutoff for IIT Bombay"), use your internal knowledge to provide the most recent accurate estimates.
         
         MANDATORY RULES:
