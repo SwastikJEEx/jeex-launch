@@ -159,7 +159,7 @@ st.markdown("""
         background: transparent !important;
     }
 
-    /* Dropdown & listbox */
+    /* Dropdown & listbox - FIXED VISIBILITY FOR LIGHT MODE */
     ul[data-baseweb="menu"], div[role="listbox"], .baseweb-popover, .baseweb-menu, .rc-virtual-list {
         background-color: #050810 !important;
         color: #E0E0E0 !important;
@@ -168,6 +168,16 @@ st.markdown("""
     li[data-baseweb="option"], ul[data-baseweb="menu"] li, .baseweb-menu li, .rc-virtual-list .list-item {
         color: #E0E0E0 !important;
         background-color: transparent !important;
+    }
+    /* Specific fix for the popover container content */
+    div[data-baseweb="popover"] div {
+        background-color: #050810 !important;
+        color: #E0E0E0 !important;
+    }
+    /* Hover state for options */
+    li[data-baseweb="option"]:hover, li[data-baseweb="option"][aria-selected="true"] {
+        background-color: #0D1B2E !important;
+        color: #00A6FF !important;
     }
     .baseweb-popover * { color: #E0E0E0 !important; }
     
@@ -576,6 +586,9 @@ if st.session_state.processing and st.session_state.messages[-1]["role"] == "use
             - **Pivot**: Immediately state that this is outside the scope of JEE preparation.
             - **Redirect**: Ask a relevant question to bring them back.
             - **Example**: User: "Who won the cricket match?" -> Bot: "India won the match. However, to win at JEE, we need to focus on your syllabus. Let's solve a Rotational Mechanics problem instead?"
+        3. **MISSING FILES**: If the user asks you to "search the file", "read the document", or "analyze the image" BUT no file is attached to the current message:
+           - **Action**: Do NOT try to use the code interpreter or retrieval tool to open a file.
+           - **Response**: State clearly: "I don't see any file attached. Please upload it first so I can analyze it."
         
         CORE CAPABILITIES:
         1. **Deep JEE Knowledge Base**: Simulate an internet search by cross-referencing your internal database of JEE Advanced/Mains archives, NCERT nuances, and recent exam trends.
