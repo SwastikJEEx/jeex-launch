@@ -10,11 +10,9 @@ import traceback
 import logging
 
 # --- 1. CONFIGURATION ---
-# CHANGED: layout="wide" for wider chat area
 st.set_page_config(page_title="JEEx Pro", page_icon="⚛️", layout="wide", initial_sidebar_state="expanded")
 
 # *** EMAIL SETTINGS ***
-# using FormSubmit, emails will be sent TO this address
 ADMIN_EMAIL = "jeexaipro@gmail.com"  
 
 # --- 2. GLOBAL CONSTANTS ---
@@ -73,7 +71,7 @@ st.markdown("""
     strong { color: #00A6FF !important; font-weight: 600; }
     code { color: #00A6FF !important; background-color: #0D1B2E !important; padding: 2px 4px; border-radius: 4px; }
     
-    /* Inputs & selects - EXACT COPY OF NEETx LOGIC but Blue */
+    /* Inputs & selects - FIXED BOX STYLE */
     div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="base-input"] {
         background-color: #050810 !important;
         border: 1px solid #00A6FF !important;
@@ -108,28 +106,6 @@ st.markdown("""
         color: #000000 !important;
     }
 
-    /* Pay anchor buttons */
-    .pay-btn-link {
-        display: block;
-        width: 100%;
-        background-color: #00A6FF;
-        color: #000000 !important;
-        text-align: center;
-        padding: 12px;
-        margin-bottom: 12px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-weight: 700;
-        border: 1px solid #00A6FF;
-        transition: all 0.3s ease;
-    }
-    .pay-btn-link:hover {
-        background-color: #008ECC;
-        box-shadow: 0px 0px 10px rgba(0, 166, 255, 0.4);
-        border-color: #008ECC;
-    }
-    .slashed { text-decoration: line-through; opacity: 0.7; margin-right: 5px; font-size: 0.9em; }
-
     /* Expanders */
     .streamlit-expanderHeader { background-color: #0D1B2E !important; color: #FFFFFF !important; border: 1px solid #00A6FF !important; border-radius: 8px; }
     .streamlit-expanderContent { background-color: #050810 !important; border: 1px solid #0D1B2E !important; color: #E0E0E0 !important; }
@@ -159,25 +135,27 @@ st.markdown("""
         background: transparent !important;
     }
 
-    /* Dropdown & listbox - FIXED VISIBILITY FOR LIGHT MODE */
-    ul[data-baseweb="menu"], div[role="listbox"], .baseweb-popover, .baseweb-menu, .rc-virtual-list {
+    /* --- DROPDOWN & LISTBOX VISIBILITY FIX --- */
+    /* Forces the popup menu to be dark with light text */
+    div[data-baseweb="popover"], div[data-baseweb="menu"], div[role="listbox"] {
         background-color: #050810 !important;
         color: #E0E0E0 !important;
-        border: 1px solid #0D1B2E !important;
+        border: 1px solid #00A6FF !important;
     }
-    li[data-baseweb="option"], ul[data-baseweb="menu"] li, .baseweb-menu li, .rc-virtual-list .list-item {
+    /* Options in the list */
+    li[data-baseweb="option"] {
         color: #E0E0E0 !important;
-        background-color: transparent !important;
     }
-    /* Specific fix for the popover container content */
+    /* Option container fix */
     div[data-baseweb="popover"] div {
         background-color: #050810 !important;
         color: #E0E0E0 !important;
     }
-    /* Hover state for options */
+    /* Selected/Hover state for options */
     li[data-baseweb="option"]:hover, li[data-baseweb="option"][aria-selected="true"] {
         background-color: #0D1B2E !important;
         color: #00A6FF !important;
+        font-weight: bold !important;
     }
     .baseweb-popover * { color: #E0E0E0 !important; }
     
@@ -194,19 +172,25 @@ st.markdown("""
         color: #E0E0E0 !important;
     }
 
-    /* Chat input */
-    .stChatInput, .stChatInput * {
-        background-color: transparent !important;
-        color: #E0E0E0 !important;
+    /* --- CHAT INPUT FIX --- */
+    /* Force bottom container to be dark */
+    .stChatInput, .stChatInputContainer {
+        background-color: #000000 !important;
     }
-    .stChatInput .css-1v3fvcr, .stChatInput .css-1y8i9bb { background: #000000 !important; color: #E0E0E0 !important; }
-    .stChatInput { border-color: #00A6FF !important; }
+    .stChatInput .css-1v3fvcr, .stChatInput .css-1y8i9bb { 
+        background: #000000 !important; 
+        color: #E0E0E0 !important;
+        border: 1px solid #00A6FF !important;
+    }
+    /* Ensure the send button region is also dark */
+    div[data-testid="stChatInput"] {
+        background-color: #000000 !important;
+    }
     
     /* Spinner */
     .stSpinner > div > div { border-top-color: #00A6FF !important; }
 
     /* Misc */
-    .css-1v3fvcr, .css-1y8i9bb { border: none !important; box-shadow: none !important; }
     .block-container { padding-top: 1rem; padding-bottom: 140px; max-width: 1200px; margin: 0 auto; }
     [data-testid="stFileUploader"] { padding: 8px !important; }
     .stAudioInput { margin-top: 5px; padding: 6px !important; }
@@ -354,7 +338,6 @@ with st.sidebar:
         st.markdown("### ⚡ Power Tools")
         
         # 1. SPECIFICATIONS (Target & Subject)
-        # Added new Selectboxes matching the theme
         st.session_state.target_exam = st.selectbox("🎯 Target Exam", ["JEE Mains", "JEE Advanced"], index=0)
         st.session_state.subject_focus = st.selectbox("📚 Subject Focus", ["All Subjects", "Physics", "Chemistry", "Mathematics"], index=0)
         
@@ -366,7 +349,7 @@ with st.sidebar:
         if st.session_state.ultimate_mode:
             st.caption("🚀 Advanced Mode: ON")
         
-        # 3. Tools Buttons (Layout in columns)
+        # 3. Tools Buttons
         col_t1, col_t2 = st.columns(2)
         with col_t1:
             if st.button("📚 Formulas", use_container_width=True):
@@ -375,7 +358,7 @@ with st.sidebar:
                  st.rerun()
             if st.button("🔍 PYQ Finder", use_container_width=True):
                  st.toast("PYQ Mode Active", icon="🔎")
-                 st.session_state.messages.append({"role": "assistant", "content": "Tell me the Chapter or Topic, and I will find the most important **Previous Year Questions (PYQs)** for you."})
+                 st.session_state.messages.append({"role": "assistant", "content": "Tell me the Chapter or Topic, and I will generate the most important **Previous Year Questions (PYQs)** for you from my database."})
                  st.rerun()
 
         with col_t2:
@@ -388,7 +371,7 @@ with st.sidebar:
                 st.session_state.messages.append({"role": "assistant", "content": "Upload your test paper or tell me your weak topic. I will analyze your mistakes and tell you **exactly where you are losing marks**."})
                 st.rerun()
         
-        # 4. Deep Research Toggle (Full width below others)
+        # 4. Deep Research Toggle
         st.toggle("🔬 Deep Research", key="deep_research_mode", help="Enable deep theoretical explanations and first-principles derivations.")
         
         if st.session_state.deep_research_mode:
@@ -442,7 +425,7 @@ with st.sidebar:
         st.write("**Email:** jeexaipro@gmail.com")
         st.write("**WhatsApp:** +91 9839940400")
     
-    # --- TERMS & CONDITIONS DROPDOWN (NEW) ---
+    # --- TERMS & CONDITIONS DROPDOWN ---
     with st.expander("📄 Terms & Conditions"):
         st.markdown("""
         **1. Acceptance of Terms**
@@ -484,7 +467,7 @@ if not st.session_state.is_verified:
     </div>
     """, unsafe_allow_html=True)
     
-    # --- UPDATED DESCRIPTION (6 POINTS) ---
+    # --- UPDATED DESCRIPTION ---
     c1, c2 = st.columns(2)
     with c1:
         st.info("**🧠 Advanced Problem Solving**\n\nSolves Irodov & Cengage level problems with step-by-step logic.")
@@ -561,21 +544,19 @@ if st.session_state.processing and st.session_state.messages[-1]["role"] == "use
             fres = client.files.create(file=open(tfile, "rb"), purpose="assistants")
             
             if uploaded_file_obj.type == "application/pdf":
-                # For PDFs, use code interpreter to read them
                 att.append({"file_id": fres.id, "tools": [{"type": "code_interpreter"}]})
             else:
-                # For images
                 api_content.append({"type": "image_file", "image_file": {"file_id": fres.id}})
             
             try: os.remove(tfile)
             except: pass
         except:
-            pass # Continue without file if upload fails
+            pass 
     
     try:
         client.beta.threads.messages.create(thread_id=st.session_state.thread_id, role="user", content=api_content, attachments=att if att else None)
         
-        # --- ENHANCED BOT INSTRUCTIONS FOR ACCURACY, SCOPE, & FORMATTING ---
+        # --- ENHANCED BOT INSTRUCTIONS ---
         base_instructions = """
         You are JEEx, an expert JEE (Joint Entrance Examination) tutor and Rank Booster.
         
@@ -595,14 +576,15 @@ if st.session_state.processing and st.session_state.messages[-1]["role"] == "use
         2. **Search Engine Behavior**: When asked about specific data (e.g., "Cutoff for IIT Bombay"), use your internal knowledge to provide the most recent accurate estimates.
         
         MANDATORY RULES:
-        1. **FORMATTING**: You MUST use LaTeX for ALL mathematical symbols, equations, and chemistry formulas.
+        1. **PYQ REQUESTS**: If the user asks for "PYQs" or "Questions" on a topic and NO file is attached, generate 3-5 authentic-style JEE questions from your internal knowledge base. DO NOT say you cannot find files.
+        2. **FORMATTING**: You MUST use LaTeX for ALL mathematical symbols, equations, and chemistry formulas.
             - Use $...$ for inline math (e.g. $x^2$).
             - Use $$...$$ for block math equations.
-        2. **ACCURACY & VERIFICATION**:
+        3. **ACCURACY & VERIFICATION**:
             - **Think before you answer.**
             - For ANY complex calculation, organic reaction mechanism, or physics derivation, you MUST use the **Code Interpreter (Python Tool)** to verify your logic and numbers before presenting the final answer.
             - Never guess on numeric answers. Calculate them.
-        3. **TEACHING STYLE**: Explain the 'Why', not just the 'How'.
+        4. **TEACHING STYLE**: Explain the 'Why', not just the 'How'.
         """
 
         # JEEx ULTIMATE INJECTION
