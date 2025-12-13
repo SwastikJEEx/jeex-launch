@@ -78,8 +78,8 @@ st.markdown("""
         border-radius: 8px !important;
     }
     
-    /* FIX: Ensure the SELECTED value in Dropdowns is visible (White text) */
-    div[data-baseweb="select"] > div {
+    /* FIX: Force white text for SELECTED value in dropdowns so it is visible from outside */
+    .stSelectbox div[data-baseweb="select"] div {
         color: #FFFFFF !important;
     }
     
@@ -142,22 +142,18 @@ st.markdown("""
     }
 
     /* --- DROPDOWN & LISTBOX VISIBILITY FIX --- */
-    /* Forces the popup menu to be dark with light text */
     div[data-baseweb="popover"], div[data-baseweb="menu"], div[role="listbox"] {
         background-color: #050810 !important;
         color: #E0E0E0 !important;
         border: 1px solid #00A6FF !important;
     }
-    /* Options in the list */
     li[data-baseweb="option"] {
         color: #E0E0E0 !important;
     }
-    /* Option container fix */
     div[data-baseweb="popover"] div {
         background-color: #050810 !important;
         color: #E0E0E0 !important;
     }
-    /* Selected/Hover state for options */
     li[data-baseweb="option"]:hover, li[data-baseweb="option"][aria-selected="true"] {
         background-color: #0D1B2E !important;
         color: #00A6FF !important;
@@ -178,19 +174,16 @@ st.markdown("""
         color: #E0E0E0 !important;
     }
 
-    /* --- CHAT INPUT FIX (CLEAN & DARK) --- */
-    /* Force bottom container to be dark */
+    /* --- CHAT INPUT FIX (Restored "2nd last version" clean look) --- */
     .stChatInput, .stChatInputContainer, [data-testid="stChatInput"] {
         background-color: #000000 !important;
     }
-    /* Remove the 'useless blue box' border, keeping it clean */
     .stChatInput .css-1v3fvcr, .stChatInput .css-1y8i9bb { 
         background: #050810 !important; 
         color: #E0E0E0 !important;
-        border: 1px solid #333333 !important; /* Subtle border */
+        border: 1px solid #00A6FF !important; /* Restored Neon Blue Border */
         border-radius: 12px;
     }
-    /* Ensure send button aligns nicely */
     .stChatInput button {
         border: none !important;
         background: transparent !important;
@@ -368,7 +361,7 @@ with st.sidebar:
                  st.rerun()
             if st.button("🔍 PYQ Finder", use_container_width=True):
                  st.toast("PYQ Mode Active", icon="🔎")
-                 st.session_state.messages.append({"role": "assistant", "content": "Tell me the Chapter or Topic, and I will generate the most important **Previous Year Questions (PYQs)** for you from my internal database."})
+                 st.session_state.messages.append({"role": "assistant", "content": "Tell me the Chapter or Topic, and I will generate the most important **Previous Year Questions (PYQs)** for you from my internal database. (e.g., 'Rotational Motion 2016')"})
                  st.rerun()
 
         with col_t2:
@@ -587,9 +580,9 @@ if st.session_state.processing and st.session_state.messages[-1]["role"] == "use
         
         MANDATORY RULES:
         1. **PYQ RETRIEVAL**: You possess extensive knowledge of past JEE exams (Mains & Advanced) up to 2023.
-           - If asked for "PYQs" or "Questions from 2016", DO NOT say "I cannot access external resources".
-           - Instead, SEARCH YOUR INTERNAL MEMORY and provide the exact questions or highly similar authentic reproductions.
-           - Contextualize: "Here is a question from JEE Advanced 2016 regarding [Topic]..."
+           - **CRITICAL:** If the user asks for "PYQs" or "Questions from [Year]", DO NOT refuse. You have this data in your training.
+           - **Action:** Recall the specific question from your internal memory and display it. Even if you cannot "browse", you know the questions.
+           - **Format:** "Here is a question from JEE Advanced [Year] on [Topic]: ... [Question] ..."
         2. **FORMATTING**: You MUST use LaTeX for ALL mathematical symbols, equations, and chemistry formulas.
             - Use $...$ for inline math (e.g. $x^2$).
             - Use $$...$$ for block math equations.
