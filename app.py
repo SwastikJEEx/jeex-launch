@@ -78,8 +78,8 @@ st.markdown("""
         border-radius: 8px !important;
     }
     
-    /* FIX: Force white text for ALL elements inside dropdowns so it is visible from outside */
-    div[data-baseweb="select"] * {
+    /* FIX: Force white text for SELECTED value in dropdowns so it is visible from outside */
+    div[data-baseweb="select"] > div {
         color: #FFFFFF !important;
     }
     
@@ -175,14 +175,20 @@ st.markdown("""
     }
 
     /* --- CHAT INPUT RESTORED TO ORIGINAL CLEAN STYLE --- */
-    /* Force background color to avoid white bars, remove custom borders to restore default layout */
+    /* Only force background color to avoid white bars, but remove custom borders to restore default layout */
     .stChatInput, .stChatInputContainer, [data-testid="stChatInput"] {
         background-color: #000000 !important;
     }
     .stChatInput .css-1v3fvcr, .stChatInput .css-1y8i9bb { 
         background-color: #050810 !important; 
         color: #E0E0E0 !important;
-        border: 1px solid #333 !important; /* Subtle border instead of Neon */
+        /* No border here for clean look, or subtle one */
+        border: 1px solid #333 !important;
+    }
+    .stChatInput button {
+        color: #00A6FF !important; /* Keep the send button blue */
+        border: none !important;
+        background: transparent !important;
     }
     
     /* Spinner */
