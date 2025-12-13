@@ -73,21 +73,32 @@ st.markdown("""
     code { color: #00A6FF !important; background-color: #0D1B2E !important; padding: 2px 4px; border-radius: 4px; }
     
     /* --- SIDEBAR INPUTS (NEON BLUE BORDER) --- */
-    /* Target ONLY sidebar inputs for the neon look */
     [data-testid="stSidebar"] div[data-baseweb="input"], 
-    [data-testid="stSidebar"] div[data-baseweb="select"], 
     [data-testid="stSidebar"] div[data-baseweb="base-input"] {
         background-color: #050810 !important;
         border: 1px solid #00A6FF !important;
         border-radius: 8px !important;
     }
     
-    /* --- DROPDOWN VISIBILITY FIX (CRITICAL) --- */
-    /* Forces the selected text inside the box to be WHITE and visible */
-    .stSelectbox > div > div > div {
+    /* --- DROPDOWN VISIBILITY FIX (CRITICAL from ChatGPT & Analysis) --- */
+    /* Target the selection box container */
+    [data-testid="stSidebar"] div[data-baseweb="select"] {
+        background-color: #050810 !important;
+        border: 1px solid #00A6FF !important;
+        border-radius: 8px !important;
+    }
+    
+    /* Force the selected text inside the box to be WHITE and visible */
+    div[data-baseweb="select"] > div {
         color: #FFFFFF !important;
         -webkit-text-fill-color: #FFFFFF !important;
     }
+    
+    /* Additional fix for span elements inside select which some browsers use */
+    div[data-baseweb="select"] span {
+        color: #FFFFFF !important;
+    }
+    
     /* Dropdown Arrow color */
     .stSelectbox svg {
         fill: #00A6FF !important;
@@ -158,14 +169,18 @@ st.markdown("""
         color: #E0E0E0 !important;
         border: 1px solid #00A6FF !important;
     }
+    /* Options in the list */
     li[data-baseweb="option"] {
-        color: #E0E0E0 !important;
+        background-color: #000000 !important;
+        color: #FFFFFF !important;
     }
+    /* Hover state for options */
     li[data-baseweb="option"]:hover, li[data-baseweb="option"][aria-selected="true"] {
         background-color: #0D1B2E !important;
         color: #00A6FF !important;
         font-weight: bold !important;
     }
+    .baseweb-popover * { color: #E0E0E0 !important; }
     
     /* Sidebar headings - Neon Blue */
     [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, [data-testid="stSidebar"] label {
@@ -182,11 +197,18 @@ st.markdown("""
         background-color: #000000 !important;
     }
     
-    /* 2. The input box itself - Clean Dark Grey, No Neon Border */
+    /* 2. The input box itself - Clean Dark Grey, No Neon Border, No Shadow */
     .stChatInput textarea {
         background-color: #050810 !important;
         color: #FFFFFF !important;
         border: 1px solid #333333 !important; /* Subtle grey border */
+        box-shadow: none !important;
+        outline: none !important;
+    }
+    
+    .stChatInput textarea:focus {
+        border: 1px solid #444444 !important;
+        box-shadow: none !important;
     }
     
     /* 3. Send Button - Keep it separate from global button styles */
@@ -208,47 +230,6 @@ st.markdown("""
     .block-container { padding-top: 1rem; padding-bottom: 140px; max-width: 1200px; margin: 0 auto; }
     [data-testid="stFileUploader"] { padding: 8px !important; }
     .stAudioInput { margin-top: 5px; padding: 6px !important; }
-
-    /* ===== FIX 1: DROPDOWN VALUE VISIBILITY ===== */
-    div[data-baseweb="select"] > div {
-        color: #FFFFFF !important;
-        -webkit-text-fill-color: #FFFFFF !important;
-    }
-
-    div[data-baseweb="select"] span {
-        color: #FFFFFF !important;
-    }
-
-    /* Dropdown options */
-    li[data-baseweb="option"] {
-        background-color: #000000 !important;
-        color: #FFFFFF !important;
-    }
-    li[data-baseweb="option"]:hover,
-    li[data-baseweb="option"][aria-selected="true"] {
-        background-color: #0D1B2E !important;
-        color: #00A6FF !important;
-    }
-
-    /* ===== FIX 2: REMOVE CHAT INPUT NEON OUTLINE ===== */
-    .stChatInput textarea {
-        border: 1px solid #333333 !important;
-        box-shadow: none !important;
-        outline: none !important;
-    }
-    .stChatInput textarea:focus {
-        border: 1px solid #444444 !important;
-        box-shadow: none !important;
-    }
-
-    /* ===== FIX 3: SIDEBAR SEND BUTTON ===== */
-    .sidebar-send-btn > button {
-        width: 100%;
-        background-color: #00A6FF !important;
-        color: #000000 !important;
-        font-weight: 700 !important;
-        border-radius: 8px !important;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -569,14 +550,12 @@ if 'audio_value' in locals() and audio_value and not st.session_state.processing
 text_prompt = st.chat_input("Ask a doubt...", disabled=st.session_state.processing)
 prompt = audio_prompt if audio_prompt else text_prompt
 
+# Check if triggered by sidebar button OR normal chat input
 if prompt or st.session_state.get("force_send"):
     st.session_state.force_send = False
     
-    # Check if prompt is valid when triggered by button, if not, do not process
-    if not prompt and not audio_prompt:
-         # If triggered by button but no text/audio, we pass (or could handle last message regeneration)
-         pass 
-    else:
+    # Only process if there is actual input to process
+    if prompt or audio_prompt:
         st.session_state.processing = True
         msg_data = {"role": "user", "content": prompt}
         
