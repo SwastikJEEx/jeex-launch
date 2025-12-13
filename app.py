@@ -77,6 +77,12 @@ st.markdown("""
         border: 1px solid #00A6FF !important;
         border-radius: 8px !important;
     }
+    
+    /* FIX: Ensure the SELECTED value in Dropdowns is visible (White text) */
+    div[data-baseweb="select"] > div {
+        color: #FFFFFF !important;
+    }
+    
     input[type="text"], input[type="password"], textarea, div[data-baseweb="select"] div {
         color: #FFFFFF !important;
         background-color: transparent !important;
@@ -172,19 +178,23 @@ st.markdown("""
         color: #E0E0E0 !important;
     }
 
-    /* --- CHAT INPUT FIX --- */
+    /* --- CHAT INPUT FIX (CLEAN & DARK) --- */
     /* Force bottom container to be dark */
-    .stChatInput, .stChatInputContainer {
+    .stChatInput, .stChatInputContainer, [data-testid="stChatInput"] {
         background-color: #000000 !important;
     }
+    /* Remove the 'useless blue box' border, keeping it clean */
     .stChatInput .css-1v3fvcr, .stChatInput .css-1y8i9bb { 
-        background: #000000 !important; 
+        background: #050810 !important; 
         color: #E0E0E0 !important;
-        border: 1px solid #00A6FF !important;
+        border: 1px solid #333333 !important; /* Subtle border */
+        border-radius: 12px;
     }
-    /* Ensure the send button region is also dark */
-    div[data-testid="stChatInput"] {
-        background-color: #000000 !important;
+    /* Ensure send button aligns nicely */
+    .stChatInput button {
+        border: none !important;
+        background: transparent !important;
+        color: #00A6FF !important;
     }
     
     /* Spinner */
@@ -358,7 +368,7 @@ with st.sidebar:
                  st.rerun()
             if st.button("🔍 PYQ Finder", use_container_width=True):
                  st.toast("PYQ Mode Active", icon="🔎")
-                 st.session_state.messages.append({"role": "assistant", "content": "Tell me the Chapter or Topic, and I will generate the most important **Previous Year Questions (PYQs)** for you from my database."})
+                 st.session_state.messages.append({"role": "assistant", "content": "Tell me the Chapter or Topic, and I will generate the most important **Previous Year Questions (PYQs)** for you from my internal database."})
                  st.rerun()
 
         with col_t2:
@@ -425,7 +435,7 @@ with st.sidebar:
         st.write("**Email:** jeexaipro@gmail.com")
         st.write("**WhatsApp:** +91 9839940400")
     
-    # --- TERMS & CONDITIONS DROPDOWN ---
+    # --- TERMS & CONDITIONS DROPDOWN (NEW) ---
     with st.expander("📄 Terms & Conditions"):
         st.markdown("""
         **1. Acceptance of Terms**
@@ -467,7 +477,7 @@ if not st.session_state.is_verified:
     </div>
     """, unsafe_allow_html=True)
     
-    # --- UPDATED DESCRIPTION ---
+    # --- UPDATED DESCRIPTION (6 POINTS) ---
     c1, c2 = st.columns(2)
     with c1:
         st.info("**🧠 Advanced Problem Solving**\n\nSolves Irodov & Cengage level problems with step-by-step logic.")
@@ -576,7 +586,10 @@ if st.session_state.processing and st.session_state.messages[-1]["role"] == "use
         2. **Search Engine Behavior**: When asked about specific data (e.g., "Cutoff for IIT Bombay"), use your internal knowledge to provide the most recent accurate estimates.
         
         MANDATORY RULES:
-        1. **PYQ REQUESTS**: If the user asks for "PYQs" or "Questions" on a topic and NO file is attached, generate 3-5 authentic-style JEE questions from your internal knowledge base. DO NOT say you cannot find files.
+        1. **PYQ RETRIEVAL**: You possess extensive knowledge of past JEE exams (Mains & Advanced) up to 2023.
+           - If asked for "PYQs" or "Questions from 2016", DO NOT say "I cannot access external resources".
+           - Instead, SEARCH YOUR INTERNAL MEMORY and provide the exact questions or highly similar authentic reproductions.
+           - Contextualize: "Here is a question from JEE Advanced 2016 regarding [Topic]..."
         2. **FORMATTING**: You MUST use LaTeX for ALL mathematical symbols, equations, and chemistry formulas.
             - Use $...$ for inline math (e.g. $x^2$).
             - Use $$...$$ for block math equations.
