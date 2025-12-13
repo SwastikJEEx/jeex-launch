@@ -33,9 +33,11 @@ if "is_verified" not in st.session_state: st.session_state.is_verified = False
 if "user_details" not in st.session_state: st.session_state.user_details = {}
 
 # MODE STATES
-# We initialize this key in session state for the toggle to bind to it
 if "ultimate_mode" not in st.session_state: st.session_state.ultimate_mode = False
 if "deep_research_mode" not in st.session_state: st.session_state.deep_research_mode = False
+# New Specifications States
+if "target_exam" not in st.session_state: st.session_state.target_exam = "JEE Mains"
+if "subject_focus" not in st.session_state: st.session_state.subject_focus = "All Subjects"
 
 # Simple logger
 logger = logging.getLogger("jeex")
@@ -253,11 +255,8 @@ def clean_latex_for_chat(text):
     if not text: return ""
     text = re.sub(r'【.*?†source】', '', text)
     # Ensure standard dollar signs for math are preserved/fixed
-    # Convert \[ \] to $$ $$
     text = re.sub(r'\\\[(.*?)\\\]', r'$$\1$$', text, flags=re.DOTALL)
-    # Convert \( \) to $ $
     text = re.sub(r'\\\((.*?)\\\)', r'$\1$', text, flags=re.DOTALL)
-    # Fix double backslashes which sometimes break Streamlit markdown
     text = text.replace('\\\\', '\\')
     return text
 
@@ -315,7 +314,7 @@ with st.sidebar:
     # A. IF NOT VERIFIED -> SHOW REGISTRATION FORM
     if not st.session_state.is_verified:
         st.markdown("## 🔓 Get Free Access")
-        st.info("Unlock your AI Rank Booster instantly.")
+        st.info("Register now to unlock the AI Rank Booster instantly.")
         
         with st.form("signup_form"):
             name = st.text_input("Full Name")
@@ -344,27 +343,42 @@ with st.sidebar:
         # --- NEW FEATURES: JEEX ULTIMATE & TOOLS ---
         st.markdown("### ⚡ Power Tools")
         
-        # 1. JEEx Ultimate Toggle
-        # FIXED: Using key='ultimate_mode' automatically syncs with session_state, fixing the 2-click bug.
+        # 1. SPECIFICATIONS (Target & Subject)
+        # Added new Selectboxes matching the theme
+        st.session_state.target_exam = st.selectbox("🎯 Target Exam", ["JEE Mains", "JEE Advanced"], index=0)
+        st.session_state.subject_focus = st.selectbox("📚 Subject Focus", ["All Subjects", "Physics", "Chemistry", "Mathematics"], index=0)
+        
+        st.markdown("---")
+
+        # 2. JEEx Ultimate Toggle
         st.toggle("🔥 JEEx Ultimate", key="ultimate_mode", help="Unlock advanced problem solving and deep conceptual analysis.")
         
         if st.session_state.ultimate_mode:
             st.caption("🚀 Advanced Mode: ON")
         
-        # 2. Tools Buttons (Layout in columns)
+        # 3. Tools Buttons (Layout in columns)
         col_t1, col_t2 = st.columns(2)
         with col_t1:
             if st.button("📚 Formulas", use_container_width=True):
                  st.toast("Formula Sheet Mode: Ask for any chapter!", icon="📐")
                  st.session_state.messages.append({"role": "assistant", "content": "I'm ready! Which chapter's **Formula Sheet** do you need? (e.g., Electrostatics, Thermodynamics)"})
                  st.rerun()
+            if st.button("🔍 PYQ Finder", use_container_width=True):
+                 st.toast("PYQ Mode Active", icon="🔎")
+                 st.session_state.messages.append({"role": "assistant", "content": "Tell me the Chapter or Topic, and I will find the most important **Previous Year Questions (PYQs)** for you."})
+                 st.rerun()
+
         with col_t2:
             if st.button("📝 Mock Test", use_container_width=True):
                 st.toast("Mock Test Initialized...", icon="⏳")
                 st.session_state.messages.append({"role": "assistant", "content": "Let's test your prep! 🎯 Topic batao, I'll generate a **Mini Mock Test** with 5 tough questions."})
                 st.rerun()
+            if st.button("🧠 Mistake Analysis", use_container_width=True):
+                st.toast("Analysis Mode On", icon="🧠")
+                st.session_state.messages.append({"role": "assistant", "content": "Upload your test paper or tell me your weak topic. I will analyze your mistakes and tell you **exactly where you are losing marks**."})
+                st.rerun()
         
-        # 3. Deep Research Toggle (Full width below others)
+        # 4. Deep Research Toggle (Full width below others)
         st.toggle("🔬 Deep Research", key="deep_research_mode", help="Enable deep theoretical explanations and first-principles derivations.")
         
         if st.session_state.deep_research_mode:
@@ -375,7 +389,6 @@ with st.sidebar:
         # --- SESSION CONTROLS ---
         if st.button("✨ New Session", use_container_width=True):
             st.session_state.messages = [{"role": "assistant", "content": "Fresh start! 🌟 What topic shall we tackle now?"}]
-            # Reset thread ID to force a new context (if you want fresh context)
             if "thread_id" in st.session_state:
                 del st.session_state.thread_id
             st.toast("Chat history cleared!", icon="🧹")
@@ -559,10 +572,10 @@ if st.session_state.processing and st.session_state.messages[-1]["role"] == "use
         ERROR_HANDLING_AND_SCOPE:
         1. **STRICT DOMAIN BOUNDARY**: Your knowledge is strictly limited to Physics, Chemistry, and Mathematics relevant to JEE Mains and Advanced.
         2. **IRRELEVANT TOPICS**: If the user asks about topics NOT related to JEE (e.g., general coding, politics, movies, cooking, dating, sports, general news):
-           - **Action**: Provide a VERY BRIEF (maximum 1 sentence) factual definition of the topic to be polite.
-           - **Pivot**: Immediately state that this is outside the scope of JEE preparation.
-           - **Redirect**: Ask a relevant question to bring them back.
-           - **Example**: User: "Who won the cricket match?" -> Bot: "India won the match. However, to win at JEE, we need to focus on your syllabus. Let's solve a Rotational Mechanics problem instead?"
+            - **Action**: Provide a VERY BRIEF (maximum 1 sentence) factual definition of the topic to be polite.
+            - **Pivot**: Immediately state that this is outside the scope of JEE preparation.
+            - **Redirect**: Ask a relevant question to bring them back.
+            - **Example**: User: "Who won the cricket match?" -> Bot: "India won the match. However, to win at JEE, we need to focus on your syllabus. Let's solve a Rotational Mechanics problem instead?"
         
         CORE CAPABILITIES:
         1. **Deep JEE Knowledge Base**: Simulate an internet search by cross-referencing your internal database of JEE Advanced/Mains archives, NCERT nuances, and recent exam trends.
@@ -570,12 +583,12 @@ if st.session_state.processing and st.session_state.messages[-1]["role"] == "use
         
         MANDATORY RULES:
         1. **FORMATTING**: You MUST use LaTeX for ALL mathematical symbols, equations, and chemistry formulas.
-           - Use $...$ for inline math (e.g. $x^2$).
-           - Use $$...$$ for block math equations.
+            - Use $...$ for inline math (e.g. $x^2$).
+            - Use $$...$$ for block math equations.
         2. **ACCURACY & VERIFICATION**:
-           - **Think before you answer.**
-           - For ANY complex calculation, organic reaction mechanism, or physics derivation, you MUST use the **Code Interpreter (Python Tool)** to verify your logic and numbers before presenting the final answer.
-           - Never guess on numeric answers. Calculate them.
+            - **Think before you answer.**
+            - For ANY complex calculation, organic reaction mechanism, or physics derivation, you MUST use the **Code Interpreter (Python Tool)** to verify your logic and numbers before presenting the final answer.
+            - Never guess on numeric answers. Calculate them.
         3. **TEACHING STYLE**: Explain the 'Why', not just the 'How'.
         """
 
@@ -598,6 +611,9 @@ if st.session_state.processing and st.session_state.messages[-1]["role"] == "use
             2. FIRST PRINCIPLES: Derive formulas rather than stating them. Start from fundamental laws (Newton's Laws, Maxwell's Equations).
             3. DEPTH OVER BREADTH: Go deep into the 'why' and 'how'.
             """
+        
+        # TARGET EXAM & SUBJECT INJECTION
+        base_instructions += f"\n\nCONTEXT: The user is targeting **{st.session_state.target_exam}**. Focus specifically on **{st.session_state.subject_focus}** if applicable."
 
         with st.chat_message("assistant", avatar=LOGO_URL):
             stream = client.beta.threads.runs.create(
