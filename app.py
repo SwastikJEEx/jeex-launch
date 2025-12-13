@@ -25,6 +25,7 @@ if "processing" not in st.session_state: st.session_state.processing = False
 if "uploader_key" not in st.session_state: st.session_state.uploader_key = 0
 if "audio_key" not in st.session_state: st.session_state.audio_key = 0
 if "current_uploaded_file" not in st.session_state: st.session_state.current_uploaded_file = None
+if "force_send" not in st.session_state: st.session_state.force_send = False
 
 # AUTH & REGISTRATION STATE
 if "is_verified" not in st.session_state: st.session_state.is_verified = False
@@ -207,6 +208,47 @@ st.markdown("""
     .block-container { padding-top: 1rem; padding-bottom: 140px; max-width: 1200px; margin: 0 auto; }
     [data-testid="stFileUploader"] { padding: 8px !important; }
     .stAudioInput { margin-top: 5px; padding: 6px !important; }
+
+    /* ===== FIX 1: DROPDOWN VALUE VISIBILITY ===== */
+    div[data-baseweb="select"] > div {
+        color: #FFFFFF !important;
+        -webkit-text-fill-color: #FFFFFF !important;
+    }
+
+    div[data-baseweb="select"] span {
+        color: #FFFFFF !important;
+    }
+
+    /* Dropdown options */
+    li[data-baseweb="option"] {
+        background-color: #000000 !important;
+        color: #FFFFFF !important;
+    }
+    li[data-baseweb="option"]:hover,
+    li[data-baseweb="option"][aria-selected="true"] {
+        background-color: #0D1B2E !important;
+        color: #00A6FF !important;
+    }
+
+    /* ===== FIX 2: REMOVE CHAT INPUT NEON OUTLINE ===== */
+    .stChatInput textarea {
+        border: 1px solid #333333 !important;
+        box-shadow: none !important;
+        outline: none !important;
+    }
+    .stChatInput textarea:focus {
+        border: 1px solid #444444 !important;
+        box-shadow: none !important;
+    }
+
+    /* ===== FIX 3: SIDEBAR SEND BUTTON ===== */
+    .sidebar-send-btn > button {
+        width: 100%;
+        background-color: #00A6FF !important;
+        color: #000000 !important;
+        font-weight: 700 !important;
+        border-radius: 8px !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -391,6 +433,10 @@ with st.sidebar:
             st.caption("🧐 Research Mode: ON")
 
         st.markdown("---")
+        
+        # Add sidebar Send Button
+        if st.button("📨 Send Message", use_container_width=True):
+            st.session_state.force_send = True
 
         # --- SESSION CONTROLS ---
         if st.button("✨ New Session", use_container_width=True):
@@ -523,16 +569,23 @@ if 'audio_value' in locals() and audio_value and not st.session_state.processing
 text_prompt = st.chat_input("Ask a doubt...", disabled=st.session_state.processing)
 prompt = audio_prompt if audio_prompt else text_prompt
 
-if prompt:
-    st.session_state.processing = True
-    msg_data = {"role": "user", "content": prompt}
+if prompt or st.session_state.get("force_send"):
+    st.session_state.force_send = False
     
-    if st.session_state.current_uploaded_file:
-        uf = st.session_state.current_uploaded_file
-        msg_data.update({"file_data": uf.getvalue(), "file_name": getattr(uf, "name", "file"), "file_type": getattr(uf, "type", "")})
-            
-    st.session_state.messages.append(msg_data)
-    st.rerun()
+    # Check if prompt is valid when triggered by button, if not, do not process
+    if not prompt and not audio_prompt:
+         # If triggered by button but no text/audio, we pass (or could handle last message regeneration)
+         pass 
+    else:
+        st.session_state.processing = True
+        msg_data = {"role": "user", "content": prompt}
+        
+        if st.session_state.current_uploaded_file:
+            uf = st.session_state.current_uploaded_file
+            msg_data.update({"file_data": uf.getvalue(), "file_name": getattr(uf, "name", "file"), "file_type": getattr(uf, "type", "")})
+                
+        st.session_state.messages.append(msg_data)
+        st.rerun()
 
 # Display Messages
 for msg in st.session_state.messages:
