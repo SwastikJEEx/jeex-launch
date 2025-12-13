@@ -71,25 +71,20 @@ st.markdown("""
     strong { color: #00A6FF !important; font-weight: 600; }
     code { color: #00A6FF !important; background-color: #0D1B2E !important; padding: 2px 4px; border-radius: 4px; }
     
-    /* --- INPUTS & SELECTS FIXES --- */
-    /* Container styling */
+    /* Inputs & selects - FIXED BOX STYLE */
     div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="base-input"] {
         background-color: #050810 !important;
         border: 1px solid #00A6FF !important;
         border-radius: 8px !important;
     }
     
-    /* CRITICAL DROPDOWN FIX 
-       Forces the text of the selected item to be white.
-       Using !important on both color and webkit-fill to override browser defaults.
-    */
+    /* FIX: Force white text for SELECTED value in dropdowns */
     div[data-baseweb="select"] > div {
         color: #FFFFFF !important;
         -webkit-text-fill-color: #FFFFFF !important;
     }
     
-    /* Input text color */
-    input[type="text"], input[type="password"], textarea {
+    input[type="text"], input[type="password"], textarea, div[data-baseweb="select"] div {
         color: #FFFFFF !important;
         background-color: transparent !important;
         caret-color: #00A6FF !important;
@@ -147,14 +142,19 @@ st.markdown("""
         background: transparent !important;
     }
 
-    /* --- DROPDOWN & LISTBOX POPUP FIX --- */
+    /* --- DROPDOWN & LISTBOX VISIBILITY FIX (BLACK BACKGROUND) --- */
     div[data-baseweb="popover"], div[data-baseweb="menu"], div[role="listbox"] {
-        background-color: #050810 !important;
-        color: #E0E0E0 !important;
-        border: 1px solid #00A6FF !important;
+        background-color: #000000 !important; /* Force Black */
+        border: 1px solid #333 !important;
     }
+    /* Options Container */
+    ul[data-baseweb="menu"] {
+        background-color: #000000 !important;
+    }
+    /* Individual Options */
     li[data-baseweb="option"] {
-        color: #E0E0E0 !important;
+        color: #FFFFFF !important; /* Force White Text */
+        background-color: #000000 !important;
     }
     /* Hover state for options */
     li[data-baseweb="option"]:hover, li[data-baseweb="option"][aria-selected="true"] {
@@ -171,30 +171,36 @@ st.markdown("""
         color: #E0E0E0 !important;
     }
 
-    /* --- CHAT INPUT CLEANUP --- */
-    /* Remove the weird white bar at bottom */
-    .stChatInputContainer {
-        background-color: #000000 !important;
-        padding-bottom: 10px;
-    }
-    /* Style the input box itself - Dark, minimal border */
-    .stChatInput textarea {
-        background-color: #050810 !important;
-        color: #FFFFFF !important;
-        border: 1px solid #333 !important; /* Subtle grey border, NOT neon */
-    }
-    /* Ensure no outer neon glow on the container */
-    div[data-testid="stChatInput"] {
+    /* --- CHAT INPUT FIX (TRANSPARENT & CLEAN) --- */
+    /* Remove wrapper background */
+    [data-testid="stChatInput"], .stChatInputContainer {
         background-color: transparent !important;
-        border: none !important;
+    }
+    
+    /* Style the input box itself */
+    .stChatInput textarea {
+        background-color: #050810 !important; /* Very dark background */
+        color: #FFFFFF !important;
+        border: 1px solid #333333 !important; /* Subtle border, NO NEON */
+        border-radius: 12px !important;
+    }
+    
+    /* Remove any outer blue borders/glows from the container */
+    .stChatInput {
+        border-color: transparent !important;
         box-shadow: none !important;
     }
-    /* Send button */
-    button[kind="primaryFormSubmit"] {
+    
+    /* Fix Send Button Position & Color */
+    .stChatInput button {
         background-color: transparent !important;
         color: #00A6FF !important;
         border: none !important;
-        box-shadow: none !important;
+        right: 10px !important; /* Ensure it stays inside */
+    }
+    .stChatInput button:hover {
+        color: #008ECC !important;
+        background-color: transparent !important;
     }
     
     /* Spinner */
