@@ -71,19 +71,25 @@ st.markdown("""
     strong { color: #00A6FF !important; font-weight: 600; }
     code { color: #00A6FF !important; background-color: #0D1B2E !important; padding: 2px 4px; border-radius: 4px; }
     
-    /* Inputs & selects - FIXED BOX STYLE */
+    /* --- INPUTS & SELECTS FIXES --- */
+    /* Container styling */
     div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="base-input"] {
         background-color: #050810 !important;
         border: 1px solid #00A6FF !important;
         border-radius: 8px !important;
     }
     
-    /* FIX: Force white text for SELECTED value in dropdowns so it is visible from outside */
+    /* CRITICAL DROPDOWN FIX 
+       Forces the text of the selected item to be white.
+       Using !important on both color and webkit-fill to override browser defaults.
+    */
     div[data-baseweb="select"] > div {
         color: #FFFFFF !important;
+        -webkit-text-fill-color: #FFFFFF !important;
     }
     
-    input[type="text"], input[type="password"], textarea, div[data-baseweb="select"] div {
+    /* Input text color */
+    input[type="text"], input[type="password"], textarea {
         color: #FFFFFF !important;
         background-color: transparent !important;
         caret-color: #00A6FF !important;
@@ -141,7 +147,7 @@ st.markdown("""
         background: transparent !important;
     }
 
-    /* --- DROPDOWN & LISTBOX VISIBILITY FIX --- */
+    /* --- DROPDOWN & LISTBOX POPUP FIX --- */
     div[data-baseweb="popover"], div[data-baseweb="menu"], div[role="listbox"] {
         background-color: #050810 !important;
         color: #E0E0E0 !important;
@@ -150,20 +156,11 @@ st.markdown("""
     li[data-baseweb="option"] {
         color: #E0E0E0 !important;
     }
-    div[data-baseweb="popover"] div {
-        background-color: #050810 !important;
-        color: #E0E0E0 !important;
-    }
+    /* Hover state for options */
     li[data-baseweb="option"]:hover, li[data-baseweb="option"][aria-selected="true"] {
         background-color: #0D1B2E !important;
         color: #00A6FF !important;
         font-weight: bold !important;
-    }
-    .baseweb-popover * { color: #E0E0E0 !important; }
-    
-    /* Dropdown headings/labels */
-    .css-1r6slb0, .css-1d391kg, .stSelectbox, div[role="option"], div[role="menuitem"] {
-        color: #E0E0E0 !important;
     }
     
     /* Sidebar headings - Neon Blue */
@@ -174,21 +171,30 @@ st.markdown("""
         color: #E0E0E0 !important;
     }
 
-    /* --- CHAT INPUT RESTORED TO ORIGINAL CLEAN STYLE --- */
-    /* Only force background color to avoid white bars, but remove custom borders to restore default layout */
-    .stChatInput, .stChatInputContainer, [data-testid="stChatInput"] {
+    /* --- CHAT INPUT CLEANUP --- */
+    /* Remove the weird white bar at bottom */
+    .stChatInputContainer {
         background-color: #000000 !important;
+        padding-bottom: 10px;
     }
-    .stChatInput .css-1v3fvcr, .stChatInput .css-1y8i9bb { 
-        background-color: #050810 !important; 
-        color: #E0E0E0 !important;
-        /* No border here for clean look, or subtle one */
-        border: 1px solid #333 !important;
+    /* Style the input box itself - Dark, minimal border */
+    .stChatInput textarea {
+        background-color: #050810 !important;
+        color: #FFFFFF !important;
+        border: 1px solid #333 !important; /* Subtle grey border, NOT neon */
     }
-    .stChatInput button {
-        color: #00A6FF !important; /* Keep the send button blue */
+    /* Ensure no outer neon glow on the container */
+    div[data-testid="stChatInput"] {
+        background-color: transparent !important;
         border: none !important;
-        background: transparent !important;
+        box-shadow: none !important;
+    }
+    /* Send button */
+    button[kind="primaryFormSubmit"] {
+        background-color: transparent !important;
+        color: #00A6FF !important;
+        border: none !important;
+        box-shadow: none !important;
     }
     
     /* Spinner */
