@@ -79,7 +79,8 @@ st.markdown("""
     }
     
     /* FIX: Force white text for SELECTED value in dropdowns so it is visible from outside */
-    .stSelectbox div[data-baseweb="select"] div {
+    /* This targets the internal text container of the selected item */
+    div[data-baseweb="select"] > div {
         color: #FFFFFF !important;
     }
     
@@ -174,20 +175,14 @@ st.markdown("""
         color: #E0E0E0 !important;
     }
 
-    /* --- CHAT INPUT FIX (Restored "2nd last version" clean look) --- */
+    /* --- CHAT INPUT ORIGINAL STYLE RESTORED --- */
+    /* Only force background color to avoid white bars, but remove custom borders */
     .stChatInput, .stChatInputContainer, [data-testid="stChatInput"] {
         background-color: #000000 !important;
     }
     .stChatInput .css-1v3fvcr, .stChatInput .css-1y8i9bb { 
-        background: #050810 !important; 
+        background-color: #000000 !important; 
         color: #E0E0E0 !important;
-        border: 1px solid #00A6FF !important; /* Restored Neon Blue Border */
-        border-radius: 12px;
-    }
-    .stChatInput button {
-        border: none !important;
-        background: transparent !important;
-        color: #00A6FF !important;
     }
     
     /* Spinner */
