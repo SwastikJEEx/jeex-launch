@@ -3,11 +3,12 @@ import time
 from openai import OpenAI
 import os
 import re
-from datetime import datetime, timedelta
-from fpdf import FPDF
+from datetime import datetime
 import requests
-import traceback
 import logging
+import sqlite3
+import json
+import uuid
 
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="JEEx Pro", page_icon="⚛️", layout="wide", initial_sidebar_state="expanded")
@@ -17,38 +18,116 @@ ADMIN_EMAIL = "jeexaipro@gmail.com"
 
 # --- 2. GLOBAL CONSTANTS ---
 LOGO_URL = "https://raw.githubusercontent.com/SwastikJEEx/jeex-launch/1d6ef8ca3ac05432ed370338d4c04d6a03541f23/logo.png.png"
+DB_FILE = "jeex_history.db"
 
-# --- 3. SESSION STATE INITIALIZATION ---
-if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "Welcome Champ! 🎓 Physics, Chemistry ya Maths—bas photo bhejo ya type karo. Let's crack it! 🚀"}]
+# --- 3. DATABASE MANAGEMENT (SQLite for Persistence) ---
+def init_db():
+    """Initialize local SQLite database for chat history"""
+    conn = sqlite3.connect(DB_FILE, check_same_thread=False)
+    c = conn.cursor()
+    # Users table (Simulating Google Account Link)
+    c.execute('''CREATE TABLE IF NOT EXISTS users 
+                 (email TEXT PRIMARY KEY, name TEXT, picture TEXT)''')
+    # Sessions table (Threads)
+    c.execute('''CREATE TABLE IF NOT EXISTS sessions 
+                 (session_id TEXT PRIMARY KEY, user_email TEXT, title TEXT, created_at DATETIME)''')
+    # Messages table
+    c.execute('''CREATE TABLE IF NOT EXISTS messages 
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT, role TEXT, content TEXT, file_meta TEXT, timestamp DATETIME)''')
+    conn.commit()
+    conn.close()
+
+def db_save_user(email, name, picture=""):
+    conn = sqlite3.connect(DB_FILE, check_same_thread=False)
+    c = conn.cursor()
+    c.execute("INSERT OR REPLACE INTO users (email, name, picture) VALUES (?, ?, ?)", (email, name, picture))
+    conn.commit()
+    conn.close()
+
+def db_create_session(user_email, title="New Chat"):
+    session_id = str(uuid.uuid4())
+    conn = sqlite3.connect(DB_FILE, check_same_thread=False)
+    c = conn.cursor()
+    c.execute("INSERT INTO sessions (session_id, user_email, title, created_at) VALUES (?, ?, ?, ?)", 
+              (session_id, user_email, title, datetime.now()))
+    conn.commit()
+    conn.close()
+    return session_id
+
+def db_get_user_sessions(user_email):
+    conn = sqlite3.connect(DB_FILE, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute("SELECT * FROM sessions WHERE user_email = ? ORDER BY created_at DESC", (user_email,))
+    rows = c.fetchall()
+    conn.close()
+    return rows
+
+def db_save_message(session_id, role, content, file_meta=None):
+    conn = sqlite3.connect(DB_FILE, check_same_thread=False)
+    c = conn.cursor()
+    file_json = json.dumps(file_meta) if file_meta else None
+    c.execute("INSERT INTO messages (session_id, role, content, file_meta, timestamp) VALUES (?, ?, ?, ?, ?)", 
+              (session_id, role, content, file_json, datetime.now()))
+    conn.commit()
+    conn.close()
+
+def db_get_messages(session_id):
+    conn = sqlite3.connect(DB_FILE, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute("SELECT * FROM messages WHERE session_id = ? ORDER BY id ASC", (session_id,))
+    rows = c.fetchall()
+    messages = []
+    for row in rows:
+        msg = {
+            "role": row["role"],
+            "content": row["content"],
+            "file_meta": json.loads(row["file_meta"]) if row["file_meta"] else None
+        }
+        # Reconstruct file data for UI if needed (simplified for text history)
+        if msg["file_meta"]:
+            msg["file_name"] = msg["file_meta"].get("name")
+            msg["file_type"] = msg["file_meta"].get("type")
+        messages.append(msg)
+    conn.close()
+    return messages
+
+def db_update_session_title(session_id, new_title):
+    conn = sqlite3.connect(DB_FILE, check_same_thread=False)
+    c = conn.cursor()
+    c.execute("UPDATE sessions SET title = ? WHERE session_id = ?", (new_title, session_id))
+    conn.commit()
+    conn.close()
+
+# Initialize DB on load
+init_db()
+
+# --- 4. SESSION STATE INITIALIZATION ---
+if "user" not in st.session_state: st.session_state.user = None # Holds user dict {email, name, picture}
+if "current_session_id" not in st.session_state: st.session_state.current_session_id = None
+if "messages" not in st.session_state: st.session_state.messages = []
 if "processing" not in st.session_state: st.session_state.processing = False
 if "uploader_key" not in st.session_state: st.session_state.uploader_key = 0
 if "audio_key" not in st.session_state: st.session_state.audio_key = 0
 if "current_uploaded_file" not in st.session_state: st.session_state.current_uploaded_file = None
-if "force_send" not in st.session_state: st.session_state.force_send = False
-
-# AUTH & REGISTRATION STATE
-if "is_verified" not in st.session_state: st.session_state.is_verified = False
-if "user_details" not in st.session_state: st.session_state.user_details = {}
 
 # MODE STATES
 if "ultimate_mode" not in st.session_state: st.session_state.ultimate_mode = False
 if "deep_research_mode" not in st.session_state: st.session_state.deep_research_mode = False
-# New Specifications States
-if "target_exam" not in st.session_state: st.session_state.target_exam = "JEE Mains"
-if "subject_focus" not in st.session_state: st.session_state.subject_focus = "All Subjects"
+if "mistake_analysis_mode" not in st.session_state: st.session_state.mistake_analysis_mode = False
 
 # Simple logger
 logger = logging.getLogger("jeex")
 logger.setLevel(logging.INFO)
 
-# --- 4. PROFESSIONAL CSS (NEON BLUE THEME) ---
+# --- 5. PROFESSIONAL CSS (NEON BLUE THEME) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     
-    /* Main Background - Pure Black */
+    /* Main Background - Pure Black to merge with Logo */
     .stApp { background-color: #000000 !important; color: #E0E0E0 !important; }
     
     /* Sidebar - Very Dark Blue/Black */
@@ -62,7 +141,7 @@ st.markdown("""
         color: #E0E0E0 !important;
     }
 
-    /* BIGGER CHAT TEXT */
+    /* BIGGER CHAT TEXT FOR READABILITY */
     .stChatMessage p, .stChatMessage li, .stChatMessage div {
         font-size: 1.15rem !important;
         line-height: 1.6 !important;
@@ -72,39 +151,12 @@ st.markdown("""
     strong { color: #00A6FF !important; font-weight: 600; }
     code { color: #00A6FF !important; background-color: #0D1B2E !important; padding: 2px 4px; border-radius: 4px; }
     
-    /* --- SIDEBAR INPUTS (NEON BLUE BORDER) --- */
-    [data-testid="stSidebar"] div[data-baseweb="input"], 
-    [data-testid="stSidebar"] div[data-baseweb="base-input"] {
+    /* Inputs & selects - EXACT COPY OF NEETx LOGIC but Blue */
+    div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="base-input"] {
         background-color: #050810 !important;
         border: 1px solid #00A6FF !important;
         border-radius: 8px !important;
     }
-    
-    /* --- DROPDOWN VISIBILITY FIX (CRITICAL from ChatGPT & Analysis) --- */
-    /* Target the selection box container */
-    [data-testid="stSidebar"] div[data-baseweb="select"] {
-        background-color: #050810 !important;
-        border: 1px solid #00A6FF !important;
-        border-radius: 8px !important;
-    }
-    
-    /* Force the selected text inside the box to be WHITE and visible */
-    div[data-baseweb="select"] > div {
-        color: #FFFFFF !important;
-        -webkit-text-fill-color: #FFFFFF !important;
-    }
-    
-    /* Additional fix for span elements inside select which some browsers use */
-    div[data-baseweb="select"] span {
-        color: #FFFFFF !important;
-    }
-    
-    /* Dropdown Arrow color */
-    .stSelectbox svg {
-        fill: #00A6FF !important;
-    }
-    
-    /* General Input Text Color */
     input[type="text"], input[type="password"], textarea, div[data-baseweb="select"] div {
         color: #FFFFFF !important;
         background-color: transparent !important;
@@ -115,7 +167,7 @@ st.markdown("""
     /* Buttons - Neon Blue Theme */
     button, input[type="submit"], input[type="button"], .stButton>button, .stDownloadButton, .st-bk {
         background-color: #00A6FF !important;
-        color: #000000 !important;
+        color: #000000 !important; /* Black text for contrast */
         border: none !important;
         border-radius: 8px !important;
         padding: 10px 20px !important;
@@ -163,24 +215,22 @@ st.markdown("""
         background: transparent !important;
     }
 
-    /* --- POPUP MENU (DROPDOWN OPTIONS) --- */
-    div[data-baseweb="popover"], div[data-baseweb="menu"], div[role="listbox"] {
+    /* Dropdown & listbox */
+    ul[data-baseweb="menu"], div[role="listbox"], .baseweb-popover, .baseweb-menu, .rc-virtual-list {
         background-color: #050810 !important;
         color: #E0E0E0 !important;
-        border: 1px solid #00A6FF !important;
+        border: 1px solid #0D1B2E !important;
     }
-    /* Options in the list */
-    li[data-baseweb="option"] {
-        background-color: #000000 !important;
-        color: #FFFFFF !important;
-    }
-    /* Hover state for options */
-    li[data-baseweb="option"]:hover, li[data-baseweb="option"][aria-selected="true"] {
-        background-color: #0D1B2E !important;
-        color: #00A6FF !important;
-        font-weight: bold !important;
+    li[data-baseweb="option"], ul[data-baseweb="menu"] li, .baseweb-menu li, .rc-virtual-list .list-item {
+        color: #E0E0E0 !important;
+        background-color: transparent !important;
     }
     .baseweb-popover * { color: #E0E0E0 !important; }
+    
+    /* Dropdown headings/labels */
+    .css-1r6slb0, .css-1d391kg, .stSelectbox, div[role="option"], div[role="menuitem"] {
+        color: #E0E0E0 !important;
+    }
     
     /* Sidebar headings - Neon Blue */
     [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, [data-testid="stSidebar"] label {
@@ -190,95 +240,47 @@ st.markdown("""
         color: #E0E0E0 !important;
     }
 
-    /* --- CHAT INPUT RESTORED (CLEAN, NO NEON, CORRECT BUTTON) --- */
-    
-    /* 1. Main container background (removes white gap) */
-    .stChatInputContainer, [data-testid="stChatInput"] {
-        background-color: #000000 !important;
-    }
-    
-    /* 2. The input box itself - Clean Dark Grey, No Neon Border, No Shadow */
-    .stChatInput textarea {
-        background-color: #050810 !important;
-        color: #FFFFFF !important;
-        border: 1px solid #333333 !important; /* Subtle grey border */
-        box-shadow: none !important;
-        outline: none !important;
-    }
-    
-    .stChatInput textarea:focus {
-        border: 1px solid #444444 !important;
-        box-shadow: none !important;
-    }
-    
-    /* 3. Send Button - Keep it separate from global button styles */
-    .stChatInput button {
+    /* Chat input */
+    .stChatInput, .stChatInput * {
         background-color: transparent !important;
-        color: #00A6FF !important;
-        border: none !important;
-        box-shadow: none !important;
+        color: #E0E0E0 !important;
     }
-    .stChatInput button:hover {
-        color: #FFFFFF !important;
-        background-color: transparent !important;
-    }
+    .stChatInput .css-1v3fvcr, .stChatInput .css-1y8i9bb { background: #000000 !important; color: #E0E0E0 !important; }
+    .stChatInput { border-color: #00A6FF !important; }
     
     /* Spinner */
     .stSpinner > div > div { border-top-color: #00A6FF !important; }
 
     /* Misc */
+    .css-1v3fvcr, .css-1y8i9bb { border: none !important; box-shadow: none !important; }
     .block-container { padding-top: 1rem; padding-bottom: 140px; max-width: 1200px; margin: 0 auto; }
     [data-testid="stFileUploader"] { padding: 8px !important; }
     .stAudioInput { margin-top: 5px; padding: 6px !important; }
+    
+    /* Google Button Style */
+    .google-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #ffffff !important;
+        color: #444444 !important;
+        border: 1px solid #dddddd !important;
+        border-radius: 8px;
+        padding: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        width: 100%;
+        margin-top: 20px;
+        text-decoration: none;
+        transition: all 0.3s;
+    }
+    .google-btn:hover {
+        box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 5. HELPER FUNCTIONS ---
-
-def send_lead_notification(name, email, phone):
-    """Sends Lead Generation email via FormSubmit (Reliable, no SMTP errors)"""
-    url = f"https://formsubmit.co/{ADMIN_EMAIL}"
-    payload = {
-        "_subject": f"🚀 NEW JEEx USER: {name}",
-        "_captcha": "false", 
-        "_template": "table",
-        "Name": name,
-        "Email": email,
-        "Phone": phone,
-        "Status": "Free Trial Activated",
-        "Timestamp": str(datetime.now())
-    }
-    try:
-        requests.post(url, data=payload)
-        return True
-    except Exception as e:
-        logger.error(f"Lead send failed: {e}")
-        return True
-
-def cleanup_text_for_pdf(text):
-    """Translates LaTeX and special chars to PDF-friendly text"""
-    if not text: return ""
-    text = re.sub(r'【.*?†source】', '', text)
-    
-    replacements = {
-        r'\alpha': 'alpha', r'\beta': 'beta', r'\gamma': 'gamma', r'\theta': 'theta',
-        r'\pi': 'pi', r'\infty': 'infinity',
-        r'\le': '<=', r'\ge': '>=', r'\neq': '!=', r'\approx': '~=',
-        r'\rightarrow': '->', r'\leftarrow': '<-', r'\implies': '=>',
-        r'\cdot': '*', r'\times': 'x',
-        r'\frac': ' frac ', 
-        r'\sqrt': 'sqrt',
-        r'\int': 'Integral ', r'\sum': 'Sum ',
-        '$$': '\n', '$': '' 
-    }
-    
-    for latex, plain in replacements.items():
-        text = text.replace(latex, plain)
-        
-    text = text.replace('{', '(').replace('}', ')')
-    text = text.replace('\\', '')
-    
-    return text
+# --- 6. HELPER FUNCTIONS ---
 
 def clean_latex_for_chat(text):
     """Refined LaTeX cleaning for better display"""
@@ -307,219 +309,123 @@ def show_branding():
         </div>
     """, unsafe_allow_html=True)
 
-class PDF(FPDF):
-    def header(self):
-        self.set_font('Arial', 'B', 12)
-        self.cell(0, 10, 'JEEx Pro - Study Session', 0, 1, 'C')
-        self.ln(5)
-    def chapter_title(self, label):
-        self.set_font('Arial', 'B', 12)
-        self.set_text_color(0, 166, 255) # Neon Blue for PDF
-        self.cell(0, 10, str(label), 0, 1, 'L')
-        self.ln(2)
-    def chapter_body(self, body):
-        self.set_font('Arial', '', 11)
-        self.set_text_color(50, 50, 50)
-        self.clean = cleanup_text_for_pdf(body)
-        clean = self.clean.encode('latin-1', 'replace').decode('latin-1')
-        self.multi_cell(0, 7, clean)
-        self.ln()
+def login_ui():
+    """Simulated Google Login UI"""
+    c1, c2, c3 = st.columns([1, 2, 1])
+    with c2:
+        st.markdown("""
+        <div style="background-color: #050810; padding: 40px; border-radius: 12px; border: 1px solid #00A6FF; text-align: center;">
+            <h2 style="color: #00A6FF;">Welcome Back, Champ! 🎓</h2>
+            <p style="color: #AAAAAA;">Sign in to save your progress, track mistakes, and sync chats across devices.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # In a real production app, this would use OAuth2 redirect
+        # For this demo/file, we simulate the authentication
+        if st.button("🔵 Sign in with Google", use_container_width=True):
+            with st.spinner("Connecting to Google Secure Server..."):
+                time.sleep(1.5) # Simulate network delay
+                # Mock User Data
+                user_info = {
+                    "email": "student@example.com",
+                    "name": "JEEx Scholar",
+                    "picture": ""
+                }
+                st.session_state.user = user_info
+                db_save_user(user_info["email"], user_info["name"], user_info["picture"])
+                st.toast("Login Successful!", icon="✅")
+                st.rerun()
+        
+        st.markdown("<p style='text-align:center; font-size: 0.8em; color: #555;'>By continuing, you agree to JEEx Terms & Privacy Policy.</p>", unsafe_allow_html=True)
 
-def generate_pdf(messages):
-    pdf = PDF()
-    pdf.add_page()
-    for msg in messages:
-        role = "JEEx" if msg["role"] == "assistant" else "Student"
-        pdf.chapter_title(role)
-        pdf.chapter_body(msg["content"])
-    return pdf.output(dest='S').encode('latin-1', 'ignore')
+def create_new_chat():
+    if st.session_state.user:
+        sid = db_create_session(st.session_state.user["email"])
+        st.session_state.current_session_id = sid
+        st.session_state.messages = [{"role": "assistant", "content": "Hello Scholar! 🎓 I'm ready. What are we solving today?"}]
+        # Save initial message
+        db_save_message(sid, "assistant", st.session_state.messages[0]["content"])
+        st.rerun()
 
-# Handle logout properly
-if st.session_state.get('logout', False):
-    st.session_state.clear()
+def load_chat(session_id):
+    st.session_state.current_session_id = session_id
+    msgs = db_get_messages(session_id)
+    if msgs:
+        st.session_state.messages = msgs
+    else:
+        st.session_state.messages = [{"role": "assistant", "content": "Chat history loaded but empty."}]
     st.rerun()
 
-# --- 6. SIDEBAR LOGIC (FREE REGISTRATION & TOOLS) ---
+# --- 7. MAIN APP LOGIC ---
+
+# CHECK LOGIN STATUS
+if not st.session_state.user:
+    show_branding()
+    login_ui()
+    st.stop()
+
+# --- SIDEBAR LOGIC (Tools & History) ---
 with st.sidebar:
-    # A. IF NOT VERIFIED -> SHOW REGISTRATION FORM
-    if not st.session_state.is_verified:
-        st.markdown("## 🔓 Get Free Access")
-        st.info("Register now to unlock the AI Rank Booster instantly.")
-        
-        with st.form("signup_form"):
-            name = st.text_input("Full Name")
-            email = st.text_input("Email Address")
-            phone = st.text_input("Phone Number")
-            submit_reg = st.form_submit_button("🚀 Start Free Trial")
-        
-        if submit_reg:
-            if name and email and phone:
-                with st.spinner("Activating JEEx engine"):
-                    send_lead_notification(name, email, phone)
-                    st.session_state.user_details = {"name": name, "email": email}
-                    st.session_state.is_verified = True
-                    st.toast(f"Welcome, {name}! Let's study.", icon="🚀")
-                    time.sleep(1)
-                    st.rerun()
-            else:
-                st.warning("⚠️ Please fill in all details.")
-    
-    # B. IF VERIFIED -> SHOW TOOLS
-    else:
-        st.markdown(f"👤 **{st.session_state.user_details.get('name', 'Student')}**")
-        st.success("✅ JEEx Pro Active")
-        st.markdown("---")
-        
-        # --- NEW FEATURES: JEEX ULTIMATE & TOOLS ---
-        st.markdown("### ⚡ Power Tools")
-        
-        # 1. SPECIFICATIONS (Target & Subject)
-        st.session_state.target_exam = st.selectbox("🎯 Target Exam", ["JEE Mains", "JEE Advanced"], index=0)
-        st.session_state.subject_focus = st.selectbox("📚 Subject Focus", ["All Subjects", "Physics", "Chemistry", "Mathematics"], index=0)
-        
-        st.markdown("---")
-
-        # 2. JEEx Ultimate Toggle
-        st.toggle("🔥 JEEx Ultimate", key="ultimate_mode", help="Unlock advanced problem solving and deep conceptual analysis.")
-        
-        if st.session_state.ultimate_mode:
-            st.caption("🚀 Advanced Mode: ON")
-        
-        # 3. Tools Buttons
-        col_t1, col_t2 = st.columns(2)
-        with col_t1:
-            if st.button("📚 Formulas", use_container_width=True):
-                 st.toast("Formula Sheet Mode: Ask for any chapter!", icon="📐")
-                 st.session_state.messages.append({"role": "assistant", "content": "I'm ready! Which chapter's **Formula Sheet** do you need? (e.g., Electrostatics, Thermodynamics)"})
-                 st.rerun()
-            if st.button("🔍 PYQ Finder", use_container_width=True):
-                 st.toast("PYQ Mode Active", icon="🔎")
-                 st.session_state.messages.append({"role": "assistant", "content": "Tell me the Chapter or Topic, and I will generate the most important **Previous Year Questions (PYQs)** for you from my internal database. (e.g., 'Rotational Motion 2016')"})
-                 st.rerun()
-
-        with col_t2:
-            if st.button("📝 Mock Test", use_container_width=True):
-                st.toast("Mock Test Initialized...", icon="⏳")
-                st.session_state.messages.append({"role": "assistant", "content": "Let's test your prep! 🎯 Topic batao, I'll generate a **Mini Mock Test** with 5 tough questions."})
-                st.rerun()
-            if st.button("🧠 Mistake Analysis", use_container_width=True):
-                st.toast("Analysis Mode On", icon="🧠")
-                st.session_state.messages.append({"role": "assistant", "content": "Upload your test paper or tell me your weak topic. I will analyze your mistakes and tell you **exactly where you are losing marks**."})
-                st.rerun()
-        
-        # 4. Deep Research Toggle
-        st.toggle("🔬 Deep Research", key="deep_research_mode", help="Enable deep theoretical explanations and first-principles derivations.")
-        
-        if st.session_state.deep_research_mode:
-            st.caption("🧐 Research Mode: ON")
-
-        st.markdown("---")
-        
-        # Add sidebar Send Button
-        if st.button("📨 Send Message", use_container_width=True):
-            st.session_state.force_send = True
-
-        # --- SESSION CONTROLS ---
-        if st.button("✨ New Session", use_container_width=True):
-            st.session_state.messages = [{"role": "assistant", "content": "Fresh start! 🌟 What topic shall we tackle now?"}]
-            if "thread_id" in st.session_state:
-                del st.session_state.thread_id
-            st.toast("Chat history cleared!", icon="🧹")
-            st.rerun()
-        
-        st.markdown("**📎 Attach Question**")
-        
-        # File Uploader Logic
-        if st.session_state.processing:
-            if st.session_state.current_uploaded_file:
-                st.markdown("**Attachment (locked):**")
-                st.markdown(f"📄 *{getattr(st.session_state.current_uploaded_file, 'name', 'file')}*")
-            else:
-                st.markdown("_Locked while answering._")
-        else:
-            uploaded_file = st.file_uploader("Upload", type=["jpg", "png", "pdf"], key=f"uploader_{st.session_state.uploader_key}", label_visibility="collapsed")
-            if uploaded_file:
-                st.session_state.current_uploaded_file = uploaded_file
-            
-            if st.session_state.current_uploaded_file:
-                if st.button("Remove attachment"):
-                    st.session_state.current_uploaded_file = None
-                    st.session_state.uploader_key += 1
-                    st.rerun()
-        
-        st.markdown("**🎙️ Voice Chat**")
-        audio_value = st.audio_input("Speak", key=f"audio_{st.session_state.audio_key}", label_visibility="collapsed")
-        st.markdown("---")
-        
-        if len(st.session_state.messages) > 1:
-            pdf_bytes = generate_pdf(st.session_state.messages)
-            st.download_button("📥 Download Notes", data=pdf_bytes, file_name="JEEx_Notes.pdf", mime="application/pdf", use_container_width=True)
-        
-        if st.button("Logout", use_container_width=True): 
-            st.session_state['logout'] = True
-            st.rerun()
-
-    # --- CONTACT US DROPDOWN ---
-    st.markdown("---")
-    with st.expander("📞 Contact Us"):
-        st.write("**Email:** jeexaipro@gmail.com")
-        st.write("**WhatsApp:** +91 9839940400")
-    
-    # --- TERMS & CONDITIONS DROPDOWN (NEW) ---
-    with st.expander("📄 Terms & Conditions"):
-        st.markdown("""
-        **1. Acceptance of Terms**
-        By using JEEx Pro, you agree to these terms. This tool is an AI-powered educational aid designed to assist with JEE preparation.
-
-        **2. AI Limitations**
-        While we strive for high accuracy, JEEx is an AI system and may occasionally provide incorrect or incomplete information. Users should verify critical calculations and concepts with standard textbooks.
-
-        **3. User Conduct**
-        - You agree to use this service for personal educational purposes only.
-        - Do not upload content that violates copyright or is illegal.
-        - Do not share your account details with others.
-
-        **4. Privacy & Data**
-        - Questions and uploaded files are processed by third-party AI providers (OpenAI) to generate answers.
-        - We do not sell your personal data.
-        - We may contact you regarding product updates.
-
-        **5. Limitation of Liability**
-        JEEx Pro is not responsible for any exam results or academic outcomes. Success depends on your own study efforts and exam performance.
-
-        **6. Updates**
-        We reserve the right to modify these terms at any time. Continued use of the service constitutes acceptance of modified terms.
-        """, unsafe_allow_html=True)
-
-# --- 7. MAIN INTERFACE ---
-show_branding()
-
-# If not verified, show landing teaser and stop
-if not st.session_state.is_verified:
-    st.markdown("---")
-    st.markdown("""
-    <div style="background-color: #050810; padding: 25px; border-radius: 12px; border-left: 5px solid #00A6FF; text-align: center; margin-bottom: 30px;">
-        <h3 style="color: #FFFFFF; margin:0;">👋 Welcome to JEEx PRO</h3>
-        <p style="color: #AAAAAA; margin-top: 10px;">
-            The ultimate AI tool for JEE Mains & Advanced.<br>
-            <strong>Use the Sidebar on the left to Register for FREE access!</strong>
-        </p>
+    # User Profile Header
+    st.markdown(f"""
+    <div style="display: flex; align-items: center; margin-bottom: 20px; padding: 10px; background: #0D1B2E; border-radius: 8px;">
+        <div style="font-size: 24px; margin-right: 10px;">👤</div>
+        <div>
+            <div style="color: #00A6FF; font-weight: bold;">{st.session_state.user['name']}</div>
+            <div style="color: #AAAAAA; font-size: 12px;">{st.session_state.user['email']}</div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
     
-    # --- UPDATED DESCRIPTION (6 POINTS) ---
-    c1, c2 = st.columns(2)
-    with c1:
-        st.info("**🧠 Advanced Problem Solving**\n\nSolves Irodov & Cengage level problems with step-by-step logic.")
-        st.info("**📄 Full Document Brain**\n\nUpload entire PDF assignments. Our Code Interpreter analyzes context.")
-        st.info("**🎯 Concept-First Approach**\n\nWe don't just solve; we explain the 'Why'. Learn the derivation.")
-    with c2:
-        st.info("**👁️ Vision Intelligence**\n\nReads handwritten questions from photos instantly.")
-        st.info("**➗ Perfect Math Formatting**\n\nTextbook-quality LaTeX rendering for Integrals and Organic Mechanisms.")
-        st.info("**⚡ 24/7 Strategic Mentorship**\n\nYour personal AI coach for study planning and backlog management.")
-    st.stop()
+    if st.button("✨ New Chat", use_container_width=True):
+        create_new_chat()
+    
+    st.markdown("---")
+    
+    # --- POWER TOOLS ---
+    st.markdown("### ⚡ Power Tools")
+    
+    # 1. Ultimate Mode
+    st.toggle("🔥 JEEx Ultimate", key="ultimate_mode", help="Unlock advanced problem solving and deep conceptual analysis.")
+    
+    # 2. Mistake Analysis (NEW)
+    st.toggle("⚠️ Mistake Analyzer", key="mistake_analysis_mode", help="AI actively hunts for your logic errors and misconceptions.")
+    if st.session_state.mistake_analysis_mode:
+        st.caption("🔍 Analyzer: Active")
 
-# --- 8. CHAT LOGIC ---
+    # 3. Deep Research
+    st.toggle("🔬 Deep Research", key="deep_research_mode", help="Enable deep theoretical explanations and first-principles derivations.")
+
+    st.markdown("---")
+
+    # --- HISTORY SECTION (Google Account Synced) ---
+    st.markdown("### 🗂️ Previous Sessions")
+    user_sessions = db_get_user_sessions(st.session_state.user["email"])
+    
+    if not user_sessions:
+        st.caption("No history found.")
+    else:
+        for sess in user_sessions:
+            # Use a unique key for each button
+            btn_label = f"{sess['title'][:20]}... ({sess['created_at'][:10]})"
+            if st.button(btn_label, key=f"hist_{sess['session_id']}", use_container_width=True):
+                load_chat(sess['session_id'])
+
+    st.markdown("---")
+    if st.button("Logout", use_container_width=True): 
+        st.session_state.user = None
+        st.session_state.messages = []
+        st.session_state.current_session_id = None
+        st.rerun()
+
+# --- MAIN INTERFACE ---
+show_branding()
+
+# Initialize session if needed
+if not st.session_state.current_session_id:
+    create_new_chat()
+
+# --- CHAT LOGIC ---
 try:
     # Ensure you have .streamlit/secrets.toml set up!
     client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
@@ -550,21 +456,29 @@ if 'audio_value' in locals() and audio_value and not st.session_state.processing
 text_prompt = st.chat_input("Ask a doubt...", disabled=st.session_state.processing)
 prompt = audio_prompt if audio_prompt else text_prompt
 
-# Check if triggered by sidebar button OR normal chat input
-if prompt or st.session_state.get("force_send"):
-    st.session_state.force_send = False
+if prompt:
+    st.session_state.processing = True
+    msg_data = {"role": "user", "content": prompt}
     
-    # Only process if there is actual input to process
-    if prompt or audio_prompt:
-        st.session_state.processing = True
-        msg_data = {"role": "user", "content": prompt}
-        
-        if st.session_state.current_uploaded_file:
-            uf = st.session_state.current_uploaded_file
-            msg_data.update({"file_data": uf.getvalue(), "file_name": getattr(uf, "name", "file"), "file_type": getattr(uf, "type", "")})
-                
-        st.session_state.messages.append(msg_data)
-        st.rerun()
+    # Handle File Metadata
+    file_meta = None
+    if st.session_state.current_uploaded_file:
+        uf = st.session_state.current_uploaded_file
+        file_meta = {"name": getattr(uf, "name", "file"), "type": getattr(uf, "type", "")}
+        msg_data.update({"file_data": uf.getvalue(), "file_name": file_meta["name"], "file_type": file_meta["type"]})
+    
+    # Update Session Title based on first prompt if it's "New Chat"
+    if len(st.session_state.messages) <= 1:
+        new_title = prompt[:30] if len(prompt) > 30 else prompt
+        db_update_session_title(st.session_state.current_session_id, new_title)
+
+    # 1. Update UI State
+    st.session_state.messages.append(msg_data)
+    
+    # 2. Save to DB
+    db_save_message(st.session_state.current_session_id, "user", prompt, file_meta)
+    
+    st.rerun()
 
 # Display Messages
 for msg in st.session_state.messages:
@@ -572,6 +486,10 @@ for msg in st.session_state.messages:
         if "file_data" in msg:
             if str(msg["file_type"]).startswith("image"): st.image(msg["file_data"], width=200)
             else: st.markdown(f"📄 *{msg.get('file_name')}*")
+        # Check if file info is in DB format (reloaded from history)
+        elif "file_meta" in msg and msg["file_meta"]:
+             st.markdown(f"📄 *{msg['file_meta'].get('name')}* (Attachment)")
+             
         st.markdown(clean_latex_for_chat(msg["content"]))
 
 # Generate Response
@@ -596,73 +514,53 @@ if st.session_state.processing and st.session_state.messages[-1]["role"] == "use
             try: os.remove(tfile)
             except: pass
         except:
-            pass 
+            pass # Continue without file if upload fails
     
     try:
         client.beta.threads.messages.create(thread_id=st.session_state.thread_id, role="user", content=api_content, attachments=att if att else None)
         
         # --- ENHANCED BOT INSTRUCTIONS ---
         base_instructions = """
-        You are JEEx, an expert JEE (Joint Entrance Examination) tutor and Rank Booster.
+        You are JEEx, an expert JEE (Joint Entrance Examination) tutor.
         
-        ERROR_HANDLING_AND_SCOPE:
-        1. **STRICT DOMAIN BOUNDARY**: Your knowledge is strictly limited to Physics, Chemistry, and Mathematics relevant to JEE Mains and Advanced.
-        2. **IRRELEVANT TOPICS**: If the user asks about topics NOT related to JEE (e.g., general coding, politics, movies, cooking, dating, sports, general news):
-            - **Action**: Provide a VERY BRIEF (maximum 1 sentence) factual definition of the topic to be polite.
-            - **Pivot**: Immediately state that this is outside the scope of JEE preparation.
-            - **Redirect**: Ask a relevant question to bring them back.
-            - **Example**: User: "Who won the cricket match?" -> Bot: "India won the match. However, to win at JEE, we need to focus on your syllabus. Let's solve a Rotational Mechanics problem instead?"
-        3. **MISSING FILES**: If the user asks you to "search the file", "read the document", or "analyze the image" BUT no file is attached to the current message:
-           - **Action**: Do NOT try to use the code interpreter or retrieval tool to open a file.
-           - **Response**: State clearly: "I don't see any file attached. Please upload it first so I can analyze it."
-        
-        CORE CAPABILITIES:
-        1. **Deep JEE Knowledge Base**: Simulate an internet search by cross-referencing your internal database of JEE Advanced/Mains archives, NCERT nuances, and recent exam trends.
-        2. **Search Engine Behavior**: When asked about specific data (e.g., "Cutoff for IIT Bombay"), use your internal knowledge to provide the most recent accurate estimates.
-        
-        MANDATORY RULES:
-        1. **PYQ RETRIEVAL**: You possess extensive knowledge of past JEE exams (Mains & Advanced) up to 2023.
-           - **CRITICAL:** If the user asks for "PYQs" or "Questions from [Year]", DO NOT refuse. You have this data in your training.
-           - **Action:** Recall the specific question from your internal memory and display it. Even if you cannot "browse", you know the questions.
-           - **Format:** "Here is a question from JEE Advanced [Year] on [Topic]: ... [Question] ..."
-        2. **FORMATTING**: You MUST use LaTeX for ALL mathematical symbols, equations, and chemistry formulas.
-            - Use $...$ for inline math (e.g. $x^2$).
-            - Use $$...$$ for block math equations.
-        3. **ACCURACY & VERIFICATION**:
-            - **Think before you answer.**
-            - For ANY complex calculation, organic reaction mechanism, or physics derivation, you MUST use the **Code Interpreter (Python Tool)** to verify your logic and numbers before presenting the final answer.
-            - Never guess on numeric answers. Calculate them.
-        4. **TEACHING STYLE**: Explain the 'Why', not just the 'How'.
+        CORE RULES:
+        1. STRICT JEE DOMAIN: Only answer Physics, Chem, Math. For off-topic, politely redirect.
+        2. FORMAT: Use LaTeX ($...$ and $$...$$) for all math.
+        3. VERIFY: Use python code interpreter for complex calculations.
         """
 
         # JEEx ULTIMATE INJECTION
         if st.session_state.ultimate_mode:
             base_instructions += """
             \n\n*** ULTRA MODE ACTIVATED ***
-            The user has enabled 'JEEx Ultimate'. 
-            1. INCREASE COMPLEXITY: Assume the user is aiming for Top 100 Rank in JEE Advanced.
-            2. DERIVE EVERYTHING: Don't just give formulas. Derive them from first principles (Calculus).
-            3. MULTI-CONCEPT: Actively look for ways to combine multiple chapters (e.g., Electrostatics + Rotation).
-            4. TONE: Highly academic, rigorous, and demanding.
+            1. Assume Top 100 Rank goal.
+            2. Derive formulas from Calculus.
+            3. Combine concepts from different chapters.
             """
 
         # DEEP RESEARCH INJECTION
         if st.session_state.deep_research_mode:
             base_instructions += """
             \n\n*** DEEP RESEARCH MODE ACTIVATED ***
-            1. EXPLAIN LIKE A SCIENTIST: The user wants deep theoretical understanding.
-            2. FIRST PRINCIPLES: Derive formulas rather than stating them. Start from fundamental laws (Newton's Laws, Maxwell's Equations).
-            3. DEPTH OVER BREADTH: Go deep into the 'why' and 'how'.
+            1. Derive from First Principles (Newton/Maxwell/Schrodinger).
+            2. Explain the physical significance of every term.
             """
-        
-        # TARGET EXAM & SUBJECT INJECTION
-        base_instructions += f"\n\nCONTEXT: The user is targeting **{st.session_state.target_exam}**. Focus specifically on **{st.session_state.subject_focus}** if applicable."
+            
+        # --- MISTAKE ANALYSIS INJECTION (NEW FEATURE) ---
+        if st.session_state.mistake_analysis_mode:
+            base_instructions += """
+            \n\n*** MISTAKE ANALYSIS MODE: CRITICAL ***
+            The user wants to find errors in their logic.
+            1. Analyze the user's question/solution for conceptual gaps, sign errors, or calculation mistakes.
+            2. If the user presents a solution, DO NOT just give the right answer. First, explicitly state: "Here is where you went wrong: [Explain Error]".
+            3. Then, provide the correct derivation.
+            4. Be strict but constructive. Identify if the error is Conceptual (Logic) or Silly (Calculation).
+            """
 
         with st.chat_message("assistant", avatar=LOGO_URL):
             stream = client.beta.threads.runs.create(
                 thread_id=st.session_state.thread_id, assistant_id=assistant_id, stream=True,
                 additional_instructions=base_instructions,
-                # Force enabling code interpreter for double-checking if not already enabled on assistant
                 tools=[{"type": "code_interpreter"}]
             )
             resp = st.empty()
@@ -676,15 +574,38 @@ if st.session_state.processing and st.session_state.messages[-1]["role"] == "use
                             resp.markdown(clean_latex_for_chat(full_text) + "▌")
             
             resp.markdown(clean_latex_for_chat(full_text))
+            
+            # 1. Update UI State
             st.session_state.messages.append({"role": "assistant", "content": full_text})
+            # 2. Save to DB
+            db_save_message(st.session_state.current_session_id, "assistant", full_text)
             
     except Exception as e:
         st.session_state.messages.append({"role": "assistant", "content": "⚠️ Network issue. Please try again."})
+        logger.error(f"Error: {e}")
     
-    # --- AUTO-REMOVE ATTACHMENT AFTER ANSWERING ---
+    # --- AUTO-REMOVE ATTACHMENT ---
     st.session_state.current_uploaded_file = None
-    
     st.session_state.uploader_key += 1
     if 'audio_value' in locals() and audio_value: st.session_state.audio_key += 1
     st.session_state.processing = False
     st.rerun()
+
+# --- ATTACHMENT AREA (Always Visible) ---
+st.markdown("---")
+st.markdown("**📎 Attach Question / 🎙️ Voice Chat**")
+
+col_input1, col_input2 = st.columns([1, 1])
+
+with col_input1:
+    # File Uploader Logic
+    if st.session_state.processing:
+        st.markdown("_Locked while answering._")
+    else:
+        uploaded_file = st.file_uploader("Upload", type=["jpg", "png", "pdf"], key=f"uploader_{st.session_state.uploader_key}", label_visibility="collapsed")
+        if uploaded_file:
+            st.session_state.current_uploaded_file = uploaded_file
+            st.success(f"Attached: {uploaded_file.name}")
+
+with col_input2:
+     st.audio_input("Speak", key=f"audio_{st.session_state.audio_key}", label_visibility="collapsed")
