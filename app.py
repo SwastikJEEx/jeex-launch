@@ -47,7 +47,7 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     
-    /* Main Background - Pure Black to merge with Logo */
+    /* Main Background - Pure Black */
     .stApp { background-color: #000000 !important; color: #E0E0E0 !important; }
     
     /* Sidebar - Very Dark Blue/Black */
@@ -61,7 +61,7 @@ st.markdown("""
         color: #E0E0E0 !important;
     }
 
-    /* BIGGER CHAT TEXT FOR READABILITY */
+    /* BIGGER CHAT TEXT */
     .stChatMessage p, .stChatMessage li, .stChatMessage div {
         font-size: 1.15rem !important;
         line-height: 1.6 !important;
@@ -71,21 +71,23 @@ st.markdown("""
     strong { color: #00A6FF !important; font-weight: 600; }
     code { color: #00A6FF !important; background-color: #0D1B2E !important; padding: 2px 4px; border-radius: 4px; }
     
-    /* --- INPUTS & SELECTS (SIDEBAR FORMS) --- */
-    /* Only target inputs that are NOT the chat input */
-    div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="base-input"] {
+    /* --- SIDEBAR INPUTS (NEON BLUE BORDER) --- */
+    /* Target ONLY sidebar inputs for the neon look */
+    [data-testid="stSidebar"] div[data-baseweb="input"], 
+    [data-testid="stSidebar"] div[data-baseweb="select"], 
+    [data-testid="stSidebar"] div[data-baseweb="base-input"] {
         background-color: #050810 !important;
         border: 1px solid #00A6FF !important;
         border-radius: 8px !important;
     }
     
-    /* --- DROPDOWN TEXT FIX (CRITICAL) --- */
-    /* Forces the selected text inside the box to be white */
-    .stSelectbox div[data-baseweb="select"] div {
+    /* --- DROPDOWN VISIBILITY FIX (CRITICAL) --- */
+    /* Forces the selected text inside the box to be WHITE and visible */
+    .stSelectbox > div > div > div {
         color: #FFFFFF !important;
         -webkit-text-fill-color: #FFFFFF !important;
     }
-    /* Icons in dropdown */
+    /* Dropdown Arrow color */
     .stSelectbox svg {
         fill: #00A6FF !important;
     }
@@ -101,7 +103,7 @@ st.markdown("""
     /* Buttons - Neon Blue Theme */
     button, input[type="submit"], input[type="button"], .stButton>button, .stDownloadButton, .st-bk {
         background-color: #00A6FF !important;
-        color: #000000 !important; /* Black text for contrast */
+        color: #000000 !important;
         border: none !important;
         border-radius: 8px !important;
         padding: 10px 20px !important;
@@ -158,20 +160,10 @@ st.markdown("""
     li[data-baseweb="option"] {
         color: #E0E0E0 !important;
     }
-    div[data-baseweb="popover"] div {
-        background-color: #050810 !important;
-        color: #E0E0E0 !important;
-    }
     li[data-baseweb="option"]:hover, li[data-baseweb="option"][aria-selected="true"] {
         background-color: #0D1B2E !important;
         color: #00A6FF !important;
         font-weight: bold !important;
-    }
-    .baseweb-popover * { color: #E0E0E0 !important; }
-    
-    /* Dropdown headings/labels */
-    .css-1r6slb0, .css-1d391kg, .stSelectbox, div[role="option"], div[role="menuitem"] {
-        color: #E0E0E0 !important;
     }
     
     /* Sidebar headings - Neon Blue */
@@ -182,35 +174,30 @@ st.markdown("""
         color: #E0E0E0 !important;
     }
 
-    /* --- CHAT INPUT FIX (CLEAN, NO NEON OUTLINE) --- */
+    /* --- CHAT INPUT RESTORED (CLEAN, NO NEON, CORRECT BUTTON) --- */
     
-    /* 1. Reset the outer container */
-    .stChatInputContainer {
+    /* 1. Main container background (removes white gap) */
+    .stChatInputContainer, [data-testid="stChatInput"] {
         background-color: #000000 !important;
-        padding-bottom: 10px;
     }
     
-    /* 2. Target the specific base-input div inside chat input to REMOVE neon border */
-    /* This overrides the general input rule above for just this element */
-    div[data-testid="stChatInput"] div[data-baseweb="base-input"] {
+    /* 2. The input box itself - Clean Dark Grey, No Neon Border */
+    .stChatInput textarea {
         background-color: #050810 !important;
-        border: 1px solid #333333 !important; /* Clean subtle border */
-        border-radius: 12px !important;
-        box-shadow: none !important;
+        color: #FFFFFF !important;
+        border: 1px solid #333333 !important; /* Subtle grey border */
     }
     
-    /* 3. Ensure the input text area itself is transparent (so wrapper color shows) */
-    div[data-testid="stChatInput"] textarea {
+    /* 3. Send Button - Keep it separate from global button styles */
+    .stChatInput button {
         background-color: transparent !important;
-        border: none !important;
-        color: white !important;
-    }
-    
-    /* 4. Fix Send Button Color */
-    div[data-testid="stChatInput"] button {
         color: #00A6FF !important;
         border: none !important;
-        background: transparent !important;
+        box-shadow: none !important;
+    }
+    .stChatInput button:hover {
+        color: #FFFFFF !important;
+        background-color: transparent !important;
     }
     
     /* Spinner */
