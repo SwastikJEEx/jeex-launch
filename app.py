@@ -190,6 +190,16 @@ st.markdown("""
     
     /* Spinner */
     .stSpinner > div > div { border-top-color: #00A6FF !important; }
+    
+    /* Tooltips/Help Text - Force Dark Theme Visibility */
+    div[data-baseweb="popover"], div[data-baseweb="tooltip"] {
+        background-color: #050810 !important;
+        border: 1px solid #00A6FF !important;
+    }
+    div[data-baseweb="popover"] div, div[data-baseweb="tooltip"] div {
+        background-color: #050810 !important;
+        color: #E0E0E0 !important;
+    }
 
     /* Misc */
     .css-1v3fvcr, .css-1y8i9bb { border: none !important; box-shadow: none !important; }
